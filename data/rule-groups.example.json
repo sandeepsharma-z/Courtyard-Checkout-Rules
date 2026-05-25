@@ -1,0 +1,45 @@
+{
+  "notice": "Example structure only. Replace placeholders with imported data or admin configuration.",
+  "pincodeGroups": [
+    {
+      "id": "PINCODE_GROUP_ID_PLACEHOLDER",
+      "name": "PINCODE_GROUP_NAME_PLACEHOLDER",
+      "source": "imported_or_manual_placeholder",
+      "pincodes": ["PINCODE_PLACEHOLDER"]
+    }
+  ],
+  "productTagRestrictions": [
+    {
+      "id": "VALIDATION_RULE_ID_PLACEHOLDER",
+      "enabled": true,
+      "pincodeGroupId": "PINCODE_GROUP_ID_PLACEHOLDER",
+      "productTags": ["PRODUCT_TAG_PLACEHOLDER"],
+      "errorMessage": "VALIDATION_ERROR_MESSAGE_PLACEHOLDER"
+    }
+  ],
+  "shippingMethodMappings": [
+    {
+      "id": "SHIPPING_MAPPING_ID_PLACEHOLDER",
+      "adminName": "SHIPPING_METHOD_ADMIN_LABEL_PLACEHOLDER",
+      "matchType": "exact_or_contains_placeholder",
+      "matchValue": "SHIPPING_METHOD_PLACEHOLDER"
+    }
+  ],
+  "paymentMethodMappings": [
+    {
+      "id": "PAYMENT_MAPPING_ID_PLACEHOLDER",
+      "adminName": "PAYMENT_METHOD_ADMIN_LABEL_PLACEHOLDER",
+      "matchType": "exact_or_contains_placeholder",
+      "matchValue": "PAYMENT_METHOD_PLACEHOLDER"
+    }
+  ],
+  "cutoffSettings": [
+    {
+      "id": "CUTOFF_SETTING_ID_PLACEHOLDER",
+      "name": "CUTOFF_SETTING_NAME_PLACEHOLDER",
+      "time": "CUTOFF_TIME_PLACEHOLDER",
+      "timezone": "TIMEZONE_PLACEHOLDER"
+    }
+  ]
+}
+

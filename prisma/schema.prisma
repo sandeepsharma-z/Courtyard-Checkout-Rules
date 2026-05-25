@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
+// enough when changing adapters.
+// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.sqlite"
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+model PincodeImportBatch {
+  id                 String          @id @default(cuid())
+  filename           String
+  status             String          @default("previewed")
+  totalRows          Int             @default(0)
+  validRows          Int             @default(0)
+  invalidRows        Int             @default(0)
+  duplicateRows      Int             @default(0)
+  missingHeadersJson String          @default("[]")
+  extraHeadersJson   String          @default("[]")
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  approvedAt         DateTime?
+  records            PincodeRecord[]
+}
+
+model PincodeRecord {
+  id                      String             @id @default(cuid())
+  batchId                 String
+  batch                   PincodeImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowNumber               Int
+  rowStatus               String
+  rowErrorsJson           String             @default("[]")
+  isActive                Boolean            @default(false)
+  state                   String             @default("")
+  district                String             @default("")
+  pincode                 String             @default("")
+  locationName            String             @default("")
+  areaGroup               String             @default("")
+  deliveryAvailability    String             @default("")
+  sameDayDeliveryRule     String             @default("")
+  nextDayDeliveryRule     String             @default("")
+  productAvailabilityRule String             @default("")
+  remarks                 String             @default("")
+  chargesPricingText      String             @default("")
+  updatedSameDayRule      String             @default("")
+  updatedNextDayRule      String             @default("")
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([batchId])
+  @@index([isActive])
+  @@index([pincode])
+}

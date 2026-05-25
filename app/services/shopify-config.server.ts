@@ -29,6 +29,18 @@ type ShopifyShopResponse = {
   };
 };
 
+type ShopifyPublishedConfigMetafieldResponse = {
+  data?: {
+    shop?: {
+      metafield?: {
+        id: string;
+        value: string;
+        updatedAt: string;
+      } | null;
+    };
+  };
+};
+
 export async function getShopIdentity(admin: ShopifyAdminClient) {
   const response = await admin.graphql(`#graphql
     query CourtyardCheckoutRulesShopIdentity {
@@ -96,4 +108,29 @@ export async function publishConfigMetafield(input: {
   }
 
   return { metafieldId };
+}
+
+export async function readPublishedConfigMetafield(admin: ShopifyAdminClient) {
+  const response = await admin.graphql(
+    `#graphql
+      query CourtyardCheckoutRulesReadPublishedConfig($namespace: String!, $key: String!) {
+        shop {
+          metafield(namespace: $namespace, key: $key) {
+            id
+            value
+            updatedAt
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        namespace: PUBLISHED_CONFIG_NAMESPACE,
+        key: PUBLISHED_CONFIG_KEY,
+      },
+    },
+  );
+  const json = (await response.json()) as ShopifyPublishedConfigMetafieldResponse;
+
+  return json.data?.shop?.metafield ?? null;
 }

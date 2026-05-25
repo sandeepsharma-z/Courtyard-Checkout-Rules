@@ -21,6 +21,7 @@ export default function App() {
         <s-link href="/app">Dashboard</s-link>
         <s-link href="/app/import">CSV import</s-link>
         <s-link href="/app/pincodes">Pincode groups</s-link>
+        <s-link href="/app/publish">Publish config</s-link>
         <s-link href="/app/product-restrictions">Product restrictions</s-link>
         <s-link href="/app/shipping-rules">Shipping rules</s-link>
         <s-link href="/app/payment-rules">Payment rules</s-link>

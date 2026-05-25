@@ -24,7 +24,8 @@ export default function PincodeGroupsPage() {
           </p>
           {approvedBatch ? (
             <p>
-              Current approved batch: <strong>{approvedBatch.filename}</strong>
+              Current approved batch: <strong>{approvedBatch.filename}</strong>.{" "}
+              <a href="/app/publish">Review publish status</a>.
             </p>
           ) : (
             <p>No approved CSV import batch exists yet.</p>

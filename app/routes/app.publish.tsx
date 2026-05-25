@@ -1,0 +1,292 @@
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import { Form, useActionData, useLoaderData } from "react-router";
+import { boundary } from "@shopify/shopify-app-react-router/server";
+import { authenticate } from "../shopify.server";
+import {
+  buildPublishedConfigSnapshot,
+  createPublishHistoryRecord,
+  getPublishHistory,
+  getPublishHistorySnapshot,
+} from "../services/published-config.server";
+import {
+  getShopIdentity,
+  publishConfigMetafield,
+} from "../services/shopify-config.server";
+import { PUBLISHED_CONFIG_SCHEMA_VERSION } from "../types/published-config";
+
+type ActionResult = {
+  status: "success" | "error";
+  message: string;
+};
+
+const formatBytes = (bytes: number) =>
+  new Intl.NumberFormat("en", {
+    maximumFractionDigits: 0,
+  }).format(bytes);
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  await authenticate.admin(request);
+
+  const [snapshot, history] = await Promise.all([
+    buildPublishedConfigSnapshot(),
+    getPublishHistory(),
+  ]);
+
+  return {
+    snapshot,
+    history,
+  };
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { admin } = await authenticate.admin(request);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  const shop = await getShopIdentity(admin);
+
+  try {
+    if (intent === "republish") {
+      const snapshotId = String(formData.get("snapshotId") ?? "");
+      const previousSnapshot = await getPublishHistorySnapshot(snapshotId);
+
+      if (!previousSnapshot) {
+        return {
+          status: "error",
+          message: "Previous published snapshot was not found.",
+        } satisfies ActionResult;
+      }
+
+      const result = await publishConfigMetafield({
+        admin,
+        ownerId: shop.id,
+        payloadJson: previousSnapshot.payloadJson,
+      });
+
+      await createPublishHistoryRecord({
+        schemaVersion: previousSnapshot.schemaVersion,
+        status: "republished",
+        shop: shop.myshopifyDomain,
+        metafieldId: result.metafieldId,
+        sourceBatchId: previousSnapshot.sourceBatchId,
+        sourceFilename: previousSnapshot.sourceFilename,
+        recordCount: previousSnapshot.recordCount,
+        payloadSizeBytes: previousSnapshot.payloadSizeBytes,
+        payloadJson: previousSnapshot.payloadJson,
+        message: `Republished previous snapshot ${previousSnapshot.id}.`,
+        publishedAt: new Date(),
+      });
+
+      return {
+        status: "success",
+        message: "Previous snapshot was republished to Shopify configuration.",
+      } satisfies ActionResult;
+    }
+
+    const snapshot = await buildPublishedConfigSnapshot();
+
+    if (!snapshot) {
+      return {
+        status: "error",
+        message: "No approved active pincode configuration is available.",
+      } satisfies ActionResult;
+    }
+
+    if (snapshot.isTooLarge) {
+      await createPublishHistoryRecord({
+        schemaVersion: PUBLISHED_CONFIG_SCHEMA_VERSION,
+        status: "blocked_too_large",
+        shop: shop.myshopifyDomain,
+        sourceBatchId: snapshot.sourceBatchId,
+        sourceFilename: snapshot.sourceFilename,
+        recordCount: snapshot.recordCount,
+        payloadSizeBytes: snapshot.payloadSizeBytes,
+        payloadJson: snapshot.payloadJson,
+        message:
+          "Payload exceeded the current single-metafield publish guard. Use a future chunked config strategy.",
+      });
+
+      return {
+        status: "error",
+        message: `Publish blocked. Payload is ${formatBytes(
+          snapshot.payloadSizeBytes,
+        )} bytes, which exceeds the current single-metafield guard of ${formatBytes(
+          snapshot.maxBytes,
+        )} bytes. Future chunked metafields or metaobjects are recommended for large datasets.`,
+      } satisfies ActionResult;
+    }
+
+    const result = await publishConfigMetafield({
+      admin,
+      ownerId: shop.id,
+      payloadJson: snapshot.payloadJson,
+    });
+
+    await createPublishHistoryRecord({
+      schemaVersion: PUBLISHED_CONFIG_SCHEMA_VERSION,
+      status: "published",
+      shop: shop.myshopifyDomain,
+      metafieldId: result.metafieldId,
+      sourceBatchId: snapshot.sourceBatchId,
+      sourceFilename: snapshot.sourceFilename,
+      recordCount: snapshot.recordCount,
+      payloadSizeBytes: snapshot.payloadSizeBytes,
+      payloadJson: snapshot.payloadJson,
+      message: "Published current approved local pincode configuration.",
+      publishedAt: new Date(),
+    });
+
+    return {
+      status: "success",
+      message: "Approved local pincode configuration was published to Shopify.",
+    } satisfies ActionResult;
+  } catch (error) {
+    return {
+      status: "error",
+      message: error instanceof Error ? error.message : "Publish failed.",
+    } satisfies ActionResult;
+  }
+};
+
+export default function PublishPage() {
+  const { snapshot, history } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>() as ActionResult | undefined;
+
+  return (
+    <s-page heading="Publish config">
+      <s-section heading="Single metafield snapshot">
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <p>
+            Phase 4 publishes the approved local pincode dataset to one
+            shop-level JSON metafield. This does not add Shopify Functions and
+            does not change checkout behavior.
+          </p>
+          <p>
+            Target:{" "}
+            <strong>
+              courtyard_checkout_rules.published_config
+            </strong>
+          </p>
+          {actionData && (
+            <p>
+              <strong>{actionData.status === "success" ? "Success" : "Error"}:</strong>{" "}
+              {actionData.message}
+            </p>
+          )}
+        </div>
+      </s-section>
+
+      <s-section heading="Current snapshot preview">
+        {!snapshot ? (
+          <s-paragraph>
+            No approved active pincode records are available to publish.
+          </s-paragraph>
+        ) : (
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <div
+              style={{
+                display: "grid",
+                gap: "0.75rem",
+                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+              }}
+            >
+              <SummaryBox label="Schema version" value={snapshot.payload.v} />
+              <SummaryBox label="Records" value={snapshot.recordCount} />
+              <SummaryBox
+                label="Payload bytes"
+                value={formatBytes(snapshot.payloadSizeBytes)}
+              />
+              <SummaryBox
+                label="Single-field guard"
+                value={formatBytes(snapshot.maxBytes)}
+              />
+            </div>
+
+            <p>
+              Source batch: <strong>{snapshot.sourceFilename}</strong>
+            </p>
+
+            {snapshot.isTooLarge ? (
+              <p>
+                <strong>Publish blocked:</strong> payload size is too large for
+                the current single-metafield strategy. Use a future chunked
+                metafield or metaobject strategy for large datasets.
+              </p>
+            ) : (
+              <Form method="post">
+                <input type="hidden" name="intent" value="publish" />
+                <button type="submit">Publish current approved config</button>
+              </Form>
+            )}
+          </div>
+        )}
+      </s-section>
+
+      <s-section heading="Publish history">
+        {history.length === 0 ? (
+          <s-paragraph>No publish history exists yet.</s-paragraph>
+        ) : (
+          <div style={{ display: "grid", gap: "0.75rem" }}>
+            {history.map((entry) => (
+              <div
+                key={entry.id}
+                style={{
+                  border: "1px solid #d8ddd2",
+                  borderRadius: "8px",
+                  display: "grid",
+                  gap: "0.5rem",
+                  padding: "0.75rem",
+                }}
+              >
+                <strong>
+                  {entry.status} - {entry.sourceFilename || "stored snapshot"}
+                </strong>
+                <span>
+                  {entry.recordCount} records, {formatBytes(entry.payloadSizeBytes)}{" "}
+                  bytes, schema v{entry.schemaVersion}
+                </span>
+                {entry.message && <span>{entry.message}</span>}
+                {(entry.status === "published" ||
+                  entry.status === "republished") && (
+                  <Form method="post">
+                    <input type="hidden" name="intent" value="republish" />
+                    <input type="hidden" name="snapshotId" value={entry.id} />
+                    <button type="submit">Republish this snapshot</button>
+                  </Form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </s-section>
+    </s-page>
+  );
+}
+
+function SummaryBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div
+      style={{
+        border: "1px solid #d8ddd2",
+        borderRadius: "8px",
+        padding: "0.75rem",
+      }}
+    >
+      <strong style={{ display: "block", fontSize: "1.2rem" }}>{value}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export const headers: HeadersFunction = (headersArgs) => {
+  return boundary.headers(headersArgs);
+};

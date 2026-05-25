@@ -47,6 +47,7 @@ model PincodeImportBatch {
   updatedAt          DateTime        @updatedAt
   approvedAt         DateTime?
   records            PincodeRecord[]
+  publishedSnapshots PublishedConfigSnapshot[]
 }
 
 model PincodeRecord {
@@ -76,4 +77,25 @@ model PincodeRecord {
   @@index([batchId])
   @@index([isActive])
   @@index([pincode])
+}
+
+model PublishedConfigSnapshot {
+  id               String              @id @default(cuid())
+  schemaVersion    Int
+  status           String
+  shop             String
+  metafieldId      String              @default("")
+  sourceBatchId    String?
+  sourceBatch      PincodeImportBatch? @relation(fields: [sourceBatchId], references: [id], onDelete: SetNull)
+  sourceFilename   String              @default("")
+  recordCount      Int                 @default(0)
+  payloadSizeBytes Int                 @default(0)
+  payloadJson      String
+  message          String              @default("")
+  publishedAt      DateTime?
+  createdAt        DateTime            @default(now())
+
+  @@index([status])
+  @@index([shop])
+  @@index([sourceBatchId])
 }

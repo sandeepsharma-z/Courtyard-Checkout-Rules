@@ -2,6 +2,12 @@ import type {
   PublishedConfigSnapshotPayload,
   PublishedPincodeRecord,
 } from "../types/published-config";
+import type {
+  PublishedPaymentHideRule,
+  PublishedProductRestrictionRule,
+  PublishedShippingHideRule,
+  PublishedShippingRenameRule,
+} from "../types/rule-config";
 
 export type RuleEngineInputs = {
   pincode: string;
@@ -40,6 +46,8 @@ export type ProductRestrictionPreview = {
   status: PreviewStatus;
   inputTags: string[];
   productAvailabilityRule: string;
+  matchedRules: PublishedProductRestrictionRule[];
+  validationMessages: string[];
   notes: string[];
 };
 
@@ -47,6 +55,7 @@ export type ShippingHidePreview = {
   status: PreviewStatus;
   selectedShippingMethod: string;
   hiddenMethods: string[];
+  matchedRules: PublishedShippingHideRule[];
   notes: string[];
 };
 
@@ -54,6 +63,7 @@ export type ShippingRenamePreview = {
   status: PreviewStatus;
   selectedShippingMethod: string;
   renamedMethod: string;
+  matchedRules: PublishedShippingRenameRule[];
   notes: string[];
 };
 
@@ -61,6 +71,7 @@ export type PaymentHidePreview = {
   status: PreviewStatus;
   selectedPaymentMethod: string;
   hiddenPaymentMethods: string[];
+  matchedRules: PublishedPaymentHideRule[];
   notes: string[];
 };
 
@@ -68,6 +79,7 @@ export type CutoffPreview = {
   status: PreviewStatus;
   currentTime: string;
   parsedTime: string;
+  matchedSettings: string[];
   notes: string[];
 };
 

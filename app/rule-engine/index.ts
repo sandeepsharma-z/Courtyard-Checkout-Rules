@@ -32,9 +32,15 @@ export function evaluateRulePreview(
     ...context,
     pincode,
   });
-  const shippingHide = evaluateShippingHide(context);
-  const shippingRename = evaluateShippingRename(context);
-  const paymentHide = evaluatePaymentHide(context);
+  const shippingHide = evaluateShippingHide({ ...context, pincode });
+  const shippingRename = evaluateShippingRename({
+    ...context,
+    pincode,
+    hiddenMethodMappingIds: shippingHide.matchedRules.map(
+      (rule) => rule.shippingMethodMappingId,
+    ),
+  });
+  const paymentHide = evaluatePaymentHide({ ...context, pincode });
   const cutoff = evaluateCutoff(context);
   const finalOutcome = composeFinalOutcome({
     pincodeMatched: pincode.status === "matched",

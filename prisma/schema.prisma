@@ -99,3 +99,133 @@ model PublishedConfigSnapshot {
   @@index([shop])
   @@index([sourceBatchId])
 }
+
+model ProductRestrictionRule {
+  id                       String   @id @default(cuid())
+  name                     String
+  enabled                  Boolean  @default(true)
+  priority                 Int      @default(100)
+  productTagsJson          String   @default("[]")
+  pincodesJson             String   @default("[]")
+  areaGroupsJson           String   @default("[]")
+  deliveryAvailabilityText String   @default("")
+  validationMessage        String   @default("")
+  conditionsJson           String   @default("{}")
+  notes                    String   @default("")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+}
+
+model ShippingMethodMapping {
+  id         String   @id @default(cuid())
+  name       String
+  enabled    Boolean  @default(true)
+  priority   Int      @default(100)
+  matchType  String   @default("exact")
+  matchValue String   @default("")
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+}
+
+model PaymentMethodMapping {
+  id         String   @id @default(cuid())
+  name       String
+  enabled    Boolean  @default(true)
+  priority   Int      @default(100)
+  matchType  String   @default("exact")
+  matchValue String   @default("")
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+}
+
+model CutoffRuleSetting {
+  id         String   @id @default(cuid())
+  name       String
+  enabled    Boolean  @default(true)
+  priority   Int      @default(100)
+  timeValue  String   @default("")
+  timezone   String   @default("")
+  matchMode  String   @default("before")
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+}
+
+model ShippingHideRule {
+  id                       String   @id @default(cuid())
+  name                     String
+  enabled                  Boolean  @default(true)
+  priority                 Int      @default(100)
+  shippingMethodMappingId  String   @default("")
+  cutoffRuleSettingId      String   @default("")
+  productTagsJson          String   @default("[]")
+  pincodesJson             String   @default("[]")
+  areaGroupsJson           String   @default("[]")
+  deliveryAvailabilityText String   @default("")
+  conditionsJson           String   @default("{}")
+  notes                    String   @default("")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+  @@index([shippingMethodMappingId])
+}
+
+model ShippingRenameRule {
+  id                       String   @id @default(cuid())
+  name                     String
+  enabled                  Boolean  @default(true)
+  priority                 Int      @default(100)
+  shippingMethodMappingId  String   @default("")
+  cutoffRuleSettingId      String   @default("")
+  newLabel                 String   @default("")
+  productTagsJson          String   @default("[]")
+  pincodesJson             String   @default("[]")
+  areaGroupsJson           String   @default("[]")
+  deliveryAvailabilityText String   @default("")
+  conditionsJson           String   @default("{}")
+  notes                    String   @default("")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+  @@index([shippingMethodMappingId])
+}
+
+model PaymentHideRule {
+  id                       String   @id @default(cuid())
+  name                     String
+  enabled                  Boolean  @default(true)
+  priority                 Int      @default(100)
+  paymentMethodMappingId   String   @default("")
+  cutoffRuleSettingId      String   @default("")
+  selectedShippingContains String   @default("")
+  productTagsJson          String   @default("[]")
+  pincodesJson             String   @default("[]")
+  areaGroupsJson           String   @default("[]")
+  deliveryAvailabilityText String   @default("")
+  conditionsJson           String   @default("{}")
+  notes                    String   @default("")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+  @@index([paymentMethodMappingId])
+}

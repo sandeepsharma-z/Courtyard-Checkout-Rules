@@ -6,6 +6,8 @@ import {
   type PublishedConfigSnapshotPayload,
 } from "../types/published-config";
 
+const parseList = (value: string) => JSON.parse(value) as string[];
+
 const byteSize = (value: string) => Buffer.byteLength(value, "utf8");
 
 export function getSingleMetafieldMaxBytes() {
@@ -40,6 +42,45 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
     return null;
   }
 
+  const [
+    productRestrictionRules,
+    shippingMethodMappings,
+    paymentMethodMappings,
+    shippingHideRules,
+    shippingRenameRules,
+    paymentHideRules,
+    cutoffSettings,
+  ] = await Promise.all([
+    prisma.productRestrictionRule.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.shippingMethodMapping.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.paymentMethodMapping.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.shippingHideRule.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.shippingRenameRule.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.paymentHideRule.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.cutoffRuleSetting.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+    }),
+  ]);
+
   const payload: PublishedConfigSnapshotPayload = {
     v: PUBLISHED_CONFIG_SCHEMA_VERSION,
     kind: "courtyard_checkout_rules.pincode_config",
@@ -67,6 +108,82 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         ch: record.chargesPricingText,
         usd: record.updatedSameDayRule,
         und: record.updatedNextDayRule,
+      })),
+    },
+    rules: {
+      productRestrictions: productRestrictionRules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        priority: rule.priority,
+        productTags: parseList(rule.productTagsJson),
+        pincodes: parseList(rule.pincodesJson),
+        areaGroups: parseList(rule.areaGroupsJson),
+        deliveryAvailabilityText: rule.deliveryAvailabilityText,
+        validationMessage: rule.validationMessage,
+        notes: rule.notes,
+      })),
+      shippingMethodMappings: shippingMethodMappings.map((mapping) => ({
+        id: mapping.id,
+        name: mapping.name,
+        priority: mapping.priority,
+        matchType: mapping.matchType === "contains" ? "contains" : "exact",
+        matchValue: mapping.matchValue,
+        notes: mapping.notes,
+      })),
+      paymentMethodMappings: paymentMethodMappings.map((mapping) => ({
+        id: mapping.id,
+        name: mapping.name,
+        priority: mapping.priority,
+        matchType: mapping.matchType === "contains" ? "contains" : "exact",
+        matchValue: mapping.matchValue,
+        notes: mapping.notes,
+      })),
+      shippingHideRules: shippingHideRules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        priority: rule.priority,
+        shippingMethodMappingId: rule.shippingMethodMappingId,
+        cutoffRuleSettingId: rule.cutoffRuleSettingId,
+        productTags: parseList(rule.productTagsJson),
+        pincodes: parseList(rule.pincodesJson),
+        areaGroups: parseList(rule.areaGroupsJson),
+        deliveryAvailabilityText: rule.deliveryAvailabilityText,
+        notes: rule.notes,
+      })),
+      shippingRenameRules: shippingRenameRules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        priority: rule.priority,
+        shippingMethodMappingId: rule.shippingMethodMappingId,
+        cutoffRuleSettingId: rule.cutoffRuleSettingId,
+        newLabel: rule.newLabel,
+        productTags: parseList(rule.productTagsJson),
+        pincodes: parseList(rule.pincodesJson),
+        areaGroups: parseList(rule.areaGroupsJson),
+        deliveryAvailabilityText: rule.deliveryAvailabilityText,
+        notes: rule.notes,
+      })),
+      paymentHideRules: paymentHideRules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        priority: rule.priority,
+        paymentMethodMappingId: rule.paymentMethodMappingId,
+        cutoffRuleSettingId: rule.cutoffRuleSettingId,
+        selectedShippingContains: rule.selectedShippingContains,
+        productTags: parseList(rule.productTagsJson),
+        pincodes: parseList(rule.pincodesJson),
+        areaGroups: parseList(rule.areaGroupsJson),
+        deliveryAvailabilityText: rule.deliveryAvailabilityText,
+        notes: rule.notes,
+      })),
+      cutoffSettings: cutoffSettings.map((setting) => ({
+        id: setting.id,
+        name: setting.name,
+        priority: setting.priority,
+        timeValue: setting.timeValue,
+        timezone: setting.timezone,
+        matchMode: setting.matchMode,
+        notes: setting.notes,
       })),
     },
   };

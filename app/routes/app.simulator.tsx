@@ -160,6 +160,18 @@ export default function SimulatorPage() {
                   "Product availability text",
                   result.outcome.productRestrictions.productAvailabilityRule,
                 ],
+                [
+                  "Matched rules",
+                  result.outcome.productRestrictions.matchedRules
+                    .map((rule) => rule.name)
+                    .join(", "),
+                ],
+                [
+                  "Validation messages",
+                  result.outcome.productRestrictions.validationMessages.join(
+                    "; ",
+                  ),
+                ],
               ]}
               notes={result.outcome.productRestrictions.notes}
               title="Product tag restriction preview"
@@ -176,6 +188,12 @@ export default function SimulatorPage() {
                   "Hidden methods",
                   result.outcome.shippingHide.hiddenMethods.join(", "),
                 ],
+                [
+                  "Matched rules",
+                  result.outcome.shippingHide.matchedRules
+                    .map((rule) => rule.name)
+                    .join(", "),
+                ],
               ]}
               notes={result.outcome.shippingHide.notes}
               title="Shipping hide preview"
@@ -189,6 +207,12 @@ export default function SimulatorPage() {
                   result.outcome.shippingRename.selectedShippingMethod,
                 ],
                 ["Renamed method", result.outcome.shippingRename.renamedMethod],
+                [
+                  "Matched rules",
+                  result.outcome.shippingRename.matchedRules
+                    .map((rule) => rule.name)
+                    .join(", "),
+                ],
               ]}
               notes={result.outcome.shippingRename.notes}
               title="Shipping rename preview"
@@ -205,6 +229,12 @@ export default function SimulatorPage() {
                   "Hidden payment methods",
                   result.outcome.paymentHide.hiddenPaymentMethods.join(", "),
                 ],
+                [
+                  "Matched rules",
+                  result.outcome.paymentHide.matchedRules
+                    .map((rule) => rule.name)
+                    .join(", "),
+                ],
               ]}
               notes={result.outcome.paymentHide.notes}
               title="Payment hide preview"
@@ -215,6 +245,10 @@ export default function SimulatorPage() {
                 ["Status", result.outcome.cutoff.status],
                 ["Current time input", result.outcome.cutoff.currentTime],
                 ["Parsed time", result.outcome.cutoff.parsedTime],
+                [
+                  "Matched settings",
+                  result.outcome.cutoff.matchedSettings.join(", "),
+                ],
               ]}
               notes={result.outcome.cutoff.notes}
               title="Cutoff/time preview"

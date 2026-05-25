@@ -1,4 +1,6 @@
-export const PUBLISHED_CONFIG_SCHEMA_VERSION = 1;
+import type { PublishedRuleConfig } from "./rule-config";
+
+export const PUBLISHED_CONFIG_SCHEMA_VERSION = 2;
 export const PUBLISHED_CONFIG_NAMESPACE = "courtyard_checkout_rules";
 export const PUBLISHED_CONFIG_KEY = "published_config";
 export const PUBLISHED_CONFIG_TYPE = "json";
@@ -22,7 +24,7 @@ export type PublishedPincodeRecord = {
 };
 
 export type PublishedConfigSnapshotPayload = {
-  v: typeof PUBLISHED_CONFIG_SCHEMA_VERSION;
+  v: number;
   kind: "courtyard_checkout_rules.pincode_config";
   publishedAt: string;
   source: {
@@ -36,6 +38,7 @@ export type PublishedConfigSnapshotPayload = {
   pincodeData: {
     records: PublishedPincodeRecord[];
   };
+  rules?: PublishedRuleConfig;
 };
 
 export type BuiltPublishedConfigSnapshot = {

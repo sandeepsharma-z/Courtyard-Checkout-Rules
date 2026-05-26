@@ -171,8 +171,8 @@ function DataRow({ row }: { row: RuleRow }) {
           </span>
         </Link>
       </td>
-      <td><Link to={row.href}><span className={`rules-type-pill ${slug(row.type)}`}>{row.type}</span></Link></td>
-      <td><Link to={row.href}><span className={`rules-subtype-pill ${slug(row.subtype)}`}>{row.subtype}</span></Link></td>
+      <td><Link to={row.href}>{row.type}</Link></td>
+      <td><Link to={row.href}>{row.subtype}</Link></td>
       <td><Link to={row.href}>{row.activatedOn}</Link></td>
     </tr>
   );
@@ -190,15 +190,11 @@ function StarterRow({ row }: { row: typeof STARTER_ROWS[0] }) {
       <td>
         <span className="rules-status deactivated">Deactivated</span>
       </td>
-      <td><Link to={row.href}><span className={`rules-type-pill ${slug(row.type)}`}>{row.type}</span></Link></td>
-      <td><Link to={row.href}><span className={`rules-subtype-pill ${slug(row.subtype)}`}>{row.subtype}</span></Link></td>
+      <td><Link to={row.href}>{row.type}</Link></td>
+      <td><Link to={row.href}>{row.subtype}</Link></td>
       <td></td>
     </tr>
   );
-}
-
-function slug(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
 export const headers: HeadersFunction = (headersArgs) => {

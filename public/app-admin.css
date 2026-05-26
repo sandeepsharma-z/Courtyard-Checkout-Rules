@@ -617,13 +617,9 @@ body {
 }
 
 .rules-page {
-  background:
-    linear-gradient(rgba(32, 65, 42, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(32, 65, 42, 0.035) 1px, transparent 1px),
-    #f4f6f2;
-  background-size: 24px 24px;
+  background: #f1f1f1;
   min-height: 100dvh;
-  padding: 32px 24px;
+  padding: 28px 24px;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -633,16 +629,12 @@ body {
 }
 
 .rules-header {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid #d9e2d5;
-  border-radius: 14px;
-  box-shadow: 0 14px 35px rgba(16, 32, 21, 0.06);
+  align-items: flex-start;
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
-  padding: 22px 24px;
+  margin-bottom: 14px;
+  padding: 0;
 }
 
 .rules-heading {
@@ -653,15 +645,15 @@ body {
 }
 
 .rules-heading h1 {
-  color: #082812;
-  font-size: 26px;
-  font-weight: 760;
+  color: #1f1f1f;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1.2;
   margin: 0;
 }
 
 .rules-heading p {
-  color: #44604b;
+  color: #303030;
   flex-basis: 100%;
   font-size: 14px;
   margin: 0;
@@ -670,14 +662,33 @@ body {
 .rules-actions {
   display: flex;
   flex-shrink: 0;
-  gap: 10px;
+  gap: 8px;
+}
+
+.rules-actions .bsure-button {
+  background: #1f1f1f !important;
+  border-color: #000 !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.18), 0 1px 0 rgba(0, 0, 0, 0.2) !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  line-height: 18px !important;
+  min-height: 32px !important;
+  padding: 6px 14px !important;
+}
+
+.rules-actions .bsure-button.secondary {
+  background: #fff !important;
+  border-color: #c9cccf !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05) !important;
+  color: #202223 !important;
 }
 
 .rules-table-card {
   background: #fff;
-  border: 1px solid #d9e2d5;
-  border-radius: 14px;
-  box-shadow: 0 14px 35px rgba(16, 32, 21, 0.06);
+  border: 1px solid #d4d4d4;
+  border-radius: 12px;
+  box-shadow: none;
   overflow: hidden;
 }
 
@@ -687,31 +698,30 @@ body {
 }
 
 .rules-table th {
-  background: #f8faf6;
-  border-bottom: 1px solid #dfe7db;
-  color: #17391f;
+  background: #fafafa;
+  border-bottom: 1px solid #e1e3e5;
+  color: #303030;
   font-size: 13px;
-  font-weight: 650;
-  padding: 13px 16px;
+  font-weight: 550;
+  padding: 9px 16px;
   text-align: left;
 }
 
 .rules-table td {
-  border-top: 1px solid #e6ece2;
+  border-top: 1px solid #e1e3e5;
   color: #202223;
   font-size: 14px;
-  padding: 12px 16px;
+  padding: 8px 16px;
   vertical-align: middle;
 }
 
 .rules-row {
   cursor: pointer;
-  transition: background 140ms ease, box-shadow 140ms ease;
+  transition: background 120ms ease;
 }
 
 .rules-row:hover {
-  background: #f2fbf6;
-  box-shadow: inset 3px 0 0 #008060;
+  background: #f6f6f7;
 }
 
 .rules-row a {
@@ -729,33 +739,34 @@ body {
 }
 
 .rules-checkbox-input {
-  accent-color: #008060;
+  accent-color: #303030;
   cursor: pointer;
-  height: 16px;
-  width: 16px;
+  height: 15px;
+  width: 15px;
 }
 
 .rules-name-link {
-  color: #102015 !important;
-  font-weight: 650;
+  color: #202223 !important;
+  font-weight: 400;
 }
 
 .rules-status {
-  border-radius: 8px;
+  border-radius: 7px;
   display: inline-block;
   font-size: 13px;
-  font-weight: 650;
-  padding: 3px 10px;
+  font-weight: 400;
+  line-height: 18px;
+  padding: 2px 10px;
 }
 
 .rules-status.active {
   background: #b9f4cf;
-  color: #0b3b22;
+  color: #003d29;
 }
 
 .rules-status.deactivated {
-  background: #edf0ea;
-  color: #51604f;
+  background: #e4e5e7;
+  color: #303030;
 }
 
 .rules-type-pill,

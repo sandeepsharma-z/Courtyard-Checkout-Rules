@@ -86,7 +86,7 @@ export default function ShippingRulesPage() {
                 <input name="target" type="radio" value="pickup" />
                 <div>
                   <div className="bsure-target-label">Pick Up</div>
-                  <div className="bsure-target-sub">This rule targets pickup methods (which are shown when you select 'Pickup in store' and then a location) at the checkout and modifies them.</div>
+                  <div className="bsure-target-sub">This rule targets pickup methods (which are shown when you select &apos;Pickup in store&apos; and then a location) at the checkout and modifies them.</div>
                 </div>
               </div>
             </div>

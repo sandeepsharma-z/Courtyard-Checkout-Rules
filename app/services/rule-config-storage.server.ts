@@ -14,8 +14,10 @@ const getPriority = (formData: FormData) => {
   return Number.isFinite(priority) ? priority : 100;
 };
 
-const listJson = (formData: FormData, key: string) =>
-  JSON.stringify(splitList(formData.get(key)));
+const listJson = (formData: FormData, key: string) => {
+  const values = formData.getAll(key).flatMap((value) => splitList(value));
+  return JSON.stringify(Array.from(new Set(values)));
+};
 
 export async function getRuleManagerData() {
   const [

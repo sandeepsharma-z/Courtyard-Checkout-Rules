@@ -117,3 +117,31 @@ export async function getActivePincodeSummary() {
     approvedBatch,
   };
 }
+
+export async function getActivePincodeRuleOptions() {
+  const records = await prisma.pincodeRecord.findMany({
+    where: { isActive: true, pincode: { not: "" } },
+    orderBy: [{ pincode: "asc" }, { rowNumber: "asc" }],
+    select: {
+      id: true,
+      pincode: true,
+      areaGroup: true,
+      deliveryAvailability: true,
+      district: true,
+      locationName: true,
+      state: true,
+    },
+  });
+
+  const uniqueRecords = Array.from(
+    new Map(records.map((record) => [record.pincode, record])).values(),
+  );
+
+  return {
+    pincodes: uniqueRecords,
+    areaGroups: Array.from(new Set(records.map((record) => record.areaGroup).filter(Boolean))).sort(),
+    deliveryAvailabilityValues: Array.from(
+      new Set(records.map((record) => record.deliveryAvailability).filter(Boolean)),
+    ).sort(),
+  };
+}

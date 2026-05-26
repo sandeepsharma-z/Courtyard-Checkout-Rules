@@ -2,10 +2,13 @@ import type { LoaderFunctionArgs } from "react-router";
 import { redirect, Form, useLoaderData } from "react-router";
 
 import { login } from "../../shopify.server";
+import { requireAdminAuth } from "../../services/admin-auth.server";
 
 import styles from "./styles.module.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  await requireAdminAuth(request);
+
   const url = new URL(request.url);
 
   if (url.searchParams.get("shop")) {
@@ -21,6 +24,8 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.gridBackdrop} />
+      <div className={styles.orb1} />
+      <div className={styles.orb2} />
       <div className={styles.content}>
         <header className={styles.topbar}>
           <div>

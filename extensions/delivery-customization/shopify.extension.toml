@@ -1,0 +1,20 @@
+api_version = "2025-10"
+
+[[extensions]]
+name = "Courtyard Delivery Customization"
+handle = "courtyard-delivery-customization"
+type = "function"
+description = "No-op delivery customization for Courtyard Checkout Rules development validation."
+
+  [[extensions.targeting]]
+  target = "purchase.delivery-customization.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"

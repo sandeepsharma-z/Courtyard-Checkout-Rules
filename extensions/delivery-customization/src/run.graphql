@@ -1,0 +1,19 @@
+query RunInput {
+  cart {
+    deliveryGroups {
+      deliveryAddress {
+        zip
+      }
+      deliveryOptions {
+        handle
+        title
+        code
+      }
+    }
+  }
+  shop {
+    metafield(namespace: "courtyard_checkout_rules", key: "published_config") {
+      value
+    }
+  }
+}

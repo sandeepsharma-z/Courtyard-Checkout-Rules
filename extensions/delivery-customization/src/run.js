@@ -1,0 +1,221 @@
+// @ts-check
+
+const NO_CHANGES = { operations: [] };
+const PUBLISHED_CONFIG_MAX_CHARS = 100000;
+const SUPPORTED_SCHEMA_VERSION = 2;
+const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
+
+/**
+ * Step 8b applies only published schema v2 shipping hide/rename rules.
+ * Unsupported conditions fail closed by returning no operations.
+ *
+ * @param {unknown} input
+ * @returns {{ operations: Array<{ hide: { deliveryOptionHandle: string } } | { rename: { deliveryOptionHandle: string, title: string } }> }}
+ */
+export function run(input) {
+  const config = parsePublishedConfig(input);
+
+  if (!config || hasUnsupportedDeliveryRuleConditions(config)) {
+    return NO_CHANGES;
+  }
+
+  const operations = [];
+  const deliveryGroups = Array.isArray(input?.cart?.deliveryGroups)
+    ? input.cart.deliveryGroups
+    : [];
+
+  for (const group of deliveryGroups) {
+    const pincode = normalize(group?.deliveryAddress?.zip);
+    const pincodeRecord = findPincodeRecord(config, pincode);
+    const deliveryOptions = Array.isArray(group?.deliveryOptions)
+      ? group.deliveryOptions
+      : [];
+
+    for (const option of deliveryOptions) {
+      const handle = normalize(option?.handle);
+
+      if (!handle) {
+        continue;
+      }
+
+      const hideRule = findMatchingRule({
+        rules: config.rules.shippingHideRules,
+        mappings: config.rules.shippingMethodMappings,
+        option,
+        pincode,
+        pincodeRecord,
+      });
+
+      if (hideRule) {
+        operations.push({ hide: { deliveryOptionHandle: handle } });
+        continue;
+      }
+
+      const renameRule = findMatchingRule({
+        rules: config.rules.shippingRenameRules,
+        mappings: config.rules.shippingMethodMappings,
+        option,
+        pincode,
+        pincodeRecord,
+      });
+
+      if (renameRule && normalize(renameRule.newLabel)) {
+        operations.push({
+          rename: {
+            deliveryOptionHandle: handle,
+            title: normalize(renameRule.newLabel),
+          },
+        });
+      }
+    }
+  }
+
+  return operations.length > 0 ? { operations } : NO_CHANGES;
+}
+
+function parsePublishedConfig(input) {
+  const value = input?.shop?.metafield?.value;
+
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+
+  if (value.length > PUBLISHED_CONFIG_MAX_CHARS) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+
+    if (
+      parsed?.v !== SUPPORTED_SCHEMA_VERSION ||
+      parsed?.kind !== SUPPORTED_CONFIG_KIND ||
+      !Array.isArray(parsed?.pincodeData?.records) ||
+      !isRuleSet(parsed?.rules)
+    ) {
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function isRuleSet(rules) {
+  return (
+    rules &&
+    Array.isArray(rules.shippingMethodMappings) &&
+    Array.isArray(rules.shippingHideRules) &&
+    Array.isArray(rules.shippingRenameRules)
+  );
+}
+
+function hasUnsupportedDeliveryRuleConditions(config) {
+  const deliveryRules = [
+    ...config.rules.shippingHideRules,
+    ...config.rules.shippingRenameRules,
+  ];
+
+  return deliveryRules.some(
+    (rule) =>
+      normalize(rule.cutoffRuleSettingId) ||
+      (Array.isArray(rule.productTags) && rule.productTags.length > 0),
+  );
+}
+
+function findPincodeRecord(config, pincode) {
+  if (!pincode) {
+    return null;
+  }
+
+  return (
+    config.pincodeData.records.find((record) => normalize(record.pc) === pincode) ??
+    null
+  );
+}
+
+function findMatchingRule({
+  rules,
+  mappings,
+  option,
+  pincode,
+  pincodeRecord,
+}) {
+  return sortByPriority(rules).find((rule) => {
+    const mapping = mappings.find(
+      (item) => normalize(item.id) === normalize(rule.shippingMethodMappingId),
+    );
+
+    return (
+      mappingMatches(mapping, option) &&
+      pincodeMatches(rule, pincode) &&
+      areaGroupMatches(rule, pincodeRecord) &&
+      deliveryAvailabilityMatches(rule, pincodeRecord)
+    );
+  });
+}
+
+function mappingMatches(mapping, option) {
+  if (!mapping) {
+    return false;
+  }
+
+  const matchValue = normalize(mapping.matchValue);
+
+  if (!matchValue) {
+    return false;
+  }
+
+  const candidates = [
+    normalize(option?.title),
+    normalize(option?.code),
+    normalize(option?.handle),
+  ].filter(Boolean);
+
+  if (mapping.matchType === "contains") {
+    return candidates.some((candidate) => candidate.includes(matchValue));
+  }
+
+  return candidates.some((candidate) => candidate === matchValue);
+}
+
+function pincodeMatches(rule, pincode) {
+  return (
+    !Array.isArray(rule.pincodes) ||
+    rule.pincodes.length === 0 ||
+    rule.pincodes.map(normalize).includes(pincode)
+  );
+}
+
+function areaGroupMatches(rule, pincodeRecord) {
+  return (
+    !Array.isArray(rule.areaGroups) ||
+    rule.areaGroups.length === 0 ||
+    (pincodeRecord
+      ? rule.areaGroups.map(normalize).includes(normalize(pincodeRecord.ag))
+      : false)
+  );
+}
+
+function deliveryAvailabilityMatches(rule, pincodeRecord) {
+  const deliveryAvailabilityText = normalize(rule.deliveryAvailabilityText);
+
+  return (
+    !deliveryAvailabilityText ||
+    (pincodeRecord
+      ? normalize(pincodeRecord.da) === deliveryAvailabilityText
+      : false)
+  );
+}
+
+function sortByPriority(items) {
+  return [...items].sort(
+    (first, second) =>
+      Number(first.priority ?? 100) - Number(second.priority ?? 100),
+  );
+}
+
+function normalize(value) {
+  return typeof value === "string" ? value.trim() : "";
+}

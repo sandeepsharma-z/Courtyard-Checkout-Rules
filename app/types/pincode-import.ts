@@ -16,6 +16,8 @@ export const REQUIRED_PINCODE_HEADERS = [
 
 export type PincodeCsvHeader = (typeof REQUIRED_PINCODE_HEADERS)[number];
 
+export const MINIMUM_PINCODE_HEADERS = ["pincode"] as const;
+
 export type ParsedPincodeRow = Record<PincodeCsvHeader, string>;
 
 export type ParsedPincodeImportRow = {

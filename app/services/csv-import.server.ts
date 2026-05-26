@@ -1,6 +1,7 @@
 import { parse } from "csv-parse/sync";
 
 import {
+  MINIMUM_PINCODE_HEADERS,
   REQUIRED_PINCODE_HEADERS,
   type ParsedPincodeImport,
   type ParsedPincodeImportRow,
@@ -8,7 +9,53 @@ import {
   type PincodeCsvHeader,
 } from "../types/pincode-import";
 
-const normalizeHeader = (header: string) => header.trim().toLowerCase();
+const HEADER_ALIASES: Record<string, PincodeCsvHeader> = {
+  "ajay's remarks": "remarks",
+  "charges": "charges_pricing_text",
+  "charges/pricing": "charges_pricing_text",
+  "charges pricing": "charges_pricing_text",
+  "charges pricing text": "charges_pricing_text",
+  "delivery availability": "delivery_availability",
+  "district": "district",
+  "location": "area_group",
+  "location/area name": "location_name",
+  "next day delivery": "next_day_delivery_rule",
+  "next day delivery rule": "next_day_delivery_rule",
+  "pincode": "pincode",
+  "pin code": "pincode",
+  "postal code": "pincode",
+  "product availability": "product_availability_rule",
+  "product availability rule": "product_availability_rule",
+  "remarks": "remarks",
+  "same day delivery": "same_day_delivery_rule",
+  "same day delivery rule": "same_day_delivery_rule",
+  "sales": "delivery_availability",
+  "state": "state",
+  "state name": "state",
+  "statename": "state",
+  "updated next day": "updated_next_day_rule",
+  "updated next day delivery": "updated_next_day_rule",
+  "updated same day": "updated_same_day_rule",
+  "updated same day delivery": "updated_same_day_rule",
+  "understanding or area": "location_name",
+};
+
+const normalizeHeader = (header: string) =>
+  header.trim().toLowerCase().replace(/\s+/g, " ");
+
+const canonicalHeader = (header: string): PincodeCsvHeader | null => {
+  const normalizedHeader = normalizeHeader(header);
+
+  if (REQUIRED_PINCODE_HEADERS.includes(normalizedHeader as PincodeCsvHeader)) {
+    return normalizedHeader as PincodeCsvHeader;
+  }
+
+  if (normalizedHeader.startsWith("sales")) {
+    return "delivery_availability";
+  }
+
+  return HEADER_ALIASES[normalizedHeader] ?? null;
+};
 
 const emptyRow = (): ParsedPincodeRow =>
   Object.fromEntries(
@@ -29,14 +76,20 @@ export function parsePincodeCsv(
 
   const rawHeaders = records[0] ?? [];
   const headers = rawHeaders.map(normalizeHeader);
-  const missingHeaders = REQUIRED_PINCODE_HEADERS.filter(
-    (requiredHeader) => !headers.includes(requiredHeader),
+  const canonicalHeaders = rawHeaders.map(canonicalHeader);
+  const missingHeaders = MINIMUM_PINCODE_HEADERS.filter(
+    (requiredHeader) => !canonicalHeaders.includes(requiredHeader),
   );
   const extraHeaders = headers.filter(
-    (header) =>
-      header && !REQUIRED_PINCODE_HEADERS.includes(header as PincodeCsvHeader),
+    (header, index) => header && !canonicalHeaders[index],
   );
-  const headerIndexes = new Map(headers.map((header, index) => [header, index]));
+  const headerIndexes = new Map<PincodeCsvHeader, number>();
+
+  canonicalHeaders.forEach((header, index) => {
+    if (header && !headerIndexes.has(header)) {
+      headerIndexes.set(header, index);
+    }
+  });
   const seenPincodes = new Set<string>();
   const rows: ParsedPincodeImportRow[] = records.slice(1).map((record, index) => {
     const rowNumber = index + 2;

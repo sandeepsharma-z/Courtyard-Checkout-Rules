@@ -35,27 +35,42 @@ export default function ProductRestrictionsPage() {
           <a className="bsure-more" href="/app/publish">Publish config</a>
         </div>
 
-        <div className="bsure-flow">
-          <section className="bsure-card">
-            <Field label="Name">
-              <input className="bsure-input" readOnly value="All Product Validation" />
-              <span className="bsure-help">Admin label. Not shown to customers.</span>
-            </Field>
+        <div className="bsure-rule-shell">
+          {/* ── Name ── */}
+          <section className="bsure-card" style={{ marginBottom: "12px" }}>
+            <F label="Name">
+              <div className="bsure-name-row">
+                <input className="bsure-input bsure-name-input" defaultValue="All Product Validation" maxLength={70} name="ruleName" readOnly />
+                <span className="bsure-char-count">22/70</span>
+              </div>
+              <span className="bsure-help">Optional. Not shown to customers.</span>
+            </F>
           </section>
 
-          <section className="bsure-card">
+          {/* ── Status ── */}
+          <section className="bsure-card" style={{ marginBottom: "12px" }}>
+            <h2>Status</h2>
+            <div className="bsure-radio-stack" style={{ marginTop: "10px" }}>
+              <Sradio label="Testing" pill="testing" sub="Test this rule without affecting checkout for your customers. Write test@testing.com in the email field on the checkout to see this rule in action." />
+              <Sradio defaultChecked label="Active" pill="active" sub="Rule will be enabled on your store, this will affect checkout for all customers." />
+              <Sradio label="Deactivated" pill="disabled" sub="Disable this rule without deleting it. Deactivated rules will not affect checkout for your customers." />
+            </div>
+          </section>
+
+          {/* ── Behavior ── */}
+          <section className="bsure-card" style={{ marginBottom: "12px" }}>
             <h2>Behavior</h2>
-            <div className="bsure-radio-stack">
+            <div className="bsure-radio-stack" style={{ marginTop: "10px" }}>
               <div className="bsure-radio">
-                <input aria-label="Block checkout and show error" defaultChecked name="behavior" type="radio" />
+                <input defaultChecked name="behavior" type="radio" value="block" />
                 <span><strong>Block checkout and show error message</strong><br /><span className="bsure-help">Stop the customer from completing checkout if this rule is active.</span></span>
               </div>
               <div className="bsure-radio">
-                <input aria-label="Show warning" name="behavior" type="radio" />
+                <input name="behavior" type="radio" value="warn" />
                 <span><strong>Show warning without blocking checkout</strong><br /><span className="bsure-help">Warn the customer but allow them to continue.</span></span>
               </div>
               <div className="bsure-radio">
-                <input aria-label="Block only when customer tries to complete" name="behavior" type="radio" />
+                <input name="behavior" type="radio" value="block-on-complete" />
                 <span><strong>Block only when customer tries to complete order</strong><br /><span className="bsure-help">Allow the customer to continue through checkout, then block when completion is triggered.</span></span>
               </div>
             </div>
@@ -63,123 +78,146 @@ export default function ProductRestrictionsPage() {
 
           <div className="bsure-connector">And</div>
 
-          <RuleEditor areaGroups={pincodeOptions.areaGroups} deliveryAvailabilityValues={pincodeOptions.deliveryAvailabilityValues} pincodeOptions={pincodeOptions.pincodes} />
+          {/* ── RULE FORM ── */}
+          <WhenThenBlock areaGroups={pincodeOptions.areaGroups} deliveryAvailabilityValues={pincodeOptions.deliveryAvailabilityValues} pincodeOptions={pincodeOptions.pincodes} />
 
-          <section className="bsure-actions-card">
-            <div className="bsure-actions">
-              <a className="bsure-button secondary" href="/app/pincodes">View imported pincodes</a>
-              <a className="bsure-button" href="/app/publish">Publish config</a>
-            </div>
-          </section>
+          {/* ── If app fails ── */}
+          <div className="bsure-lastly" style={{ marginTop: "12px" }}>
+            <p>If the app fails to determine the time/date or customer location...</p>
+            <div className="bsure-if-radio"><input defaultChecked name="fallback" type="radio" value="nothing" /><span>Do nothing</span></div>
+            <div className="bsure-if-radio"><input name="fallback" type="radio" value="action" /><span>Do this action</span></div>
+          </div>
 
-          <section className="bsure-card">
-            <h2>Configured validation rules</h2>
-            <RuleList items={rules} />
-          </section>
+          {/* ── Actions ── */}
+          <div className="bsure-bottom-bar">
+            <a className="bsure-button secondary" href="/app/pincodes">View imported pincodes</a>
+            <a className="bsure-button" href="/app/publish">Publish config</a>
+          </div>
+
+          {/* ── Existing rules ── */}
+          {rules.length > 0 && (
+            <section className="bsure-card" style={{ marginTop: "24px" }}>
+              <div className="bsure-section-top">
+                <h2>Configured validation rules</h2>
+                <span className="bsure-help">{rules.length} rule{rules.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="bsure-rule-list">
+                {rules.map((item) => <RuleItem item={item} key={item.id} />)}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function RuleEditor({ areaGroups, deliveryAvailabilityValues, pincodeOptions }: { areaGroups: string[]; deliveryAvailabilityValues: string[]; pincodeOptions: PincodeOption[] }) {
+function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions }: { areaGroups: string[]; deliveryAvailabilityValues: string[]; pincodeOptions: PincodeOption[] }) {
   return (
-    <section className="bsure-card">
-      <h2>When...</h2>
-      <p>Select conditions that trigger the validation block or warning.</p>
-      <Form method="post">
-        <input name="intent" type="hidden" value="productRestriction:create" />
-        <div className="bsure-form-row">
-          <Field label="Rule name">
-            <input className="bsure-input" name="name" placeholder="Validation rule label" />
-          </Field>
-          <Field label="Priority">
-            <input className="bsure-input" defaultValue="100" name="priority" />
-            <span className="bsure-help">Lower numbers evaluate first.</span>
-          </Field>
-        </div>
-        <div className="bsure-radio" style={{ marginTop: "16px" }}>
-          <input aria-label="Enable rule" defaultChecked name="enabled" type="checkbox" />
-          <span><strong>Enabled</strong><br /><span className="bsure-help">Include in next published config snapshot.</span></span>
-        </div>
+    <Form method="post">
+      <input name="intent" type="hidden" value="productRestriction:create" />
 
-        <div className="bsure-condition">
-          <ConditionRow label="Zip code / Postal code" operator="Has any of these values" />
-          <PincodeChips options={pincodeOptions} />
-        </div>
-
-        <div className="bsure-connector">And</div>
-
-        <div className="bsure-condition">
-          <ConditionRow label="Product tags" operator="Has any of these values" />
-          <Field label="Product tags (comma-separated, admin-configured)">
-            <input className="bsure-input" name="productTags" placeholder="PRODUCT_TAG_PLACEHOLDER" />
-            <span className="bsure-help">Tags must come from admin configuration, not hardcoded.</span>
-          </Field>
-        </div>
-
-        <div className="bsure-connector">And</div>
-
-        <div className="bsure-condition">
-          <ConditionRow label="Area / delivery data" operator="Has any of these values" />
-          <div className="bsure-form-row">
-            <Field label="Area groups">
-              <select className="bsure-select" name="areaGroups">
-                <option value="">Any area group</option>
-                {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
-              </select>
-            </Field>
-            <Field label="Delivery availability text">
-              <select className="bsure-select" name="deliveryAvailabilityText">
-                <option value="">Any delivery text</option>
-                {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
-              </select>
-            </Field>
+      {/* When card */}
+      <div className="bsure-when-card">
+        <div className="bsure-when-header">
+          <div>
+            <div className="bsure-when-title">When...</div>
+            <div className="bsure-when-sub">Select the conditions here which will trigger the execution</div>
           </div>
+          <button className="bsure-when-close" title="Close" type="button">×</button>
         </div>
 
-        <div className="bsure-connector">Then block checkout and show an error message like this...</div>
+        {/* Zip code condition */}
+        <div className="bsure-cond-row">
+          <select className="bsure-select" disabled><option>Zip code / Postal code</option></select>
+          <select className="bsure-select" disabled><option>Has any of these values</option></select>
+          <button className="bsure-cond-del" disabled type="button">🗑</button>
+        </div>
+        <PincodeChips options={pincodeOptions} />
 
-        <div className="bsure-condition">
-          <div className="bsure-form-row">
-            <Field label="Target">
-              <input className="bsure-input" defaultValue="Shipping zip code" readOnly />
-              <span className="bsure-help">Where the error message will be displayed at checkout.</span>
-            </Field>
-          </div>
-          <Field label="Error message" style={{ marginTop: "14px" }}>
-            <input className="bsure-input" name="validationMessage" placeholder="Product not available at your location (Connect with Customer Support)" />
-            <span className="bsure-help">Shown to customer at checkout when conditions match.</span>
-          </Field>
+        <div className="bsure-mini-or">And</div>
+
+        {/* Product tags condition */}
+        <div className="bsure-cond-row">
+          <select className="bsure-select" disabled><option>Product tags</option></select>
+          <select className="bsure-select" disabled><option>Has any of these values</option></select>
+          <button className="bsure-cond-del" disabled type="button">🗑</button>
+        </div>
+        <div style={{ marginBottom: "8px" }}>
+          <input className="bsure-input" name="productTags" placeholder="Comma-separated product tags (admin-configured)" style={{ width: "100%" }} />
+          <span className="bsure-help">Tags must come from admin configuration, not hardcoded.</span>
         </div>
 
-        <Field label="Notes" style={{ marginTop: "14px" }}>
-          <textarea className="bsure-textarea" name="notes" placeholder="Internal note" />
-        </Field>
+        <div className="bsure-mini-or">And</div>
 
-        <div className="bsure-actions" style={{ marginTop: "18px" }}>
-          <button className="bsure-button" type="submit">Save validation rule</button>
-          <button className="bsure-button secondary" type="reset">Cancel</button>
+        {/* Area / delivery condition */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+          <select className="bsure-select" name="areaGroups">
+            <option value="">Any area group</option>
+            {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
+          </select>
+          <select className="bsure-select" name="deliveryAvailabilityText">
+            <option value="">Any delivery text</option>
+            {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
         </div>
-      </Form>
-    </section>
-  );
-}
 
-function ConditionRow({ label, operator }: { label: string; operator: string }) {
-  return (
-    <div className="bsure-condition-grid">
-      <select className="bsure-select" disabled><option>{label}</option></select>
-      <select className="bsure-select" disabled><option>{operator}</option></select>
-      <button className="bsure-button secondary" disabled type="button">⌫</button>
-    </div>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "8px" }}>
+          <button className="bsure-add-link" type="button">+ Add sub-condition</button>
+          <span style={{ color: "#d4d4d4" }}>|</span>
+          <span className="bsure-mini-or" style={{ margin: 0 }}>Or</span>
+          <span style={{ color: "#d4d4d4" }}>|</span>
+          <button className="bsure-add-link" type="button">+ Add another condition</button>
+        </div>
+      </div>
+
+      {/* Then block */}
+      <div style={{ marginTop: "12px", padding: "14px", background: "#fff", border: "1px solid #d4d4d4", borderRadius: "8px" }}>
+        <div className="bsure-then-label">Then block checkout and show an error message...</div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", margin: "10px 0 8px" }}>
+          <F label="Target">
+            <input className="bsure-input" defaultValue="Shipping zip code" readOnly />
+            <span className="bsure-help">Where the error message will be displayed at checkout.</span>
+          </F>
+        </div>
+
+        <F label="Error message">
+          <input className="bsure-input" name="validationMessage" placeholder="Product not available at your location (Connect with Customer Support)" style={{ width: "100%" }} />
+          <span className="bsure-help">Shown to customer at checkout when conditions match.</span>
+        </F>
+        <div style={{ marginTop: "6px" }}>
+          <a className="bsure-add-link" href="#add-translation">+ Add translation</a>
+        </div>
+      </div>
+
+      {/* Rule meta */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
+        <F label="Rule name"><input className="bsure-input" name="name" placeholder="Validation rule label" /></F>
+        <F label="Priority">
+          <input className="bsure-input" defaultValue="100" name="priority" type="number" />
+          <span className="bsure-help">Lower numbers evaluate first.</span>
+        </F>
+      </div>
+      <div className="bsure-radio" style={{ margin: "10px 0" }}>
+        <input defaultChecked name="enabled" type="checkbox" />
+        <span><strong>Enabled</strong> — <span className="bsure-help">Include in next published config snapshot</span></span>
+      </div>
+      <F label="Notes" style={{ marginTop: "8px" }}>
+        <textarea className="bsure-textarea" name="notes" placeholder="Internal note" rows={2} />
+      </F>
+      <div className="bsure-actions" style={{ marginTop: "10px" }}>
+        <button className="bsure-button" type="submit">Save validation rule</button>
+        <button className="bsure-button secondary" type="reset">Cancel</button>
+      </div>
+    </Form>
   );
 }
 
 function PincodeChips({ options }: { options: PincodeOption[] }) {
   const top = options.slice(0, 400);
   return (
-    <div>
+    <div style={{ marginBottom: "8px" }}>
       <div className="bsure-chip-box">
         <div className="bsure-chip-list">
           {top.length ? top.map((o) => (
@@ -198,31 +236,38 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
   );
 }
 
-function RuleList({ items }: { items: ProductRestrictionRule[] }) {
-  if (!items.length) return <p className="bsure-help" style={{ marginTop: "12px" }}>No validation rules created yet.</p>;
+function Sradio({ defaultChecked, label, pill, sub }: { defaultChecked?: boolean; label: string; pill: string; sub: string }) {
   return (
-    <div className="bsure-rule-list" style={{ marginTop: "12px" }}>
-      {items.map((item) => (
-        <article className="bsure-rule-item" key={item.id}>
-          <div className="bsure-rule-item-top">
-            <div>
-              <h3>{item.name}</h3>
-              <span className={item.enabled ? "bsure-pill active" : "bsure-pill disabled"}>{item.enabled ? "Active" : "Deactivated"}</span>
-              <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>Priority {item.priority}</div>
-              {item.validationMessage && <div className="bsure-rule-meta">Message: {item.validationMessage}</div>}
-              {item.notes && <div className="bsure-rule-meta">{item.notes}</div>}
-              <ChipRow items={parseJsonList(item.pincodesJson)} label="Pincodes" />
-              <ChipRow items={parseJsonList(item.productTagsJson)} label="Tags" />
-            </div>
-            <Form className="bsure-actions" method="post">
-              <input name="id" type="hidden" value={item.id} />
-              <button className="bsure-button secondary" name="intent" type="submit" value="productRestriction:toggle">Toggle</button>
-              <button className="bsure-button danger" name="intent" type="submit" value="productRestriction:delete">Delete</button>
-            </Form>
-          </div>
-        </article>
-      ))}
+    <div className="bsure-radio">
+      <input defaultChecked={defaultChecked} name="status" type="radio" value={label.toLowerCase()} />
+      <span>
+        <span className={`bsure-pill ${pill}`}>{label}</span><br />
+        <span className="bsure-help">{sub}</span>
+      </span>
     </div>
+  );
+}
+
+function RuleItem({ item }: { item: ProductRestrictionRule }) {
+  return (
+    <article className="bsure-rule-item">
+      <div className="bsure-rule-item-top">
+        <div>
+          <h3>{item.name}</h3>
+          <span className={item.enabled ? "bsure-pill active" : "bsure-pill disabled"}>{item.enabled ? "Active" : "Deactivated"}</span>
+          <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>Priority {item.priority}</div>
+          {item.validationMessage && <div className="bsure-rule-meta">Message: {item.validationMessage}</div>}
+          {item.notes && <div className="bsure-rule-meta">{item.notes}</div>}
+          <ChipRow items={parseJsonList(item.pincodesJson)} label="Pincodes" />
+          <ChipRow items={parseJsonList(item.productTagsJson)} label="Tags" />
+        </div>
+        <Form className="bsure-actions" method="post">
+          <input name="id" type="hidden" value={item.id} />
+          <button className="bsure-button secondary" name="intent" type="submit" value="productRestriction:toggle">Toggle</button>
+          <button className="bsure-button danger" name="intent" type="submit" value="productRestriction:delete">Delete</button>
+        </Form>
+      </div>
+    </article>
   );
 }
 
@@ -237,7 +282,7 @@ function ChipRow({ items, label }: { items: string[]; label: string }) {
   );
 }
 
-function Field({ children, label, style }: { children: React.ReactNode; label: string; style?: React.CSSProperties }) {
+function F({ children, label, style }: { children: React.ReactNode; label: string; style?: React.CSSProperties }) {
   return (
     <div className="bsure-field" style={style}>
       <span className="bsure-label">{label}</span>

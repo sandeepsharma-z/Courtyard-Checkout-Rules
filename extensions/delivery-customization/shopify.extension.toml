@@ -1,4 +1,5 @@
 api_version = "2025-10"
+uid = "39a31db1-5c7a-5734-b9bd-e036efd0b4bba36d24d3"
 
 [[extensions]]
 name = "Courtyard Delivery Customization"

@@ -1,14 +1,14 @@
 # This file stores configurations for your Shopify app.
 name = "Courtyard Checkout Rules"
-client_id = ""
-application_url = "http://localhost:3000"
+client_id = "aea94c61872475e46c88d674875590b5"
+application_url = "https://courtyard-checkout-rules.vercel.app"
 embedded = true
 
 [auth]
 redirect_urls = [
-  "http://localhost:3000/auth/callback",
-  "http://localhost:3000/auth/shopify/callback",
-  "http://localhost:3000/api/auth/callback"
+  "https://courtyard-checkout-rules.vercel.app/auth/callback",
+  "https://courtyard-checkout-rules.vercel.app/auth/shopify/callback",
+  "https://courtyard-checkout-rules.vercel.app/api/auth/callback"
 ]
 
 [access_scopes]

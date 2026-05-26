@@ -1,8 +1,38 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useLoaderData } from "react-router";
+import { redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getRuleManagerData, handleRuleManagerAction } from "../services/rule-config-storage.server";
+import {
+  ChipList,
+  ConditionBox,
+  EmptyState,
+  ManagedForm,
+  RuleActions,
+  RuleCard,
+  RuleManagerLayout,
+  RulePanel,
+  SelectField,
+  TextField,
+  ToggleField,
+  parseJsonList,
+} from "../components/rule-manager-ui";
+
+type Option = { id: string; name: string };
+type PaymentHideRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  paymentMethodMappingId: string;
+  cutoffRuleSettingId: string;
+  selectedShippingContains: string;
+  productTagsJson: string;
+  pincodesJson: string;
+  areaGroupsJson: string;
+  deliveryAvailabilityText: string;
+  notes: string;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -18,19 +48,93 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function PaymentRulesPage() {
   const { cutoffs, mappings, rules } = useLoaderData<typeof loader>();
-  return <s-page heading="Payment hide rules"><s-section heading="Create payment hide rule"><Form method="post"><input type="hidden" name="intent" value="paymentHide:create" /><div style={{ display: "grid", gap: "0.75rem", maxWidth: "48rem" }}><Text name="name" label="Rule name" /><Text name="priority" label="Priority" defaultValue="100" /><label><input name="enabled" type="checkbox" defaultChecked /> Enabled</label><Select name="paymentMethodMappingId" label="Payment method mapping" items={mappings} /><Select name="cutoffRuleSettingId" label="Cutoff setting" items={cutoffs} optional /><Text name="selectedShippingContains" label="Selected shipping contains" /><Text name="productTags" label="Product tags (comma-separated)" /><Text name="pincodes" label="Pincodes (comma-separated)" /><Text name="areaGroups" label="Area groups (comma-separated)" /><Text name="deliveryAvailabilityText" label="Delivery availability text" /><Text name="notes" label="Notes" /><button type="submit">Create rule</button></div></Form></s-section><s-section heading="Payment hide rules"><List items={rules} kind="paymentHide" /></s-section></s-page>;
+  const activeRules = rules.filter((rule) => rule.enabled).length;
+
+  return (
+    <RuleManagerLayout
+      badges={["Preview-only until payment Function", "Admin method mappings", "Config snapshot ready"]}
+      description="Prepare payment hide rules using payment mappings, selected shipping text, pincode conditions, area groups, and optional cutoff settings."
+      metrics={[
+        { label: "Payment mappings", value: mappings.length },
+        { label: "Enabled rules", value: activeRules },
+        { label: "Total rules", value: rules.length },
+      ]}
+      side={
+        <>
+          <h2>Payment scope</h2>
+          <p>Payment rules are stored and published as configuration only. They do not affect live payment methods until a payment customization Function is separately approved.</p>
+          <ul>
+            <li>Payment names come from mappings.</li>
+            <li>Shipping text conditions are admin-entered.</li>
+            <li>No payment Function exists yet.</li>
+          </ul>
+        </>
+      }
+      title="Payment hide rule builder"
+    >
+      <RulePanel eyebrow="Create" title="Payment hide rule">
+        <ManagedForm intent="paymentHide:create">
+          <div className="ccr-form-grid">
+            <TextField label="Rule name" name="name" placeholder="Admin label for this payment rule" />
+            <TextField defaultValue="100" help="Lower number means earlier evaluation." label="Priority" name="priority" />
+          </div>
+          <ToggleField label="Enabled for next published config" />
+          <ConditionBox title="Payment and shipping conditions">
+            <div className="ccr-form-grid">
+              <SelectField label="Payment method mapping" name="paymentMethodMappingId" options={mappings} />
+              <SelectField label="Cutoff setting" name="cutoffRuleSettingId" optional options={cutoffs} />
+              <TextField help="Admin-entered string match against selected shipping method." label="Selected shipping contains" name="selectedShippingContains" placeholder="SHIPPING_METHOD_TEXT_PLACEHOLDER" />
+              <TextField help="Imported/admin-configured delivery availability text." label="Delivery availability text" name="deliveryAvailabilityText" placeholder="DELIVERY_TEXT_PLACEHOLDER" />
+            </div>
+          </ConditionBox>
+          <ConditionBox title="Pincode and product conditions">
+            <div className="ccr-form-grid">
+              <TextField label="Pincodes" name="pincodes" placeholder="PINCODE_PLACEHOLDER" textarea />
+              <TextField label="Area groups" name="areaGroups" placeholder="AREA_GROUP_PLACEHOLDER" textarea />
+              <TextField label="Product tags" name="productTags" placeholder="PRODUCT_TAG_PLACEHOLDER" />
+            </div>
+          </ConditionBox>
+          <TextField label="Notes" name="notes" placeholder="Internal review notes" textarea />
+          <RuleActions label="Create payment hide rule" />
+        </ManagedForm>
+      </RulePanel>
+
+      <RulePanel eyebrow="Configured" title="Payment hide rules">
+        <RuleList items={rules} mappings={mappings} />
+      </RulePanel>
+    </RuleManagerLayout>
+  );
 }
 
-function Text({ defaultValue = "", label, name }: { defaultValue?: string; label: string; name: string }) {
-  return <label style={{ display: "grid", gap: "0.3rem" }}><strong>{label}</strong><input defaultValue={defaultValue} name={name} style={{ padding: "0.5rem" }} /></label>;
+function RuleList({ items, mappings }: { items: PaymentHideRule[]; mappings: Option[] }) {
+  if (!items.length) {
+    return <EmptyState label="No payment hide rules created yet." />;
+  }
+
+  return (
+    <div className="ccr-rule-list">
+      {items.map((item) => (
+        <RuleCard
+          actionsKind="paymentHide"
+          enabled={item.enabled}
+          id={item.id}
+          key={item.id}
+          meta={[`Mapping: ${mappingName(mappings, item.paymentMethodMappingId)}`, item.selectedShippingContains ? `Shipping contains: ${item.selectedShippingContains}` : "Any shipping text"]}
+          notes={item.notes}
+          priority={item.priority}
+          title={item.name}
+        >
+          <ChipList items={parseJsonList(item.pincodesJson)} label="Pincodes" />
+          <ChipList items={parseJsonList(item.areaGroupsJson)} label="Area groups" />
+          <ChipList items={parseJsonList(item.productTagsJson)} label="Product tags" />
+        </RuleCard>
+      ))}
+    </div>
+  );
 }
 
-function Select({ items, label, name, optional = false }: { items: Array<{ id: string; name: string }>; label: string; name: string; optional?: boolean }) {
-  return <label style={{ display: "grid", gap: "0.3rem" }}><strong>{label}</strong><select name={name}>{optional && <option value="">None</option>}{items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>;
-}
-
-function List({ items, kind }: { items: Array<{ id: string; name: string; enabled: boolean; priority: number; paymentMethodMappingId: string; notes: string }>; kind: string }) {
-  return <div style={{ display: "grid", gap: "0.75rem" }}>{items.map((item) => <div key={item.id} style={{ border: "1px solid #d8ddd2", borderRadius: "8px", padding: "0.75rem" }}><strong>{item.name}</strong><p>Priority {item.priority} | {item.enabled ? "Enabled" : "Disabled"} | Mapping {item.paymentMethodMappingId}</p><p>{item.notes}</p><Form method="post"><input type="hidden" name="id" value={item.id} /><button name="intent" value={`${kind}:toggle`} type="submit">Toggle</button>{" "}<button name="intent" value={`${kind}:delete`} type="submit">Delete</button></Form></div>)}</div>;
+function mappingName(mappings: Option[], id: string) {
+  return mappings.find((mapping) => mapping.id === id)?.name || "Unmapped";
 }
 
 export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);

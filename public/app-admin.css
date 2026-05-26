@@ -1,0 +1,378 @@
+:root {
+  --ccr-bg: #f5f6f1;
+  --ccr-panel: #ffffff;
+  --ccr-ink: #102015;
+  --ccr-muted: #667466;
+  --ccr-line: #d9dfd2;
+  --ccr-soft: #eef3e9;
+  --ccr-green: #176337;
+  --ccr-green-dark: #0c3f22;
+  --ccr-amber: #8a6116;
+  --ccr-red: #a33124;
+  --ccr-shadow: 0 16px 40px rgba(22, 42, 26, 0.08);
+}
+
+.ccr-page {
+  background:
+    linear-gradient(rgba(27, 82, 43, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(27, 82, 43, 0.04) 1px, transparent 1px),
+    var(--ccr-bg);
+  background-size: 28px 28px;
+  min-height: 100dvh;
+  padding: 28px;
+  color: var(--ccr-ink);
+}
+
+.ccr-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.ccr-hero,
+.ccr-card,
+.ccr-rule-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--ccr-line);
+  box-shadow: var(--ccr-shadow);
+}
+
+.ccr-hero {
+  border-radius: 14px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.ccr-eyebrow {
+  margin: 0 0 8px;
+  color: var(--ccr-green-dark);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ccr-hero h1,
+.ccr-card h2,
+.ccr-rule-card h3 {
+  margin: 0;
+}
+
+.ccr-hero h1 {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.ccr-hero p,
+.ccr-card p,
+.ccr-rule-card p {
+  color: var(--ccr-muted);
+}
+
+.ccr-hero p {
+  max-width: 760px;
+  margin: 12px 0 0;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.ccr-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.ccr-badge,
+.ccr-chip,
+.ccr-status {
+  border: 1px solid var(--ccr-line);
+  background: var(--ccr-soft);
+  border-radius: 999px;
+  color: var(--ccr-green-dark);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.ccr-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.ccr-metric {
+  background: var(--ccr-soft);
+  border: 1px solid var(--ccr-line);
+  border-radius: 10px;
+  min-width: 120px;
+  padding: 14px;
+}
+
+.ccr-metric strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.ccr-metric span {
+  color: var(--ccr-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.ccr-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+}
+
+.ccr-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.ccr-card {
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.ccr-card-header {
+  align-items: start;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.ccr-card h2 {
+  font-size: 20px;
+}
+
+.ccr-form {
+  display: grid;
+  gap: 18px;
+}
+
+.ccr-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ccr-field {
+  display: grid;
+  gap: 7px;
+}
+
+.ccr-field label,
+.ccr-label {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ccr-help {
+  color: var(--ccr-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.ccr-input,
+.ccr-select,
+.ccr-textarea {
+  background: #fff;
+  border: 1px solid #cdd5c7;
+  border-radius: 8px;
+  color: var(--ccr-ink);
+  font: inherit;
+  min-height: 42px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+.ccr-textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.ccr-input:focus,
+.ccr-select:focus,
+.ccr-textarea:focus {
+  border-color: var(--ccr-green);
+  box-shadow: 0 0 0 3px rgba(23, 99, 55, 0.14);
+  outline: none;
+}
+
+.ccr-condition-box {
+  border: 1px solid var(--ccr-line);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff, #fbfcf8);
+  padding: 14px;
+}
+
+.ccr-condition-title {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.ccr-dot {
+  background: var(--ccr-green);
+  border-radius: 999px;
+  box-shadow: 0 0 0 6px rgba(23, 99, 55, 0.12);
+  height: 8px;
+  width: 8px;
+}
+
+.ccr-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ccr-button {
+  background: var(--ccr-green);
+  border: 1px solid var(--ccr-green-dark);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 10px 16px;
+}
+
+.ccr-button.secondary {
+  background: #fff;
+  color: var(--ccr-green-dark);
+}
+
+.ccr-button.danger {
+  background: #fff;
+  border-color: #d5aaa5;
+  color: var(--ccr-red);
+}
+
+.ccr-toggle {
+  align-items: center;
+  background: var(--ccr-soft);
+  border: 1px solid var(--ccr-line);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 8px;
+  padding: 8px 12px;
+  width: fit-content;
+}
+
+.ccr-toggle input {
+  accent-color: var(--ccr-green);
+}
+
+.ccr-rule-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ccr-rule-card {
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ccr-rule-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ccr-rule-title {
+  display: grid;
+  gap: 6px;
+}
+
+.ccr-rule-title h3 {
+  font-size: 17px;
+}
+
+.ccr-rule-meta,
+.ccr-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ccr-status.enabled {
+  background: #e7f5eb;
+  color: var(--ccr-green-dark);
+}
+
+.ccr-status.disabled {
+  background: #f5ece7;
+  color: var(--ccr-amber);
+}
+
+.ccr-rule-details {
+  border-top: 1px solid var(--ccr-line);
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.ccr-empty {
+  border: 1px dashed var(--ccr-line);
+  border-radius: 12px;
+  color: var(--ccr-muted);
+  padding: 20px;
+  text-align: center;
+}
+
+.ccr-side-note {
+  background: #102015;
+  border-radius: 12px;
+  color: #f5fff5;
+  padding: 18px;
+}
+
+.ccr-side-note p,
+.ccr-side-note li {
+  color: #d8e8d7;
+}
+
+.ccr-side-note ul {
+  margin: 12px 0 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 980px) {
+  .ccr-hero,
+  .ccr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .ccr-page {
+    padding: 16px;
+  }
+
+  .ccr-form-grid,
+  .ccr-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .ccr-rule-top,
+  .ccr-card-header {
+    display: grid;
+  }
+}

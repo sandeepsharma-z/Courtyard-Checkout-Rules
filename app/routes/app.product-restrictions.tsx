@@ -1,8 +1,34 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useLoaderData } from "react-router";
+import { redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getRuleManagerData, handleRuleManagerAction } from "../services/rule-config-storage.server";
+import {
+  ChipList,
+  ConditionBox,
+  EmptyState,
+  ManagedForm,
+  RuleActions,
+  RuleCard,
+  RuleManagerLayout,
+  RulePanel,
+  TextField,
+  ToggleField,
+  parseJsonList,
+} from "../components/rule-manager-ui";
+
+type ProductRestrictionRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  productTagsJson: string;
+  pincodesJson: string;
+  areaGroupsJson: string;
+  deliveryAvailabilityText: string;
+  validationMessage: string;
+  notes: string;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -18,45 +44,86 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function ProductRestrictionsPage() {
   const { rules } = useLoaderData<typeof loader>();
+  const activeRules = rules.filter((rule) => rule.enabled).length;
 
   return (
-    <s-page heading="Product restriction rules">
-      <s-section heading="Create rule">
-        <RuleForm intent="productRestriction:create" fields={["productTags", "pincodes", "areaGroups", "deliveryAvailabilityText", "validationMessage"]} />
-      </s-section>
-      <s-section heading="Configured rules">
-        <RuleList items={rules} kind="productRestriction" extra={(rule) => `Tags ${rule.productTagsJson} | Message ${rule.validationMessage}`} />
-      </s-section>
-    </s-page>
+    <RuleManagerLayout
+      badges={["Validation preview", "Admin configurable", "No hardcoded tags"]}
+      description="Build product restriction rules that can later block checkout when imported pincode data and admin-entered product tag conditions match."
+      metrics={[
+        { label: "Total rules", value: rules.length },
+        { label: "Enabled", value: activeRules },
+        { label: "Disabled", value: rules.length - activeRules },
+      ]}
+      side={
+        <>
+          <h2>Restriction notes</h2>
+          <p>This manager prepares cart and checkout validation configuration. It does not block live checkout until a validation Function is separately approved and activated.</p>
+          <ul>
+            <li>Product tags come from admin input.</li>
+            <li>Pincodes come from imported/admin data.</li>
+            <li>Error messages stay configurable.</li>
+          </ul>
+        </>
+      }
+      title="Product restriction builder"
+    >
+      <RulePanel eyebrow="Create" title="Product validation rule">
+        <ManagedForm intent="productRestriction:create">
+          <div className="ccr-form-grid">
+            <TextField label="Rule name" name="name" placeholder="Admin label for this validation rule" />
+            <TextField defaultValue="100" help="Lower number means earlier evaluation." label="Priority" name="priority" />
+          </div>
+          <ToggleField label="Enabled for next published config" />
+          <ConditionBox title="Product and pincode match">
+            <div className="ccr-form-grid">
+              <TextField help="Comma-separated admin-created values." label="Product tags" name="productTags" placeholder="PRODUCT_TAG_PLACEHOLDER" textarea />
+              <TextField help="Comma-separated string values." label="Pincodes" name="pincodes" placeholder="PINCODE_PLACEHOLDER" textarea />
+              <TextField help="Comma-separated imported/admin values." label="Area groups" name="areaGroups" placeholder="AREA_GROUP_PLACEHOLDER" textarea />
+              <TextField help="Imported/admin-configured delivery availability text." label="Delivery availability text" name="deliveryAvailabilityText" placeholder="DELIVERY_TEXT_PLACEHOLDER" />
+            </div>
+          </ConditionBox>
+          <ConditionBox title="Customer-facing validation message">
+            <TextField label="Validation message" name="validationMessage" placeholder="VALIDATION_MESSAGE_PLACEHOLDER" textarea />
+          </ConditionBox>
+          <TextField label="Notes" name="notes" placeholder="Internal review notes" textarea />
+          <RuleActions label="Create product restriction" />
+        </ManagedForm>
+      </RulePanel>
+
+      <RulePanel eyebrow="Configured" title="Product restriction rules">
+        <RuleList items={rules} />
+      </RulePanel>
+    </RuleManagerLayout>
   );
 }
 
-function RuleForm({ fields, intent }: { fields: string[]; intent: string }) {
+function RuleList({ items }: { items: ProductRestrictionRule[] }) {
+  if (!items.length) {
+    return <EmptyState label="No product restriction rules created yet." />;
+  }
+
   return (
-    <Form method="post">
-      <input type="hidden" name="intent" value={intent} />
-      <div style={{ display: "grid", gap: "0.75rem", maxWidth: "48rem" }}>
-        <Text name="name" label="Rule name" />
-        <Text name="priority" label="Priority" defaultValue="100" />
-        <label><input name="enabled" type="checkbox" defaultChecked /> Enabled</label>
-        {fields.includes("productTags") && <Text name="productTags" label="Product tags (comma-separated)" />}
-        {fields.includes("pincodes") && <Text name="pincodes" label="Pincodes (comma-separated)" />}
-        {fields.includes("areaGroups") && <Text name="areaGroups" label="Area groups (comma-separated)" />}
-        {fields.includes("deliveryAvailabilityText") && <Text name="deliveryAvailabilityText" label="Delivery availability text" />}
-        {fields.includes("validationMessage") && <Text name="validationMessage" label="Validation message" />}
-        <Text name="notes" label="Notes" />
-        <button type="submit">Create rule</button>
-      </div>
-    </Form>
+    <div className="ccr-rule-list">
+      {items.map((item) => (
+        <RuleCard
+          actionsKind="productRestriction"
+          enabled={item.enabled}
+          id={item.id}
+          key={item.id}
+          meta={[item.deliveryAvailabilityText ? `Delivery: ${item.deliveryAvailabilityText}` : "Any delivery text", item.validationMessage ? "Message configured" : "No message"]}
+          notes={item.notes}
+          priority={item.priority}
+          title={item.name}
+        >
+          <ChipList items={parseJsonList(item.productTagsJson)} label="Product tags" />
+          <ChipList items={parseJsonList(item.pincodesJson)} label="Pincodes" />
+          <ChipList items={parseJsonList(item.areaGroupsJson)} label="Area groups" />
+          {item.validationMessage ? <p className="ccr-help">Message: {item.validationMessage}</p> : null}
+        </RuleCard>
+      ))}
+    </div>
   );
-}
-
-function Text({ defaultValue = "", label, name }: { defaultValue?: string; label: string; name: string }) {
-  return <label style={{ display: "grid", gap: "0.3rem" }}><strong>{label}</strong><input defaultValue={defaultValue} name={name} style={{ padding: "0.5rem" }} /></label>;
-}
-
-function RuleList<T extends { id: string; name: string; enabled: boolean; priority: number; notes: string }>({ extra, items, kind }: { extra: (item: T) => string; items: T[]; kind: string }) {
-  return <div style={{ display: "grid", gap: "0.75rem" }}>{items.map((item) => <div key={item.id} style={{ border: "1px solid #d8ddd2", borderRadius: "8px", padding: "0.75rem" }}><strong>{item.name}</strong><p>Priority {item.priority} | {item.enabled ? "Enabled" : "Disabled"}</p><p>{extra(item)}</p><p>{item.notes}</p><Form method="post"><input type="hidden" name="id" value={item.id} /><button name="intent" value={`${kind}:toggle`} type="submit">Toggle</button>{" "}<button name="intent" value={`${kind}:delete`} type="submit">Delete</button></Form></div>)}</div>;
 }
 
 export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);

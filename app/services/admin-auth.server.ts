@@ -4,7 +4,7 @@ const sessionStorage = createCookieSessionStorage({
   cookie: {
     name: "__courtyard_admin",
     httpOnly: true,
-    sameSite: "lax" as const,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     secure: process.env.NODE_ENV === "production",
     secrets: [process.env.SESSION_SECRET ?? "courtyard-dev-secret-change-in-prod"],
     maxAge: 60 * 60 * 8,

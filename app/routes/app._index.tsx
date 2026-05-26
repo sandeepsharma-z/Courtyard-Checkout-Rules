@@ -103,80 +103,38 @@ export default function Dashboard() {
   const { activeCount, isEmpty, rows } = useLoaderData<typeof loader>();
 
   return (
-    <div className="bsure-page">
-      <div className="bsure-shell">
-
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "24px" }}>
+    <div className="rules-page">
+      <div className="rules-shell">
+        <div className="rules-header">
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
-              <h1 style={{ fontSize: "26px", fontWeight: 700, margin: 0, color: "#202223" }}>Checkout rules</h1>
-              <span style={{
-                background: "#b9f4cf",
-                borderRadius: "8px",
-                color: "#1a4731",
-                fontSize: "13px",
-                fontWeight: 650,
-                padding: "3px 10px",
-              }}>
+            <div className="rules-heading">
+              <h1>Checkout rules</h1>
+              <span className="rules-status active">
                 {isEmpty ? "0" : activeCount} Active
               </span>
+              <p>Take control of the checkout with powerful conditional rules</p>
             </div>
-            <p style={{ margin: 0, color: "#5c5f62", fontSize: "14px" }}>
-              Take control of the checkout with powerful conditional rules
-            </p>
           </div>
-          <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
-            <Link
-              style={{
-                background: "#fff",
-                border: "1px solid #babfc3",
-                borderRadius: "8px",
-                color: "#202223",
-                fontWeight: 650,
-                fontSize: "14px",
-                padding: "9px 14px",
-                textDecoration: "none",
-              }}
-              to="/app/import"
-            >
+          <div className="rules-actions">
+            <Link className="bsure-button secondary" to="/app/import">
               Import
             </Link>
-            <Link
-              style={{
-                background: "#202223",
-                border: "1px solid #202223",
-                borderRadius: "8px",
-                color: "#fff",
-                fontWeight: 650,
-                fontSize: "14px",
-                padding: "9px 14px",
-                textDecoration: "none",
-              }}
-              to="/app/shipping-rules"
-            >
+            <Link className="bsure-button" to="/app/shipping-rules">
               Create rule
             </Link>
           </div>
         </div>
 
-        {/* Rules Table */}
-        <div style={{
-          background: "#fff",
-          border: "1px solid #d4d4d4",
-          borderRadius: "12px",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
-          overflow: "hidden",
-        }}>
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+        <div className="rules-table-card">
+          <table className="rules-table">
             <thead>
               <tr>
-                <th style={thStyle}><input type="checkbox" /></th>
-                <th style={thStyle}>Name</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Type</th>
-                <th style={thStyle}>Subtype</th>
-                <th style={thStyle}>Activated on</th>
+                <th><input className="rules-checkbox-input" type="checkbox" /></th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Type</th>
+                <th>Subtype</th>
+                <th>Activated on</th>
               </tr>
             </thead>
             <tbody>
@@ -199,96 +157,49 @@ export default function Dashboard() {
 
 function DataRow({ row }: { row: RuleRow }) {
   return (
-    <tr style={trStyle} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f6f6f7"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}>
-      <td style={tdStyle}><input type="checkbox" /></td>
-      <td style={tdStyle}>
-        <Link style={{ color: "#202223", textDecoration: "none", fontWeight: 500 }} to={row.href}>
+    <tr className="rules-row">
+      <td><input className="rules-checkbox-input" type="checkbox" /></td>
+      <td>
+        <Link className="rules-name-link" to={row.href}>
           {row.name}
         </Link>
       </td>
-      <td style={tdStyle}>
-        <Link to={row.href} style={{ textDecoration: "none" }}>
-          <span style={row.status === "Active" ? activeStyle : deactivatedStyle}>
+      <td>
+        <Link to={row.href}>
+          <span className={`rules-status ${row.status === "Active" ? "active" : "deactivated"}`}>
             {row.status}
           </span>
         </Link>
       </td>
-      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.type}</Link></td>
-      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.subtype}</Link></td>
-      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.activatedOn}</Link></td>
+      <td><Link to={row.href}><span className={`rules-type-pill ${slug(row.type)}`}>{row.type}</span></Link></td>
+      <td><Link to={row.href}><span className={`rules-subtype-pill ${slug(row.subtype)}`}>{row.subtype}</span></Link></td>
+      <td><Link to={row.href}>{row.activatedOn}</Link></td>
     </tr>
   );
 }
 
 function StarterRow({ row }: { row: typeof STARTER_ROWS[0] }) {
   return (
-    <tr style={trStyle} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f6f6f7"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}>
-      <td style={tdStyle}><input type="checkbox" /></td>
-      <td style={tdStyle}>
-        <Link style={{ color: "#202223", textDecoration: "none", fontWeight: 500 }} to={row.href}>
+    <tr className="rules-row">
+      <td><input className="rules-checkbox-input" type="checkbox" /></td>
+      <td>
+        <Link className="rules-name-link" to={row.href}>
           {row.name}
         </Link>
       </td>
-      <td style={tdStyle}>
-        <span style={deactivatedStyle}>Deactivated</span>
+      <td>
+        <span className="rules-status deactivated">Deactivated</span>
       </td>
-      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.type}</Link></td>
-      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.subtype}</Link></td>
-      <td style={tdStyle}></td>
+      <td><Link to={row.href}><span className={`rules-type-pill ${slug(row.type)}`}>{row.type}</span></Link></td>
+      <td><Link to={row.href}><span className={`rules-subtype-pill ${slug(row.subtype)}`}>{row.subtype}</span></Link></td>
+      <td></td>
     </tr>
   );
 }
 
-const thStyle: React.CSSProperties = {
-  background: "#fafafa",
-  borderBottom: "1px solid #e1e3e5",
-  color: "#303030",
-  fontSize: "13px",
-  fontWeight: 650,
-  padding: "12px 16px",
-  textAlign: "left",
-};
-
-const tdStyle: React.CSSProperties = {
-  borderTop: "1px solid #e1e3e5",
-  color: "#202223",
-  fontSize: "14px",
-  padding: "12px 16px",
-  verticalAlign: "middle",
-};
-
-const trStyle: React.CSSProperties = {
-  cursor: "pointer",
-  transition: "background 140ms ease",
-};
-
-const linkStyle: React.CSSProperties = {
-  color: "#202223",
-  display: "block",
-  textDecoration: "none",
-};
-
-const activeStyle: React.CSSProperties = {
-  background: "#b9f4cf",
-  borderRadius: "8px",
-  display: "inline-block",
-  fontSize: "13px",
-  fontWeight: 650,
-  padding: "3px 10px",
-  color: "#1a4731",
-};
-
-const deactivatedStyle: React.CSSProperties = {
-  background: "#e4e5e7",
-  borderRadius: "8px",
-  display: "inline-block",
-  fontSize: "13px",
-  fontWeight: 650,
-  padding: "3px 10px",
-  color: "#4a4f54",
-};
+function slug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
 
 export const headers: HeadersFunction = (headersArgs) => {
   return boundary.headers(headersArgs);

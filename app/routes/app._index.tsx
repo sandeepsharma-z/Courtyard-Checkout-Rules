@@ -5,193 +5,290 @@ import { authenticate } from "../shopify.server";
 import { getRuleManagerData } from "../services/rule-config-storage.server";
 
 type RuleRow = {
-  activatedOn: string;
-  href: string;
+  id: string;
   name: string;
   status: "Active" | "Deactivated";
-  subtype: string;
   type: string;
+  subtype: string;
+  href: string;
+  activatedOn: string;
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
   const data = await getRuleManagerData();
 
+  const fmt = (d: Date | string) =>
+    new Intl.DateTimeFormat("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(new Date(d));
+
   const rows: RuleRow[] = [
-    {
-      activatedOn: latestDate(data.shippingRenameRules),
-      href: "/app/shipping-rules",
-      name: "Rename shipping methods",
-      status: hasEnabled(data.shippingRenameRules) ? "Active" : "Deactivated",
-      subtype: "Rename",
+    ...data.shippingHideRules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
       type: "Shipping",
-    },
-    {
-      activatedOn: latestDate(data.productRestrictionRules),
-      href: "/app/product-restrictions",
-      name: "All Product Validation",
-      status: hasEnabled(data.productRestrictionRules) ? "Active" : "Deactivated",
-      subtype: "Block",
-      type: "Validation",
-    },
-    {
-      activatedOn: latestDate(data.shippingHideRules),
-      href: "/app/shipping-rules",
-      name: "All Shipping Method Hide",
-      status: hasEnabled(data.shippingHideRules) ? "Active" : "Deactivated",
       subtype: "Hide",
-      type: "Shipping",
-    },
-    {
-      activatedOn: latestDate(data.shippingRenameRules),
       href: "/app/shipping-rules",
-      name: "All Shipping Method Rename",
-      status: hasEnabled(data.shippingRenameRules) ? "Active" : "Deactivated",
-      subtype: "Rename",
+      activatedOn: r.enabled ? fmt(r.createdAt) : "",
+    })),
+    ...data.shippingRenameRules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
       type: "Shipping",
-    },
-    {
-      activatedOn: latestDate(data.paymentHideRules),
-      href: "/app/payment-rules",
-      name: "All Payment Method Hide",
-      status: hasEnabled(data.paymentHideRules) ? "Active" : "Deactivated",
-      subtype: "Hide",
+      subtype: "Rename",
+      href: "/app/shipping-rules",
+      activatedOn: r.enabled ? fmt(r.createdAt) : "",
+    })),
+    ...data.paymentHideRules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
       type: "Payment",
-    },
-    {
-      activatedOn: latestDate(data.cutoffRuleSettings),
-      href: "/app/cutoff-settings",
-      name: "Cutoff time settings",
-      status: hasEnabled(data.cutoffRuleSettings) ? "Active" : "Deactivated",
+      subtype: "Hide",
+      href: "/app/payment-rules",
+      activatedOn: r.enabled ? fmt(r.createdAt) : "",
+    })),
+    ...data.productRestrictionRules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
+      type: "Validation",
+      subtype: "Block",
+      href: "/app/product-restrictions",
+      activatedOn: r.enabled ? fmt(r.createdAt) : "",
+    })),
+    ...data.cutoffRuleSettings.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
+      type: "Shipping",
       subtype: "Time",
+      href: "/app/cutoff-settings",
+      activatedOn: r.enabled ? fmt(r.createdAt) : "",
+    })),
+    ...data.shippingMethodMappings.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: "Active" as RuleRow["status"],
       type: "Shipping",
-    },
-    {
-      activatedOn: latestDate(data.shippingMethodMappings),
-      href: "/app/shipping-mappings",
-      name: "Shipping method mappings",
-      status: hasEnabled(data.shippingMethodMappings) ? "Active" : "Deactivated",
       subtype: "Mapping",
-      type: "Shipping",
-    },
-    {
-      activatedOn: "",
-      href: "/app/import",
-      name: "Pincode CSV import",
-      status: "Active",
-      subtype: "Import",
-      type: "Data",
-    },
-    {
-      activatedOn: "",
-      href: "/app/simulator",
-      name: "Rule simulator",
-      status: "Active",
-      subtype: "Preview",
-      type: "Testing",
-    },
-    {
-      activatedOn: "",
-      href: "/app/publish",
-      name: "Publish Shopify config",
-      status: "Active",
-      subtype: "Snapshot",
-      type: "Config",
-    },
+      href: "/app/shipping-mappings",
+      activatedOn: fmt(r.createdAt),
+    })),
   ];
 
-  return {
-    activeCount: rows.filter((row) => row.status === "Active").length,
-    rows,
-  };
+  const activeCount = rows.filter((r) => r.status === "Active").length;
+
+  return { rows, activeCount, isEmpty: rows.length === 0 };
 };
 
+const STARTER_ROWS = [
+  { name: "All Shipping Method Hide",   type: "Shipping",   subtype: "Hide",    href: "/app/shipping-rules" },
+  { name: "All Shipping Method Rename", type: "Shipping",   subtype: "Rename",  href: "/app/shipping-rules" },
+  { name: "All Payment Method Hide",    type: "Payment",    subtype: "Hide",    href: "/app/payment-rules" },
+  { name: "All Product Validation",     type: "Validation", subtype: "Block",   href: "/app/product-restrictions" },
+  { name: "Cutoff time settings",       type: "Shipping",   subtype: "Time",    href: "/app/cutoff-settings" },
+  { name: "Shipping method mappings",   type: "Shipping",   subtype: "Mapping", href: "/app/shipping-mappings" },
+  { name: "Pincode CSV import",         type: "Data",       subtype: "Import",  href: "/app/import" },
+  { name: "Rule simulator",            type: "Testing",    subtype: "Preview", href: "/app/simulator" },
+  { name: "Publish Shopify config",     type: "Config",     subtype: "Snapshot",href: "/app/publish" },
+];
+
 export default function Dashboard() {
-  const { activeCount, rows } = useLoaderData<typeof loader>();
+  const { activeCount, isEmpty, rows } = useLoaderData<typeof loader>();
 
   return (
-    <div className="rules-page">
-      <div className="rules-shell">
-        <header className="rules-header">
-          <div className="rules-heading">
-            <h1>Checkout rules</h1>
-            <span className="rules-status active">{activeCount} Active</span>
-            <p>Take control of checkout with configurable pincode, shipping, payment, validation, import, publish, and simulator workflows.</p>
-          </div>
-          <div className="bsure-actions">
-            <Link className="bsure-button secondary" to="/app/import">Import</Link>
-            <Link className="bsure-button" to="/app/shipping-rules">Create rule</Link>
-          </div>
-        </header>
+    <div className="bsure-page">
+      <div className="bsure-shell">
 
-        <div className="rules-table-card">
-          <table className="rules-table">
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "24px" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+              <h1 style={{ fontSize: "26px", fontWeight: 700, margin: 0, color: "#202223" }}>Checkout rules</h1>
+              <span style={{
+                background: "#b9f4cf",
+                borderRadius: "8px",
+                color: "#1a4731",
+                fontSize: "13px",
+                fontWeight: 650,
+                padding: "3px 10px",
+              }}>
+                {isEmpty ? "0" : activeCount} Active
+              </span>
+            </div>
+            <p style={{ margin: 0, color: "#5c5f62", fontSize: "14px" }}>
+              Take control of the checkout with powerful conditional rules
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+            <Link
+              style={{
+                background: "#fff",
+                border: "1px solid #babfc3",
+                borderRadius: "8px",
+                color: "#202223",
+                fontWeight: 650,
+                fontSize: "14px",
+                padding: "9px 14px",
+                textDecoration: "none",
+              }}
+              to="/app/import"
+            >
+              Import
+            </Link>
+            <Link
+              style={{
+                background: "#202223",
+                border: "1px solid #202223",
+                borderRadius: "8px",
+                color: "#fff",
+                fontWeight: 650,
+                fontSize: "14px",
+                padding: "9px 14px",
+                textDecoration: "none",
+              }}
+              to="/app/shipping-rules"
+            >
+              Create rule
+            </Link>
+          </div>
+        </div>
+
+        {/* Rules Table */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #d4d4d4",
+          borderRadius: "12px",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+          overflow: "hidden",
+        }}>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <thead>
               <tr>
-                <th aria-label="Select rule" />
-                <th>Name</th>
-                <th>Status</th>
-                <th>Type</th>
-                <th>Subtype</th>
-                <th>Activated on</th>
+                <th style={thStyle}><input type="checkbox" /></th>
+                <th style={thStyle}>Name</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Type</th>
+                <th style={thStyle}>Subtype</th>
+                <th style={thStyle}>Activated on</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr className="rules-row" key={`${row.type}-${row.subtype}-${row.name}`}>
-                  <td>
-                    <Link aria-label={`Open ${row.name}`} to={row.href}>
-                      <span className="rules-checkbox" />
-                    </Link>
-                  </td>
-                  <td>
-                    <Link to={row.href}>{row.name}</Link>
-                  </td>
-                  <td>
-                    <Link to={row.href}>
-                      <span className={row.status === "Active" ? "rules-status active" : "rules-status deactivated"}>{row.status}</span>
-                    </Link>
-                  </td>
-                  <td>
-                    <Link to={row.href}>{row.type}</Link>
-                  </td>
-                  <td>
-                    <Link to={row.href}>{row.subtype}</Link>
-                  </td>
-                  <td>
-                    <Link to={row.href}>{row.activatedOn}</Link>
-                  </td>
-                </tr>
-              ))}
+              {isEmpty
+                ? STARTER_ROWS.map((row) => (
+                    <StarterRow key={row.name} row={row} />
+                  ))
+                : rows.map((row) => (
+                    <DataRow key={row.id} row={row} />
+                  ))
+              }
             </tbody>
           </table>
         </div>
+
       </div>
     </div>
   );
 }
 
-function hasEnabled(items: Array<{ enabled: boolean }>) {
-  return items.some((item) => item.enabled);
+function DataRow({ row }: { row: RuleRow }) {
+  return (
+    <tr style={trStyle} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f6f6f7"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}>
+      <td style={tdStyle}><input type="checkbox" /></td>
+      <td style={tdStyle}>
+        <Link style={{ color: "#202223", textDecoration: "none", fontWeight: 500 }} to={row.href}>
+          {row.name}
+        </Link>
+      </td>
+      <td style={tdStyle}>
+        <Link to={row.href} style={{ textDecoration: "none" }}>
+          <span style={row.status === "Active" ? activeStyle : deactivatedStyle}>
+            {row.status}
+          </span>
+        </Link>
+      </td>
+      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.type}</Link></td>
+      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.subtype}</Link></td>
+      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.activatedOn}</Link></td>
+    </tr>
+  );
 }
 
-function latestDate(items: Array<{ createdAt: Date | string; enabled: boolean }>) {
-  const latest = items
-    .filter((item) => item.enabled)
-    .map((item) => new Date(item.createdAt).getTime())
-    .filter(Number.isFinite)
-    .sort((a, b) => b - a)[0];
-
-  if (!latest) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(latest));
+function StarterRow({ row }: { row: typeof STARTER_ROWS[0] }) {
+  return (
+    <tr style={trStyle} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#f6f6f7"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ""; }}>
+      <td style={tdStyle}><input type="checkbox" /></td>
+      <td style={tdStyle}>
+        <Link style={{ color: "#202223", textDecoration: "none", fontWeight: 500 }} to={row.href}>
+          {row.name}
+        </Link>
+      </td>
+      <td style={tdStyle}>
+        <span style={deactivatedStyle}>Deactivated</span>
+      </td>
+      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.type}</Link></td>
+      <td style={tdStyle}><Link style={linkStyle} to={row.href}>{row.subtype}</Link></td>
+      <td style={tdStyle}></td>
+    </tr>
+  );
 }
+
+const thStyle: React.CSSProperties = {
+  background: "#fafafa",
+  borderBottom: "1px solid #e1e3e5",
+  color: "#303030",
+  fontSize: "13px",
+  fontWeight: 650,
+  padding: "12px 16px",
+  textAlign: "left",
+};
+
+const tdStyle: React.CSSProperties = {
+  borderTop: "1px solid #e1e3e5",
+  color: "#202223",
+  fontSize: "14px",
+  padding: "12px 16px",
+  verticalAlign: "middle",
+};
+
+const trStyle: React.CSSProperties = {
+  cursor: "pointer",
+  transition: "background 140ms ease",
+};
+
+const linkStyle: React.CSSProperties = {
+  color: "#202223",
+  display: "block",
+  textDecoration: "none",
+};
+
+const activeStyle: React.CSSProperties = {
+  background: "#b9f4cf",
+  borderRadius: "8px",
+  display: "inline-block",
+  fontSize: "13px",
+  fontWeight: 650,
+  padding: "3px 10px",
+  color: "#1a4731",
+};
+
+const deactivatedStyle: React.CSSProperties = {
+  background: "#e4e5e7",
+  borderRadius: "8px",
+  display: "inline-block",
+  fontSize: "13px",
+  fontWeight: 650,
+  padding: "3px 10px",
+  color: "#4a4f54",
+};
 
 export const headers: HeadersFunction = (headersArgs) => {
   return boundary.headers(headersArgs);

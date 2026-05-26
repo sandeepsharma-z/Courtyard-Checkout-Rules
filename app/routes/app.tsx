@@ -19,18 +19,11 @@ export default function App() {
     <AppProvider embedded apiKey={apiKey}>
       <s-app-nav>
         <s-link href="/app">Dashboard</s-link>
-        <s-link href="/app/import">CSV import</s-link>
+        <s-link href="/app/shipping-rules">Shipping rules</s-link>
+        <s-link href="/app/payment-rules">Payment rules</s-link>
+        <s-link href="/app/product-restrictions">Product restrictions</s-link>
         <s-link href="/app/pincodes">Pincode groups</s-link>
         <s-link href="/app/publish">Publish config</s-link>
-        <s-link href="/app/config-viewer">Config viewer</s-link>
-        <s-link href="/app/product-restrictions">Product restrictions</s-link>
-        <s-link href="/app/shipping-mappings">Shipping mappings</s-link>
-        <s-link href="/app/shipping-rules">Shipping rules</s-link>
-        <s-link href="/app/payment-mappings">Payment mappings</s-link>
-        <s-link href="/app/payment-rules">Payment rules</s-link>
-        <s-link href="/app/cutoff-settings">Cutoff settings</s-link>
-        <s-link href="/app/validation-rules">Validation rules</s-link>
-        <s-link href="/app/simulator">Simulator</s-link>
       </s-app-nav>
       <Outlet />
     </AppProvider>

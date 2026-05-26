@@ -477,24 +477,6 @@ body {
   font-weight: 650;
 }
 
-.bsure-input,
-.bsure-select,
-.bsure-textarea {
-  background: #fff;
-  border: 1px solid #8c9196;
-  border-radius: 6px;
-  color: #202223;
-  font: inherit;
-  font-size: 13px;
-  min-height: 34px;
-  padding: 6px 10px;
-  width: 100%;
-}
-
-.bsure-textarea {
-  min-height: 64px;
-  resize: vertical;
-}
 
 .bsure-help {
   color: #6d7175;
@@ -625,30 +607,6 @@ body {
   gap: 10px;
 }
 
-.bsure-button {
-  background: #008060;
-  border: 1px solid #006e52;
-  border-radius: 6px;
-  color: #fff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 650;
-  min-height: 34px;
-  padding: 6px 12px;
-}
-
-.bsure-button.secondary {
-  background: #fff;
-  border-color: #babfc3;
-  color: #202223;
-}
-
-.bsure-button.danger {
-  background: #fff;
-  border-color: #d72c0d;
-  color: #d72c0d;
-}
 
 .bsure-actions-card {
   background: #fff;
@@ -807,16 +765,75 @@ body {
 
 /* ── BSure compact overrides ──────────────────────── */
 
-.bsure-page h1 { font-size: 18px; font-weight: 700; margin: 0; }
-.bsure-page h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
-.bsure-page h3 { font-size: 14px; font-weight: 650; margin: 0 0 4px; }
-.bsure-page p  { font-size: 13px; margin: 0; }
+.bsure-page {
+  font-size: 13px !important;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+.bsure-page h1 { font-size: 18px !important; font-weight: 700; margin: 0; }
+.bsure-page h2 { font-size: 15px !important; font-weight: 700; margin: 0 0 4px; }
+.bsure-page h3 { font-size: 14px !important; font-weight: 650; margin: 0 0 4px; }
+.bsure-page p  { font-size: 13px !important; margin: 0; }
 
-.bsure-label { font-size: 13px; font-weight: 650; }
-.bsure-help  { font-size: 12px; color: #6d7175; }
+.bsure-label { font-size: 13px !important; font-weight: 650; display: block; margin-bottom: 4px; }
+.bsure-help  { font-size: 12px !important; color: #6d7175; display: block; margin-top: 3px; }
 
-.bsure-card { padding: 16px; border-radius: 10px; }
-.bsure-card h2 { font-size: 15px; margin: 0 0 12px; }
+.bsure-card { padding: 16px !important; border-radius: 10px !important; background: #fff; border: 1px solid #e1e3e5; }
+.bsure-card h2 { font-size: 15px !important; margin: 0 0 12px; }
+
+.bsure-input,
+.bsure-select,
+.bsure-textarea {
+  background: #fff !important;
+  border: 1px solid #8c9196 !important;
+  border-radius: 6px !important;
+  color: #202223 !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  min-height: 34px !important;
+  padding: 5px 10px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  box-shadow: none !important;
+}
+.bsure-textarea {
+  min-height: 68px !important;
+  resize: vertical !important;
+}
+.bsure-input:focus,
+.bsure-select:focus,
+.bsure-textarea:focus {
+  border-color: #008060 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(0,128,96,0.2) !important;
+}
+
+.bsure-button {
+  background: #008060 !important;
+  border: 1px solid #006e52 !important;
+  border-radius: 6px !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+  min-height: 32px !important;
+  padding: 5px 12px !important;
+  line-height: 1.4 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+}
+.bsure-button.secondary {
+  background: #fff !important;
+  border-color: #babfc3 !important;
+  color: #202223 !important;
+}
+.bsure-button.danger {
+  background: #fff !important;
+  border-color: #d72c0d !important;
+  color: #d72c0d !important;
+}
 
 .bsure-form-row { gap: 12px; }
 .bsure-field { gap: 5px; }

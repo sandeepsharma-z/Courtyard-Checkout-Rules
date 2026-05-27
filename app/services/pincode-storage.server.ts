@@ -131,74 +131,31 @@ export async function previewAutoRulesFromBatch(batchId: string): Promise<AutoRu
     where: { batchId, rowStatus: "valid", pincode: { not: "" } },
     select: {
       pincode: true,
-      locationName: true,
       sameDayDeliveryRule: true,
+      updatedSameDayRule: true,
     },
   });
 
-  const grouped: Record<string, string[]> = {
-    notDelivered: [],
-    far: [],
-    average: [],
-    near: [],
-  };
+  const sameDayLabels = new Map<string, string[]>();
 
   for (const r of records) {
-    const loc = (r.locationName ?? "").trim().toLowerCase();
-    if (loc === "not delivered" || loc === "not deliverable") {
-      grouped.notDelivered.push(r.pincode);
-    } else if (loc === "far") {
-      grouped.far.push(r.pincode);
-    } else if (loc === "average") {
-      grouped.average.push(r.pincode);
-    } else if (loc === "near") {
-      grouped.near.push(r.pincode);
+    const sameDayLabel = importedSameDayLabel(r);
+    if (sameDayLabel) {
+      const pincodes = sameDayLabels.get(sameDayLabel) ?? [];
+      pincodes.push(r.pincode);
+      sameDayLabels.set(sameDayLabel, pincodes);
     }
   }
 
   const preview: AutoRulePreviewEntry[] = [];
 
-  if (grouped.notDelivered.length) {
-    preview.push({
-      type: "ShippingHide",
-      name: "Hide shipping – Not delivered areas",
-      description: `Hide all shipping for ${grouped.notDelivered.length} pincodes marked "Not delivered"`,
-      pincodes: grouped.notDelivered,
-    });
-    preview.push({
-      type: "ProductRestriction",
-      name: "Block products – Not delivered areas",
-      description: `Block product checkout for ${grouped.notDelivered.length} pincodes marked "Not delivered"`,
-      pincodes: grouped.notDelivered,
-    });
-  }
-
-  if (grouped.far.length) {
-    preview.push({
-      type: "ShippingHide",
-      name: "Hide same-day shipping – Far areas",
-      description: `Hide same-day shipping for ${grouped.far.length} pincodes in "Far" areas`,
-      pincodes: grouped.far,
-    });
-  }
-
-  if (grouped.average.length) {
+  for (const [label, pincodes] of sameDayLabels) {
     preview.push({
       type: "ShippingRename",
-      name: "Rename shipping – Average areas (4PM–8PM)",
-      description: `Rename same-day label for ${grouped.average.length} pincodes in "Average" areas`,
-      pincodes: grouped.average,
-      newLabel: "Same Day - 4PM to 8PM",
-    });
-  }
-
-  if (grouped.near.length) {
-    preview.push({
-      type: "ShippingRename",
-      name: "Rename shipping – Near areas (90 Min)",
-      description: `Rename same-day label for ${grouped.near.length} pincodes in "Near" areas`,
-      pincodes: grouped.near,
-      newLabel: "Same Day - 90 Min Delivery",
+      name: `Rename shipping - imported label ${preview.length + 1}`,
+      description: `Rename configured shipping method for ${pincodes.length} pincodes using imported delivery text`,
+      pincodes,
+      newLabel: label,
     });
   }
 
@@ -239,7 +196,7 @@ export async function generateAutoRulesFromBatch(batchId: string) {
       created++;
     } else if (rule.type === "ProductRestriction") {
       await prisma.productRestrictionRule.create({
-        data: { ...base(rule), validationMessage: "Delivery not available at this pincode." },
+        data: { ...base(rule), validationMessage: "" },
       });
       created++;
     }
@@ -280,4 +237,11 @@ export async function getActivePincodeRuleOptions() {
 
 function isPincodeValue(value: string) {
   return /^\d{6}$/.test(value.trim());
+}
+
+function importedSameDayLabel(record: {
+  sameDayDeliveryRule: string;
+  updatedSameDayRule: string;
+}) {
+  return (record.updatedSameDayRule || record.sameDayDeliveryRule || "").trim();
 }

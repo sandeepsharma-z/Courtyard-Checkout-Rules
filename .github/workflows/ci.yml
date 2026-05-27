@@ -10,6 +10,12 @@ jobs:
       matrix:
         node: [20.19.0, 22, 24]
         manager: ['npm', 'yarn', 'pnpm']
+    env:
+      DATABASE_URL: "postgresql://postgres:password@localhost:5432/test"
+      SHOPIFY_API_KEY: "test_api_key"
+      SHOPIFY_API_SECRET: "test_api_secret"
+      SHOPIFY_APP_URL: "https://courtyard-checkout-rules.vercel.app"
+      SCOPES: "read_products,write_metafields"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
@@ -18,7 +24,7 @@ jobs:
 
       - name: Install pnpm
         if: ${{ matrix.manager == 'pnpm' }}
-        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        uses: pnpm/action-setup@v4
         with:
           version: 8
 
@@ -32,7 +38,7 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-      - name: Validate Prisma
+      - name: Validate Prisma schema
         run: npx prisma generate && npx prisma validate
 
       - name: Build application

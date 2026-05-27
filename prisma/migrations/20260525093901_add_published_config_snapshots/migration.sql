@@ -11,8 +11,8 @@ CREATE TABLE "PublishedConfigSnapshot" (
     "payloadSizeBytes" INTEGER NOT NULL DEFAULT 0,
     "payloadJson" TEXT NOT NULL,
     "message" TEXT NOT NULL DEFAULT '',
-    "publishedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "publishedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PublishedConfigSnapshot_sourceBatchId_fkey" FOREIGN KEY ("sourceBatchId") REFERENCES "PincodeImportBatch" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 

@@ -19,6 +19,9 @@ const listJson = (formData: FormData, key: string) => {
   return JSON.stringify(Array.from(new Set(values)));
 };
 
+const getListValues = (formData: FormData, key: string) =>
+  formData.getAll(key).map((value) => String(value ?? "").trim()).filter(Boolean);
+
 export async function getRuleManagerData() {
   const [
     productRestrictionRules,
@@ -99,16 +102,9 @@ export async function handleRuleManagerAction(formData: FormData) {
         data: methodMappingData(formData),
       });
     case "shippingHide:create":
-      return prisma.shippingHideRule.create({
-        data: shippingRuleData(formData),
-      });
+      return createShippingHideRules(formData);
     case "shippingRename:create":
-      return prisma.shippingRenameRule.create({
-        data: {
-          ...shippingRuleData(formData),
-          newLabel: getString(formData, "newLabel"),
-        },
-      });
+      return createShippingRenameRules(formData);
     case "paymentHide:create":
       return prisma.paymentHideRule.create({
         data: {
@@ -142,6 +138,67 @@ export async function handleRuleManagerAction(formData: FormData) {
   }
 }
 
+function shippingRuleBaseData(formData: FormData) {
+  return {
+    name: getString(formData, "name"),
+    enabled: formData.get("enabled") === "on",
+    priority: getPriority(formData),
+    cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
+    productTagsJson: listJson(formData, "productTags"),
+    pincodesJson: listJson(formData, "pincodes"),
+    areaGroupsJson: listJson(formData, "areaGroups"),
+    deliveryAvailabilityText: getString(formData, "deliveryAvailabilityText"),
+    notes: getString(formData, "notes"),
+  };
+}
+
+async function createShippingHideRules(formData: FormData) {
+  const mappings = getListValues(formData, "shippingMethodMappingId");
+  const base = shippingRuleBaseData(formData);
+
+  if (mappings.length <= 1) {
+    return prisma.shippingHideRule.create({
+      data: {
+        ...base,
+        shippingMethodMappingId: mappings[0] ?? "",
+      },
+    });
+  }
+
+  return prisma.shippingHideRule.createMany({
+    data: mappings.map((mappingId, index) => ({
+      ...base,
+      name: `${base.name} ${index + 1}`,
+      shippingMethodMappingId: mappingId,
+    })),
+  });
+}
+
+async function createShippingRenameRules(formData: FormData) {
+  const mappings = getListValues(formData, "shippingMethodMappingId");
+  const labels = getListValues(formData, "newLabel");
+  const base = shippingRuleBaseData(formData);
+
+  if (mappings.length <= 1) {
+    return prisma.shippingRenameRule.create({
+      data: {
+        ...base,
+        shippingMethodMappingId: mappings[0] ?? "",
+        newLabel: labels[0] ?? "",
+      },
+    });
+  }
+
+  return prisma.shippingRenameRule.createMany({
+    data: mappings.map((mappingId, index) => ({
+      ...base,
+      name: `${base.name} ${index + 1}`,
+      shippingMethodMappingId: mappingId,
+      newLabel: labels[index] ?? "",
+    })),
+  });
+}
+
 function methodMappingData(formData: FormData) {
   return {
     name: getString(formData, "name"),
@@ -149,21 +206,6 @@ function methodMappingData(formData: FormData) {
     priority: getPriority(formData),
     matchType: getString(formData, "matchType") || "exact",
     matchValue: getString(formData, "matchValue"),
-    notes: getString(formData, "notes"),
-  };
-}
-
-function shippingRuleData(formData: FormData) {
-  return {
-    name: getString(formData, "name"),
-    enabled: formData.get("enabled") === "on",
-    priority: getPriority(formData),
-    shippingMethodMappingId: getString(formData, "shippingMethodMappingId"),
-    cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
-    productTagsJson: listJson(formData, "productTags"),
-    pincodesJson: listJson(formData, "pincodes"),
-    areaGroupsJson: listJson(formData, "areaGroups"),
-    deliveryAvailabilityText: getString(formData, "deliveryAvailabilityText"),
     notes: getString(formData, "notes"),
   };
 }

@@ -11,8 +11,8 @@ CREATE TABLE "ProductRestrictionRule" (
     "validationMessage" TEXT NOT NULL DEFAULT '',
     "conditionsJson" TEXT NOT NULL DEFAULT '{}',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -24,8 +24,8 @@ CREATE TABLE "ShippingMethodMapping" (
     "matchType" TEXT NOT NULL DEFAULT 'exact',
     "matchValue" TEXT NOT NULL DEFAULT '',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -37,8 +37,8 @@ CREATE TABLE "PaymentMethodMapping" (
     "matchType" TEXT NOT NULL DEFAULT 'exact',
     "matchValue" TEXT NOT NULL DEFAULT '',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -51,8 +51,8 @@ CREATE TABLE "CutoffRuleSetting" (
     "timezone" TEXT NOT NULL DEFAULT '',
     "matchMode" TEXT NOT NULL DEFAULT 'before',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -69,8 +69,8 @@ CREATE TABLE "ShippingHideRule" (
     "deliveryAvailabilityText" TEXT NOT NULL DEFAULT '',
     "conditionsJson" TEXT NOT NULL DEFAULT '{}',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -88,8 +88,8 @@ CREATE TABLE "ShippingRenameRule" (
     "deliveryAvailabilityText" TEXT NOT NULL DEFAULT '',
     "conditionsJson" TEXT NOT NULL DEFAULT '{}',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateTable
@@ -107,8 +107,8 @@ CREATE TABLE "PaymentHideRule" (
     "deliveryAvailabilityText" TEXT NOT NULL DEFAULT '',
     "conditionsJson" TEXT NOT NULL DEFAULT '{}',
     "notes" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
 );
 
 -- CreateIndex

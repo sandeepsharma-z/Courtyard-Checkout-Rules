@@ -29,7 +29,7 @@ export default function ProductRestrictionsPage() {
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <a className="bsure-back" href="/app">←</a>
+            <a className="bsure-back" href="/app">&larr;</a>
             <h1>Update validates/block checkout rule</h1>
           </div>
           <a className="bsure-more" href="/app/publish">Publish config</a>
@@ -124,14 +124,14 @@ function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions 
             <div className="bsure-when-title">When...</div>
             <div className="bsure-when-sub">Select the conditions here which will trigger the execution</div>
           </div>
-          <button className="bsure-when-close" title="Close" type="button">×</button>
+          <button className="bsure-when-close" title="Close" type="button">x</button>
         </div>
 
         {/* Zip code condition */}
         <div className="bsure-cond-row">
-          <select className="bsure-select" disabled><option>Zip code / Postal code</option></select>
-          <select className="bsure-select" disabled><option>Has any of these values</option></select>
-          <button className="bsure-cond-del" disabled type="button">🗑</button>
+          <ConditionFieldSelect defaultValue="postalCode" />
+          <ConditionOperatorSelect defaultValue="any" />
+          <button className="bsure-cond-del" disabled type="button">Delete</button>
         </div>
         <PincodeChips options={pincodeOptions} />
 
@@ -139,9 +139,9 @@ function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions 
 
         {/* Product tags condition */}
         <div className="bsure-cond-row">
-          <select className="bsure-select" disabled><option>Product tags</option></select>
-          <select className="bsure-select" disabled><option>Has any of these values</option></select>
-          <button className="bsure-cond-del" disabled type="button">🗑</button>
+          <ConditionFieldSelect defaultValue="productTags" />
+          <ConditionOperatorSelect defaultValue="any" />
+          <button className="bsure-cond-del" disabled type="button">Delete</button>
         </div>
         <div style={{ marginBottom: "8px" }}>
           <input className="bsure-input" name="productTags" placeholder="Comma-separated product tags (admin-configured)" style={{ width: "100%" }} />
@@ -201,7 +201,7 @@ function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions 
       </div>
       <div className="bsure-radio" style={{ margin: "10px 0" }}>
         <input defaultChecked name="enabled" type="checkbox" />
-        <span><strong>Enabled</strong> — <span className="bsure-help">Include in next published config snapshot</span></span>
+        <span><strong>Enabled</strong> - <span className="bsure-help">Include in next published config snapshot</span></span>
       </div>
       <F label="Notes" style={{ marginTop: "8px" }}>
         <textarea className="bsure-textarea" name="notes" placeholder="Internal note" rows={2} />
@@ -224,15 +224,37 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
             <label className="bsure-chip" key={o.id} title={`${o.locationName} ${o.district} ${o.areaGroup}`}>
               <input name="pincodes" type="checkbox" value={o.pincode} />
               <span>{o.pincode}</span>
+              <span aria-hidden="true" className="bsure-chip-remove">x</span>
             </label>
           )) : <span className="bsure-help">Approve a CSV import first.</span>}
         </div>
       </div>
       <div className="bsure-chip-meta">
-        <span>Bulk-select uploaded CSV pincodes.</span>
+        <span>Click pincode chips to include them in this condition.</span>
         <span>Total: {options.length}</span>
       </div>
     </div>
+  );
+}
+
+function ConditionFieldSelect({ defaultValue }: { defaultValue: string }) {
+  return (
+    <select className="bsure-select" defaultValue={defaultValue}>
+      <option value="postalCode">Zip code / Postal code</option>
+      <option value="productTags">Product tags</option>
+      <option value="areaGroup">Area group</option>
+      <option value="deliveryText">Delivery text</option>
+    </select>
+  );
+}
+
+function ConditionOperatorSelect({ defaultValue }: { defaultValue: string }) {
+  return (
+    <select className="bsure-select" defaultValue={defaultValue}>
+      <option value="any">Has any of these values</option>
+      <option value="all">Has all of these values</option>
+      <option value="none">Does not have these values</option>
+    </select>
   );
 }
 

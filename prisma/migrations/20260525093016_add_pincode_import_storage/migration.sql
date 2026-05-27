@@ -9,9 +9,9 @@ CREATE TABLE "PincodeImportBatch" (
     "duplicateRows" INTEGER NOT NULL DEFAULT 0,
     "missingHeadersJson" TEXT NOT NULL DEFAULT '[]',
     "extraHeadersJson" TEXT NOT NULL DEFAULT '[]',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
-    "approvedAt" DATETIME
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "approvedAt" TIMESTAMP(3)
 );
 
 -- CreateTable
@@ -35,8 +35,8 @@ CREATE TABLE "PincodeRecord" (
     "chargesPricingText" TEXT NOT NULL DEFAULT '',
     "updatedSameDayRule" TEXT NOT NULL DEFAULT '',
     "updatedNextDayRule" TEXT NOT NULL DEFAULT '',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
     CONSTRAINT "PincodeRecord_batchId_fkey" FOREIGN KEY ("batchId") REFERENCES "PincodeImportBatch" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

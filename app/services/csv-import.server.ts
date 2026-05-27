@@ -62,6 +62,8 @@ const emptyRow = (): ParsedPincodeRow =>
     REQUIRED_PINCODE_HEADERS.map((header) => [header, ""]),
   ) as ParsedPincodeRow;
 
+const isPincodeValue = (value: string) => /^\d{6}$/.test(value.trim());
+
 export function parsePincodeCsv(
   csvText: string,
   filename: string,
@@ -107,6 +109,8 @@ export function parsePincodeCsv(
     }
     if (!values.pincode) {
       rowErrors.push("Pincode is required.");
+    } else if (!isPincodeValue(values.pincode)) {
+      rowErrors.push("Pincode must be a 6 digit numeric value.");
     }
 
     let rowStatus: ParsedPincodeImportRow["rowStatus"] =

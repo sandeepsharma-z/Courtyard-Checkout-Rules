@@ -133,15 +133,21 @@ export async function getActivePincodeRuleOptions() {
     },
   });
 
+  const pincodeRecords = records.filter((record) => isPincodeValue(record.pincode));
+
   const uniqueRecords = Array.from(
-    new Map(records.map((record) => [record.pincode, record])).values(),
+    new Map(pincodeRecords.map((record) => [record.pincode, record])).values(),
   );
 
   return {
     pincodes: uniqueRecords,
-    areaGroups: Array.from(new Set(records.map((record) => record.areaGroup).filter(Boolean))).sort(),
+    areaGroups: Array.from(new Set(pincodeRecords.map((record) => record.areaGroup).filter(Boolean))).sort(),
     deliveryAvailabilityValues: Array.from(
-      new Set(records.map((record) => record.deliveryAvailability).filter(Boolean)),
+      new Set(pincodeRecords.map((record) => record.deliveryAvailability).filter(Boolean)),
     ).sort(),
   };
+}
+
+function isPincodeValue(value: string) {
+  return /^\d{6}$/.test(value.trim());
 }

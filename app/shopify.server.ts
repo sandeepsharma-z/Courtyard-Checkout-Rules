@@ -6,12 +6,17 @@ import {
 } from "@shopify/shopify-app-react-router/server";
 import { sessionStorage as runtimeSessionStorage } from "./services/session-storage.server";
 
+const APP_URL =
+  process.env.SHOPIFY_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+  "https://courtyard-checkout-rules.vercel.app";
+
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: ApiVersion.October25,
   scopes: process.env.SCOPES?.split(","),
-  appUrl: process.env.SHOPIFY_APP_URL || "",
+  appUrl: APP_URL,
   authPathPrefix: "/auth",
   sessionStorage: runtimeSessionStorage,
   distribution: AppDistribution.AppStore,

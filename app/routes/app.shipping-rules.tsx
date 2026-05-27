@@ -384,23 +384,119 @@ function MethodOperatorSelect({ defaultValue }: { defaultValue: string }) {
 }
 
 function PincodeChips({ options }: { options: PincodeOption[] }) {
-  const top = options.slice(0, 400);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
+
+  const selectedSet = new Set(selected);
+
+  const available = options.filter(
+    (o) =>
+      !selectedSet.has(o.pincode) &&
+      (!search ||
+        o.pincode.includes(search) ||
+        o.district.toLowerCase().includes(search.toLowerCase()) ||
+        o.locationName.toLowerCase().includes(search.toLowerCase())),
+  );
+
+  const add = (pincode: string) => {
+    if (!selectedSet.has(pincode)) setSelected((p) => [...p, pincode]);
+  };
+
+  const remove = (pincode: string) =>
+    setSelected((p) => p.filter((x) => x !== pincode));
+
+  const addAll = () => {
+    const toAdd = available.slice(0, 500).map((o) => o.pincode);
+    setSelected((prev) => {
+      const exist = new Set(prev);
+      return [...prev, ...toAdd.filter((p) => !exist.has(p))];
+    });
+  };
+
   return (
-    <div style={{ marginBottom: "8px" }}>
+    <div className="bsure-pincode-picker">
+      {selected.length > 0 && (
+        <div className="bsure-chip-selected-box">
+          <div className="bsure-chip-list">
+            {selected.map((pincode) => (
+              <span className="bsure-chip bsure-chip-active" key={pincode}>
+                <input name="pincodes" type="hidden" value={pincode} />
+                {pincode}
+                <button
+                  aria-label={`Remove ${pincode}`}
+                  className="bsure-chip-remove-btn"
+                  onClick={() => remove(pincode)}
+                  type="button"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="bsure-chip-meta">
+            <span>{selected.length} selected</span>
+            <button
+              className="bsure-link-btn"
+              onClick={() => setSelected([])}
+              type="button"
+            >
+              Clear all
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="bsure-chip-search-row">
+        <input
+          className="bsure-input"
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by pincode, district or area…"
+          type="text"
+          value={search}
+        />
+        {available.length > 0 && (
+          <button
+            className="bsure-button secondary"
+            onClick={addAll}
+            type="button"
+          >
+            Add all ({Math.min(available.length, 500)})
+          </button>
+        )}
+      </div>
+
       <div className="bsure-chip-box">
         <div className="bsure-chip-list">
-          {top.length ? top.map((item) => (
-            <label className="bsure-chip" key={item.id} title={`${item.locationName} ${item.district} ${item.areaGroup}`}>
-              <input name="pincodes" type="checkbox" value={item.pincode} />
-              <span>{item.pincode}</span>
-              <span aria-hidden="true" className="bsure-chip-remove">x</span>
-            </label>
-          )) : <span className="bsure-help">Approve a CSV import first. Imported pincodes will appear here automatically.</span>}
+          {available.length > 0 ? (
+            available.slice(0, 300).map((o) => (
+              <button
+                className="bsure-chip bsure-chip-available"
+                key={o.id}
+                onClick={() => add(o.pincode)}
+                title={`${o.locationName} · ${o.district} · ${o.areaGroup}`}
+                type="button"
+              >
+                {o.pincode}
+                <span className="bsure-chip-add-icon">+</span>
+              </button>
+            ))
+          ) : options.length === 0 ? (
+            <span className="bsure-help">
+              Approve a CSV import first. Imported pincodes will appear here.
+            </span>
+          ) : (
+            <span className="bsure-help">All pincodes added.</span>
+          )}
         </div>
       </div>
+
       <div className="bsure-chip-meta">
-        <span>Click pincode chips to include them in this condition.</span>
-        <span>Total: {options.length}</span>
+        <span>Click a pincode to add it to this condition.</span>
+        <span>
+          {available.length > 300
+            ? `Showing 300 of ${available.length} — use search to filter`
+            : `${available.length} available`}
+        </span>
       </div>
     </div>
   );

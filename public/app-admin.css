@@ -715,6 +715,11 @@ body {
   text-decoration: underline;
 }
 
+.bsure-tag-actions {
+  display: flex;
+  gap: 10px;
+}
+
 .bsure-rule-list {
   display: grid;
   gap: 12px;

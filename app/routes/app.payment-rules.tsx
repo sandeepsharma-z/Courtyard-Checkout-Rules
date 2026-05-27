@@ -230,7 +230,9 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
+  const [csvMsg, setCsvMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const selectedSet = new Set(selected);
 
@@ -268,11 +270,31 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
     }
   };
 
+  const handleCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const matches = text.match(/\b[1-9]\d{5}\b/g) ?? [];
+    const unique = [...new Set(matches)];
+    let added = 0;
+    setSelected((prev) => {
+      const exist = new Set(prev);
+      const newOnes = unique.filter((p) => !exist.has(p));
+      added = newOnes.length;
+      return [...prev, ...newOnes];
+    });
+    setCsvMsg(`${unique.length} pincodes found, ${added} added`);
+    setTimeout(() => setCsvMsg(""), 4000);
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
   return (
     <div className="bsure-tag-wrap">
       {selected.map((pincode) => (
         <input key={pincode} name="pincodes" type="hidden" value={pincode} />
       ))}
+
+      <input accept=".csv,.txt,.xlsx" onChange={handleCsvFile} ref={fileRef} style={{ display: "none" }} type="file" />
 
       <label className="bsure-tag-box">
         {selected.map((pincode) => (
@@ -317,15 +339,20 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
 
       <div className="bsure-chip-meta">
         <span>
-          {options.length === 0
+          {csvMsg || (options.length === 0
             ? "Approve a CSV import first."
-            : `${selected.length} selected · ${options.length} available from CSV`}
+            : `${selected.length} selected · ${options.length} available from CSV`)}
         </span>
-        {selected.length > 0 && (
-          <button className="bsure-link-btn" onClick={() => setSelected([])} type="button">
-            Clear all
+        <span className="bsure-tag-actions">
+          <button className="bsure-link-btn" onClick={() => fileRef.current?.click()} type="button">
+            ↑ Import from CSV
           </button>
-        )}
+          {selected.length > 0 && (
+            <button className="bsure-link-btn" onClick={() => setSelected([])} type="button">
+              Clear all
+            </button>
+          )}
+        </span>
       </div>
     </div>
   );

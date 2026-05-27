@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
@@ -228,116 +228,104 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
 
 function PincodeChips({ options }: { options: PincodeOption[] }) {
   const [selected, setSelected] = useState<string[]>([]);
-  const [search, setSearch] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectedSet = new Set(selected);
 
-  const available = options.filter(
-    (o) =>
-      !selectedSet.has(o.pincode) &&
-      (!search ||
-        o.pincode.includes(search) ||
-        o.district.toLowerCase().includes(search.toLowerCase()) ||
-        o.locationName.toLowerCase().includes(search.toLowerCase())),
-  );
+  const suggestions = inputValue.length > 0
+    ? options
+        .filter(
+          (o) =>
+            !selectedSet.has(o.pincode) &&
+            (o.pincode.startsWith(inputValue) ||
+              o.district.toLowerCase().includes(inputValue.toLowerCase()) ||
+              o.locationName.toLowerCase().includes(inputValue.toLowerCase())),
+        )
+        .slice(0, 25)
+    : [];
 
   const add = (pincode: string) => {
-    if (!selectedSet.has(pincode)) setSelected((p) => [...p, pincode]);
+    const val = pincode.trim();
+    if (val && !selectedSet.has(val)) setSelected((p) => [...p, val]);
+    setInputValue("");
+    setOpen(false);
+    inputRef.current?.focus();
   };
 
   const remove = (pincode: string) =>
     setSelected((p) => p.filter((x) => x !== pincode));
 
-  const addAll = () => {
-    const toAdd = available.slice(0, 500).map((o) => o.pincode);
-    setSelected((prev) => {
-      const exist = new Set(prev);
-      return [...prev, ...toAdd.filter((p) => !exist.has(p))];
-    });
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === "Enter" || e.key === ",") && inputValue.trim()) {
+      e.preventDefault();
+      add(inputValue);
+    } else if (e.key === "Backspace" && !inputValue && selected.length > 0) {
+      setSelected((p) => p.slice(0, -1));
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
   };
 
   return (
-    <div className="bsure-pincode-picker">
-      {selected.length > 0 && (
-        <div className="bsure-chip-selected-box">
-          <div className="bsure-chip-list">
-            {selected.map((pincode) => (
-              <span className="bsure-chip bsure-chip-active" key={pincode}>
-                <input name="pincodes" type="hidden" value={pincode} />
-                {pincode}
-                <button
-                  aria-label={`Remove ${pincode}`}
-                  className="bsure-chip-remove-btn"
-                  onClick={() => remove(pincode)}
-                  type="button"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <div className="bsure-chip-meta">
-            <span>{selected.length} selected</span>
+    <div className="bsure-tag-wrap">
+      {selected.map((pincode) => (
+        <input key={pincode} name="pincodes" type="hidden" value={pincode} />
+      ))}
+
+      <label className="bsure-tag-box">
+        {selected.map((pincode) => (
+          <span className="bsure-tag" key={pincode}>
+            {pincode}
             <button
-              className="bsure-link-btn"
-              onClick={() => setSelected([])}
+              className="bsure-tag-x"
+              onClick={(e) => { e.stopPropagation(); remove(pincode); }}
+              type="button"
+            >×</button>
+          </span>
+        ))}
+        <input
+          className="bsure-tag-input"
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onChange={(e) => { setInputValue(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={selected.length === 0 ? "Type a pincode and press Enter…" : ""}
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+        />
+      </label>
+
+      {open && suggestions.length > 0 && (
+        <div className="bsure-tag-suggestions">
+          {suggestions.map((o) => (
+            <button
+              className="bsure-tag-suggestion"
+              key={o.id}
+              onMouseDown={(e) => { e.preventDefault(); add(o.pincode); }}
               type="button"
             >
-              Clear all
+              <strong>{o.pincode}</strong>
+              {o.district && <span> · {o.district}</span>}
+              {o.locationName && <span className="bsure-tag-sugg-area"> · {o.locationName}</span>}
             </button>
-          </div>
+          ))}
         </div>
       )}
 
-      <div className="bsure-chip-search-row">
-        <input
-          className="bsure-input"
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by pincode, district or area…"
-          type="text"
-          value={search}
-        />
-        {available.length > 0 && (
-          <button
-            className="bsure-button secondary"
-            onClick={addAll}
-            type="button"
-          >
-            Add all ({Math.min(available.length, 500)})
+      <div className="bsure-chip-meta">
+        <span>
+          {options.length === 0
+            ? "Approve a CSV import first."
+            : `${selected.length} selected · ${options.length} available from CSV`}
+        </span>
+        {selected.length > 0 && (
+          <button className="bsure-link-btn" onClick={() => setSelected([])} type="button">
+            Clear all
           </button>
         )}
-      </div>
-
-      <div className="bsure-chip-box">
-        <div className="bsure-chip-list">
-          {available.length > 0 ? (
-            available.slice(0, 300).map((o) => (
-              <button
-                className="bsure-chip bsure-chip-available"
-                key={o.id}
-                onClick={() => add(o.pincode)}
-                title={`${o.locationName} · ${o.district} · ${o.areaGroup}`}
-                type="button"
-              >
-                {o.pincode}
-                <span className="bsure-chip-add-icon">+</span>
-              </button>
-            ))
-          ) : options.length === 0 ? (
-            <span className="bsure-help">Approve a CSV import first.</span>
-          ) : (
-            <span className="bsure-help">All pincodes added.</span>
-          )}
-        </div>
-      </div>
-
-      <div className="bsure-chip-meta">
-        <span>Click a pincode to add it to this condition.</span>
-        <span>
-          {available.length > 300
-            ? `Showing 300 of ${available.length} — use search to filter`
-            : `${available.length} available`}
-        </span>
       </div>
     </div>
   );

@@ -588,97 +588,112 @@ body {
   gap: 12px;
 }
 
-/* ── Pincode picker ────────────────────────────────── */
-.bsure-pincode-picker {
-  display: grid;
-  gap: 8px;
+/* ── Pincode tag input (Shopify-style) ─────────────── */
+.bsure-tag-wrap {
   margin-bottom: 8px;
+  position: relative;
 }
 
-.bsure-chip-selected-box {
-  background: #f0f9f4;
-  border: 1px solid #95c4a1;
+.bsure-tag-box {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #8c9196;
   border-radius: 8px;
-  padding: 10px;
-}
-
-.bsure-chip-box {
-  border: 1px solid #c9cccf;
-  border-radius: 8px;
-  max-height: 200px;
-  overflow: auto;
-  padding: 10px;
-}
-
-.bsure-chip-list {
+  cursor: text;
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
+  min-height: 36px;
+  padding: 5px 8px;
+  transition: border-color 120ms;
 }
 
-.bsure-chip {
+.bsure-tag-box:focus-within {
+  border-color: #005bd3;
+  box-shadow: 0 0 0 2px rgba(0, 91, 211, 0.18);
+}
+
+.bsure-tag {
   align-items: center;
-  border-radius: 6px;
-  cursor: pointer;
+  background: #e4e5e7;
+  border: 1px solid #c9cccf;
+  border-radius: 5px;
+  color: #202223;
   display: inline-flex;
   font-size: 12px;
+  font-weight: 500;
   gap: 4px;
-  padding: 3px 8px;
-  user-select: none;
+  padding: 2px 4px 2px 7px;
+  white-space: nowrap;
 }
 
-/* Available chip (clickable to add) */
-.bsure-chip-available {
-  background: #f1f2f3;
-  border: 1px solid #d2d5d8;
-  color: #202223;
-  transition: background 120ms;
-}
-
-.bsure-chip-available:hover {
-  background: #e4e5e7;
-  border-color: #8c9196;
-}
-
-.bsure-chip-add-icon {
-  color: #008060;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-/* Selected chip (with × to remove) */
-.bsure-chip-active {
-  background: #d4eddb;
-  border: 1px solid #95c4a1;
-  color: #0a3d1f;
-  font-weight: 600;
-}
-
-.bsure-chip-remove-btn {
+.bsure-tag-x {
   align-items: center;
   background: none;
   border: none;
-  color: #3d7549;
+  color: #6d7175;
   cursor: pointer;
   display: inline-flex;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1;
-  padding: 0 0 0 2px;
+  padding: 0 1px;
 }
 
-.bsure-chip-remove-btn:hover {
+.bsure-tag-x:hover {
   color: #d82c0d;
 }
 
-.bsure-chip-search-row {
-  align-items: center;
-  display: flex;
-  gap: 8px;
+.bsure-tag-input {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #202223;
+  flex: 1 1 80px;
+  font-size: 13px !important;
+  min-height: unset !important;
+  min-width: 80px;
+  outline: none;
+  padding: 0 !important;
 }
 
-.bsure-chip-search-row .bsure-input {
-  flex: 1;
+.bsure-tag-suggestions {
+  background: #fff;
+  border: 1px solid #c9cccf;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  left: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+}
+
+.bsure-tag-suggestion {
+  background: none;
+  border: none;
+  border-bottom: 1px solid #f1f2f3;
+  color: #202223;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 7px 12px;
+  text-align: left;
+}
+
+.bsure-tag-suggestion:last-child {
+  border-bottom: none;
+}
+
+.bsure-tag-suggestion:hover {
+  background: #f6f6f7;
+}
+
+.bsure-tag-sugg-area {
+  color: #6d7175;
+  font-size: 11px;
 }
 
 .bsure-chip-meta {
@@ -686,6 +701,7 @@ body {
   display: flex;
   font-size: 12px;
   justify-content: space-between;
+  margin-top: 5px;
   padding: 0 2px;
 }
 

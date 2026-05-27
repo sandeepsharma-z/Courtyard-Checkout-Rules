@@ -97,6 +97,8 @@ export default function PaymentRulesPage() {
 }
 
 function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mappings, pincodeOptions }: { areaGroups: string[]; cutoffs: Option[]; deliveryAvailabilityValues: string[]; mappings: Option[]; pincodeOptions: PincodeOption[] }) {
+  const [subCondIds, setSubCondIds] = useState<number[]>([]);
+  const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
   return (
     <Form method="post">
       <input name="intent" type="hidden" value="paymentHide:create" />
@@ -160,14 +162,38 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
           </select>
         </div>
 
+        {subCondIds.map((id) => (
+          <div key={id}>
+            <div className="bsure-mini-or">And</div>
+            <div className="bsure-cond-row">
+              <ConditionFieldSelect defaultValue="postalCode" />
+              <ConditionOperatorSelect defaultValue="any" />
+              <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
+              <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+            </div>
+          </div>
+        ))}
         <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "8px" }}>
-          <button className="bsure-add-link" type="button">+ Add sub-condition</button>
+          <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
           <span style={{ color: "#d4d4d4" }}>|</span>
           <span className="bsure-mini-or" style={{ margin: 0 }}>Or</span>
           <span style={{ color: "#d4d4d4" }}>|</span>
-          <button className="bsure-add-link" type="button">+ Add another condition</button>
+          <button className="bsure-add-link" onClick={() => setExtraAreaIds((p) => [...p, Date.now()])} type="button">+ Add another condition</button>
         </div>
       </div>
+
+      {extraAreaIds.map((id, idx) => (
+        <div key={id}>
+          <div className="bsure-or-divider">Or</div>
+          <ExtraAreaBlock
+            areaGroups={areaGroups}
+            areaNum={idx + 2}
+            deliveryAvailabilityValues={deliveryAvailabilityValues}
+            onRemove={() => setExtraAreaIds((p) => p.filter((x) => x !== id))}
+            pincodeOptions={pincodeOptions}
+          />
+        </div>
+      ))}
 
       {/* Then block */}
       <div style={{ marginTop: "12px", padding: "14px", background: "#fff", border: "1px solid #d4d4d4", borderRadius: "8px" }}>
@@ -223,6 +249,75 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
         <button className="bsure-button" type="submit">Save payment hide rule</button>
       </div>
     </Form>
+  );
+}
+
+function ExtraAreaBlock({ areaGroups, areaNum, deliveryAvailabilityValues, onRemove, pincodeOptions }: { areaGroups: string[]; areaNum: number; deliveryAvailabilityValues: string[]; onRemove: () => void; pincodeOptions: PincodeOption[] }) {
+  const [subCondIds, setSubCondIds] = useState<number[]>([]);
+  return (
+    <div className="bsure-when-card">
+      <div className="bsure-when-header">
+        <div>
+          <div className="bsure-when-title">Area {areaNum} — Or</div>
+          <div className="bsure-when-sub">Match any of these conditions instead</div>
+        </div>
+        <button className="bsure-when-close" onClick={onRemove} title="Remove area" type="button">×</button>
+      </div>
+      <div className="bsure-cond-row">
+        <ConditionFieldSelect defaultValue="postalCode" />
+        <ConditionOperatorSelect defaultValue="any" />
+        <button className="bsure-cond-del" disabled type="button">Delete</button>
+      </div>
+      <PincodeChips options={pincodeOptions} />
+      <div className="bsure-mini-or">And</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+        <select className="bsure-select" name="areaGroups">
+          <option value="">Any area group</option>
+          {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
+        </select>
+        <select className="bsure-select" name="deliveryAvailabilityText">
+          <option value="">Any delivery text</option>
+          {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
+        </select>
+      </div>
+      {subCondIds.map((id) => (
+        <div key={id}>
+          <div className="bsure-mini-or">And</div>
+          <div className="bsure-cond-row">
+            <ConditionFieldSelect defaultValue="postalCode" />
+            <ConditionOperatorSelect defaultValue="any" />
+            <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
+            <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+          </div>
+        </div>
+      ))}
+      <div className="bsure-condition-actions">
+        <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
+      </div>
+    </div>
+  );
+}
+
+function ConditionFieldSelect({ defaultValue }: { defaultValue: string }) {
+  return (
+    <select className="bsure-select" defaultValue={defaultValue}>
+      <option value="postalCode">Zip code / Postal code</option>
+      <option value="productTags">Product tags</option>
+      <option value="areaGroup">Area group</option>
+      <option value="deliveryText">Delivery text</option>
+      <option value="paymentMethod">Payment method</option>
+    </select>
+  );
+}
+
+function ConditionOperatorSelect({ defaultValue }: { defaultValue: string }) {
+  return (
+    <select className="bsure-select" defaultValue={defaultValue}>
+      <option value="any">Has any of these values</option>
+      <option value="all">Has all of these values</option>
+      <option value="none">Does not have these values</option>
+      <option value="contains">Contains</option>
+    </select>
   );
 }
 

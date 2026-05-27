@@ -178,6 +178,8 @@ function ShippingRuleForm({
   pincodeOptions: PincodeOption[];
 }) {
   const [methodRows, setMethodRows] = useState([0]);
+  const [subCondIds, setSubCondIds] = useState<number[]>([]);
+  const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
   const hasMappings = mappings.length > 0;
 
   return (
@@ -230,12 +232,34 @@ function ShippingRuleForm({
           <input className="bsure-input" name="priority" defaultValue="100" type="number" />
         </div>
 
+        {subCondIds.map((id) => (
+          <div key={id}>
+            <div className="bsure-mini-or">And</div>
+            <div className="bsure-cond-row">
+              <ConditionFieldSelect defaultValue="postalCode" />
+              <ConditionOperatorSelect defaultValue="any" />
+              <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
+              <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+            </div>
+          </div>
+        ))}
         <div className="bsure-condition-actions">
-          <button className="bsure-add-link" type="button">+ Add sub-condition</button>
+          <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
           <span>Or</span>
-          <button className="bsure-add-link" type="button">+ Add another condition</button>
+          <button className="bsure-add-link" onClick={() => setExtraAreaIds((p) => [...p, Date.now()])} type="button">+ Add another condition</button>
         </div>
       </div>
+
+      {extraAreaIds.map((id, idx) => (
+        <div key={id}>
+          <div className="bsure-or-divider">Or</div>
+          <ExtraAreaBlock
+            areaNum={idx + 2}
+            onRemove={() => setExtraAreaIds((p) => p.filter((x) => x !== id))}
+            pincodeOptions={pincodeOptions}
+          />
+        </div>
+      ))}
 
       <div className="bsure-then-card">
         <div className="bsure-then-label">
@@ -330,6 +354,41 @@ function ShippingRuleForm({
         </div>
       </div>
     </Form>
+  );
+}
+
+function ExtraAreaBlock({ areaNum, onRemove, pincodeOptions }: { areaNum: number; onRemove: () => void; pincodeOptions: PincodeOption[] }) {
+  const [subCondIds, setSubCondIds] = useState<number[]>([]);
+  return (
+    <div className="bsure-area-card">
+      <div className="bsure-area-head">
+        <div>
+          <strong>Area {areaNum}</strong>
+          <span>Or — match any of these conditions</span>
+        </div>
+        <button className="bsure-when-close" onClick={onRemove} title="Remove area" type="button">×</button>
+      </div>
+      <div className="bsure-cond-row">
+        <ConditionFieldSelect defaultValue="postalCode" />
+        <ConditionOperatorSelect defaultValue="any" />
+        <button className="bsure-cond-del" disabled type="button">Delete</button>
+      </div>
+      <PincodeChips options={pincodeOptions} />
+      {subCondIds.map((id) => (
+        <div key={id}>
+          <div className="bsure-mini-or">And</div>
+          <div className="bsure-cond-row">
+            <ConditionFieldSelect defaultValue="postalCode" />
+            <ConditionOperatorSelect defaultValue="any" />
+            <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
+            <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+          </div>
+        </div>
+      ))}
+      <div className="bsure-condition-actions">
+        <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
+      </div>
+    </div>
   );
 }
 

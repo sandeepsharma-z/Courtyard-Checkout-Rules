@@ -720,6 +720,28 @@ body {
   gap: 10px;
 }
 
+.bsure-or-divider {
+  color: #6d7175;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin: 6px 0;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.bsure-condition-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.bsure-condition-actions span {
+  color: #6d7175;
+  font-size: 12px;
+}
+
 .bsure-rule-list {
   display: grid;
   gap: 12px;

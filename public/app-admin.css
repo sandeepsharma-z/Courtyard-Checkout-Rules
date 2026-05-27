@@ -437,11 +437,6 @@ body {
   white-space: nowrap;
 }
 
-.bsure-more::after {
-  content: "∨";
-  font-size: 11px;
-  opacity: 0.6;
-}
 
 .bsure-more:hover {
   background: #f6f6f7;
@@ -1241,7 +1236,7 @@ body {
 
 /* Navigation max-width for rule editor */
 .bsure-rule-shell {
-  max-width: 680px;
+  max-width: 900px;
   margin: 0 auto;
 }
 

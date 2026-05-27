@@ -389,38 +389,23 @@ body {
 .bsure-back {
   align-items: center;
   background: transparent;
-  border: 1px solid transparent;
+  border: 1px solid #d4d4d4;
   border-radius: 8px;
-  color: #202223;
+  color: #202223 !important;
   display: inline-flex;
-  font-size: 0;
+  font-size: 16px;
+  font-weight: 400;
   height: 32px;
   justify-content: center;
-  position: relative;
-  text-decoration: none;
+  line-height: 1;
+  text-decoration: none !important;
   width: 32px;
-}
-
-.bsure-back::before {
-  border-bottom: 2px solid #202223;
-  border-left: 2px solid #202223;
-  content: "";
-  height: 9px;
-  transform: rotate(45deg);
-  width: 9px;
-}
-
-.bsure-back::after {
-  background: #202223;
-  content: "";
-  height: 2px;
-  margin-left: -2px;
-  width: 17px;
+  flex-shrink: 0;
 }
 
 .bsure-back:hover {
-  background: #e7e7e7;
-  border-color: #d4d4d4;
+  background: #f1f1f1;
+  border-color: #babfc3;
 }
 
 .bsure-title h1 {
@@ -968,10 +953,10 @@ body {
   font-size: 13px !important;
   font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
 }
-.bsure-page h1 { font-size: 18px !important; font-weight: 700; margin: 0; }
-.bsure-page h2 { font-size: 15px !important; font-weight: 700; margin: 0 0 4px; }
-.bsure-page h3 { font-size: 14px !important; font-weight: 650; margin: 0 0 4px; }
-.bsure-page p  { font-size: 13px !important; margin: 0; }
+.bsure-page h1 { color: #202223 !important; font-size: 18px !important; font-weight: 700 !important; margin: 0 !important; }
+.bsure-page h2 { color: #202223 !important; font-size: 15px !important; font-weight: 700 !important; margin: 0 0 4px !important; }
+.bsure-page h3 { color: #202223 !important; font-size: 14px !important; font-weight: 650 !important; margin: 0 0 4px !important; }
+.bsure-page p  { font-size: 13px !important; margin: 0 !important; }
 
 .bsure-label { font-size: 13px !important; font-weight: 650; display: block; margin-bottom: 4px; }
 .bsure-help  { font-size: 12px !important; color: #6d7175; display: block; margin-top: 3px; }
@@ -1244,7 +1229,7 @@ body {
 }
 
 .bsure-topbar { margin-bottom: 18px; }
-.bsure-title h1 { font-size: 18px; }
+.bsure-title h1 { color: #202223 !important; font-size: 18px !important; font-weight: 700 !important; }
 
 /* Navigation max-width for rule editor */
 .bsure-rule-shell {

@@ -118,6 +118,136 @@ export async function getActivePincodeSummary() {
   };
 }
 
+type AutoRulePreviewEntry = {
+  type: "ShippingHide" | "ShippingRename" | "ProductRestriction";
+  name: string;
+  description: string;
+  pincodes: string[];
+  newLabel?: string;
+};
+
+export async function previewAutoRulesFromBatch(batchId: string): Promise<AutoRulePreviewEntry[]> {
+  const records = await prisma.pincodeRecord.findMany({
+    where: { batchId, rowStatus: "valid", pincode: { not: "" } },
+    select: {
+      pincode: true,
+      locationName: true,
+      sameDayDeliveryRule: true,
+    },
+  });
+
+  const grouped: Record<string, string[]> = {
+    notDelivered: [],
+    far: [],
+    average: [],
+    near: [],
+  };
+
+  for (const r of records) {
+    const loc = (r.locationName ?? "").trim().toLowerCase();
+    if (loc === "not delivered" || loc === "not deliverable") {
+      grouped.notDelivered.push(r.pincode);
+    } else if (loc === "far") {
+      grouped.far.push(r.pincode);
+    } else if (loc === "average") {
+      grouped.average.push(r.pincode);
+    } else if (loc === "near") {
+      grouped.near.push(r.pincode);
+    }
+  }
+
+  const preview: AutoRulePreviewEntry[] = [];
+
+  if (grouped.notDelivered.length) {
+    preview.push({
+      type: "ShippingHide",
+      name: "Hide shipping – Not delivered areas",
+      description: `Hide all shipping for ${grouped.notDelivered.length} pincodes marked "Not delivered"`,
+      pincodes: grouped.notDelivered,
+    });
+    preview.push({
+      type: "ProductRestriction",
+      name: "Block products – Not delivered areas",
+      description: `Block product checkout for ${grouped.notDelivered.length} pincodes marked "Not delivered"`,
+      pincodes: grouped.notDelivered,
+    });
+  }
+
+  if (grouped.far.length) {
+    preview.push({
+      type: "ShippingHide",
+      name: "Hide same-day shipping – Far areas",
+      description: `Hide same-day shipping for ${grouped.far.length} pincodes in "Far" areas`,
+      pincodes: grouped.far,
+    });
+  }
+
+  if (grouped.average.length) {
+    preview.push({
+      type: "ShippingRename",
+      name: "Rename shipping – Average areas (4PM–8PM)",
+      description: `Rename same-day label for ${grouped.average.length} pincodes in "Average" areas`,
+      pincodes: grouped.average,
+      newLabel: "Same Day - 4PM to 8PM",
+    });
+  }
+
+  if (grouped.near.length) {
+    preview.push({
+      type: "ShippingRename",
+      name: "Rename shipping – Near areas (90 Min)",
+      description: `Rename same-day label for ${grouped.near.length} pincodes in "Near" areas`,
+      pincodes: grouped.near,
+      newLabel: "Same Day - 90 Min Delivery",
+    });
+  }
+
+  return preview;
+}
+
+export async function generateAutoRulesFromBatch(batchId: string) {
+  const rules = await previewAutoRulesFromBatch(batchId);
+  const noteTag = `auto:${batchId}`;
+
+  const base = (rule: AutoRulePreviewEntry) => ({
+    name: rule.name,
+    enabled: false,
+    priority: 100,
+    pincodesJson: JSON.stringify(rule.pincodes),
+    areaGroupsJson: "[]",
+    productTagsJson: "[]",
+    deliveryAvailabilityText: "",
+    notes: noteTag,
+  });
+
+  let created = 0;
+  for (const rule of rules) {
+    if (rule.type === "ShippingHide") {
+      await prisma.shippingHideRule.create({
+        data: { ...base(rule), shippingMethodMappingId: "", cutoffRuleSettingId: "" },
+      });
+      created++;
+    } else if (rule.type === "ShippingRename") {
+      await prisma.shippingRenameRule.create({
+        data: {
+          ...base(rule),
+          shippingMethodMappingId: "",
+          cutoffRuleSettingId: "",
+          newLabel: rule.newLabel ?? "",
+        },
+      });
+      created++;
+    } else if (rule.type === "ProductRestriction") {
+      await prisma.productRestrictionRule.create({
+        data: { ...base(rule), validationMessage: "Delivery not available at this pincode." },
+      });
+      created++;
+    }
+  }
+
+  return created;
+}
+
 export async function getActivePincodeRuleOptions() {
   const records = await prisma.pincodeRecord.findMany({
     where: { isActive: true, pincode: { not: "" } },

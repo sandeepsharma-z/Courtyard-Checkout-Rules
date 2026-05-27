@@ -483,6 +483,26 @@ body {
   margin: 0 0 14px;
 }
 
+.bsure-card-header {
+  align-items: center;
+  border-bottom: 1px solid #e1e3e5;
+  display: flex;
+  gap: 10px;
+  margin: -18px -18px 16px;
+  padding: 12px 18px;
+}
+
+.bsure-card-header h2 {
+  flex: 1;
+  font-size: 14px !important;
+  font-weight: 650;
+  margin: 0 !important;
+}
+
+.bsure-card-body {
+  /* no special styles needed — inherits card padding */
+}
+
 .bsure-connector {
   background: #e4e5e7;
   border-radius: 9px;
@@ -1351,3 +1371,120 @@ body {
     flex-direction: column;
   }
 }
+
+/* ── Import page ───────────────────────────────────── */
+.import-banner {
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+}
+
+.import-banner-success {
+  background: #e3f5e8;
+  border: 1px solid #95c4a1;
+  color: #0a3d1f;
+}
+
+.import-banner-info {
+  background: #f0f5ff;
+  border: 1px solid #9db8e8;
+  color: #1a3660;
+}
+
+.import-upload-row {
+  align-items: flex-end;
+  display: flex;
+  gap: 12px;
+}
+
+.import-file-input {
+  cursor: pointer;
+  margin-top: 4px !important;
+  padding: 3px 6px !important;
+}
+
+.import-summary-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.import-summary-box {
+  background: #f6f8f4;
+  border: 1px solid #d8ddd2;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.import-summary-box strong {
+  display: block;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.import-summary-box span {
+  color: #6d7175;
+  font-size: 12px;
+}
+
+.import-header-warnings {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.import-warning {
+  background: #fff4f0;
+  border-left: 3px solid #d82c0d;
+  margin: 4px 0;
+  padding: 6px 10px;
+}
+
+.import-info {
+  background: #fff8e5;
+  border-left: 3px solid #eec200;
+  margin: 4px 0;
+  padding: 6px 10px;
+}
+
+.import-note {
+  color: #6d7175;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.import-table-scroll {
+  overflow-x: auto;
+}
+
+.import-preview-table {
+  font-size: 11px !important;
+  min-width: 1100px;
+  white-space: nowrap;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.import-error-cell {
+  color: #d82c0d;
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .import-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .import-upload-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

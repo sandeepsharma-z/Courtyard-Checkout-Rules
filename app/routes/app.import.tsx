@@ -3,15 +3,17 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, redirect, useLoaderData } from "react-router";
+import { Form, Link, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { parsePincodeCsv } from "../services/csv-import.server";
 import {
   approvePincodeImportBatch,
   createPincodeImportBatch,
+  generateAutoRulesFromBatch,
   getImportBatchForPreview,
   getRecentImportBatches,
+  previewAutoRulesFromBatch,
 } from "../services/pincode-storage.server";
 
 const parseJsonList = (value: string) => JSON.parse(value) as string[];
@@ -21,14 +23,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   const url = new URL(request.url);
   const batchId = url.searchParams.get("batchId") ?? undefined;
+  const rulesCreated = Number(url.searchParams.get("rulesCreated") ?? "0");
+
   const [batch, recentBatches] = await Promise.all([
     getImportBatchForPreview(batchId),
     getRecentImportBatches(),
   ]);
 
+  const autoRulePreview = batchId && batch && batch.status !== "approved"
+    ? await previewAutoRulesFromBatch(batchId)
+    : [];
+
   return {
     batch,
     recentBatches,
+    autoRulePreview,
+    rulesCreated,
     missingHeaders: batch ? parseJsonList(batch.missingHeadersJson) : [],
     extraHeaders: batch ? parseJsonList(batch.extraHeadersJson) : [],
   };
@@ -47,7 +57,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     await approvePincodeImportBatch(batchId);
-    return redirect(`/app/import?batchId=${batchId}`);
+    const rulesCreated = await generateAutoRulesFromBatch(batchId);
+    return redirect(`/app/import?batchId=${batchId}&rulesCreated=${rulesCreated}`);
   }
 
   const file = formData.get("csvFile");
@@ -63,117 +74,224 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ImportPage() {
-  const { batch, recentBatches, missingHeaders, extraHeaders } =
+  const { batch, recentBatches, autoRulePreview, rulesCreated, missingHeaders, extraHeaders } =
     useLoaderData<typeof loader>();
   const previewRows = batch?.records ?? [];
-  const canApprove =
-    batch && batch.status !== "approved" && batch.validRows > 0;
+  const canApprove = batch && batch.status !== "approved" && batch.validRows > 0;
 
   return (
-    <s-page heading="CSV import">
-      <s-section heading="Upload pincode CSV">
-        <Form method="post" encType="multipart/form-data">
-          <input type="hidden" name="intent" value="upload" />
-          <div style={{ display: "grid", gap: "1rem", maxWidth: "44rem" }}>
-            <label style={{ display: "grid", gap: "0.5rem" }}>
-              <strong>CSV file</strong>
-              <input accept=".csv,text/csv" name="csvFile" type="file" />
-            </label>
-            <button type="submit">Upload and preview</button>
+    <div className="bsure-page">
+      <div className="bsure-shell">
+        <div className="bsure-topbar">
+          <div className="bsure-topbar-left">
+            <Link className="bsure-back" to="/app">&#8592;</Link>
+            <strong className="bsure-topbar-title">Pincode CSV import</strong>
           </div>
-        </Form>
-      </s-section>
+        </div>
 
-      {batch && (
-        <s-section heading="Import preview">
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <div
-              style={{
-                display: "grid",
-                gap: "0.75rem",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              }}
-            >
-              <SummaryBox label="Total rows" value={batch.totalRows} />
-              <SummaryBox label="Valid" value={batch.validRows} />
-              <SummaryBox label="Invalid" value={batch.invalidRows} />
-              <SummaryBox label="Duplicate" value={batch.duplicateRows} />
+        <div className="bsure-rule-shell">
+
+          {rulesCreated > 0 && (
+            <div className="import-banner import-banner-success">
+              <strong>{rulesCreated} rules auto-created</strong> and set to Inactive for your review.{" "}
+              <Link to="/app/shipping-rules">View shipping rules</Link> &middot;{" "}
+              <Link to="/app/product-restrictions">View product restrictions</Link>
             </div>
+          )}
 
-            {(missingHeaders.length > 0 || extraHeaders.length > 0) && (
-              <div>
-                {missingHeaders.length > 0 && (
-                  <p>
-                    <strong>Missing headers:</strong>{" "}
-                    {missingHeaders.join(", ")}
-                  </p>
-                )}
-                {extraHeaders.length > 0 && (
-                  <p>
-                    <strong>Extra headers:</strong> {extraHeaders.join(", ")}
-                  </p>
-                )}
-              </div>
-            )}
-
-            <p>
-              Previewing first {previewRows.length} stored rows from{" "}
-              <strong>{batch.filename}</strong>. All CSV values are stored as
-              strings. Invalid and duplicate rows are stored for review but are
-              not active configuration.
-            </p>
-
-            {canApprove && (
-              <Form method="post">
-                <input type="hidden" name="intent" value="approve" />
-                <input type="hidden" name="batchId" value={batch.id} />
-                <button type="submit">Approve valid rows</button>
+          <div className="bsure-card">
+            <div className="bsure-card-header">
+              <h2>Upload pincode CSV</h2>
+            </div>
+            <div className="bsure-card-body">
+              <Form method="post" encType="multipart/form-data">
+                <input type="hidden" name="intent" value="upload" />
+                <div className="import-upload-row">
+                  <label className="bsure-label">
+                    CSV file
+                    <input
+                      accept=".csv,text/csv"
+                      className="bsure-input import-file-input"
+                      name="csvFile"
+                      type="file"
+                    />
+                  </label>
+                  <button className="bsure-button" type="submit">
+                    Upload and preview
+                  </button>
+                </div>
               </Form>
-            )}
-
-            {batch.status === "approved" && (
-              <p>
-                <strong>Status:</strong> Approved. Valid rows from this batch
-                are the current local configurable pincode dataset.
-              </p>
-            )}
-
-            <PreviewTable rows={previewRows} />
+            </div>
           </div>
-        </s-section>
-      )}
 
-      <s-section heading="Recent imports">
-        {recentBatches.length === 0 ? (
-          <s-paragraph>No CSV imports have been uploaded yet.</s-paragraph>
-        ) : (
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            {recentBatches.map((recentBatch) => (
-              <a
-                href={`/app/import?batchId=${recentBatch.id}`}
-                key={recentBatch.id}
-              >
-                {recentBatch.filename} - {recentBatch.status} -{" "}
-                {recentBatch.totalRows} rows
-              </a>
-            ))}
-          </div>
-        )}
-      </s-section>
-    </s-page>
+          {batch && (
+            <>
+              <div className="bsure-card">
+                <div className="bsure-card-header">
+                  <h2>Import summary — {batch.filename}</h2>
+                  {batch.status === "approved" && (
+                    <span className="rules-status active">Approved</span>
+                  )}
+                </div>
+                <div className="bsure-card-body">
+                  <div className="import-summary-grid">
+                    <SummaryBox label="Total rows" value={batch.totalRows} />
+                    <SummaryBox label="Valid" value={batch.validRows} color="green" />
+                    <SummaryBox label="Invalid" value={batch.invalidRows} color={batch.invalidRows > 0 ? "red" : undefined} />
+                    <SummaryBox label="Duplicate" value={batch.duplicateRows} color={batch.duplicateRows > 0 ? "orange" : undefined} />
+                  </div>
+
+                  {(missingHeaders.length > 0 || extraHeaders.length > 0) && (
+                    <div className="import-header-warnings">
+                      {missingHeaders.length > 0 && (
+                        <p className="import-warning">
+                          <strong>Missing headers:</strong> {missingHeaders.join(", ")}
+                        </p>
+                      )}
+                      {extraHeaders.length > 0 && (
+                        <p className="import-info">
+                          <strong>Unrecognised headers (ignored):</strong> {extraHeaders.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="import-note">
+                    Showing first {previewRows.length} rows from the uploaded file.
+                    Invalid and duplicate rows are stored for reference but will not be activated.
+                  </p>
+
+                  <PreviewTable rows={previewRows} />
+                </div>
+              </div>
+
+              {autoRulePreview.length > 0 && (
+                <div className="bsure-card">
+                  <div className="bsure-card-header">
+                    <h2>Rules that will be auto-created</h2>
+                  </div>
+                  <div className="bsure-card-body">
+                    <p className="import-note">
+                      After approval these rules will be created automatically in Inactive state.
+                      You can review and enable them from the shipping and product restriction pages.
+                    </p>
+                    <table className="rules-table">
+                      <thead>
+                        <tr>
+                          <th>Rule name</th>
+                          <th>Type</th>
+                          <th>Description</th>
+                          <th>Pincodes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {autoRulePreview.map((rule, i) => (
+                          <tr className="rules-row" key={i}>
+                            <td>{rule.name}</td>
+                            <td>
+                              <span className={`rules-status ${rule.type === "ShippingHide" ? "deactivated" : rule.type === "ProductRestriction" ? "deactivated" : "active"}`}>
+                                {rule.type === "ShippingHide" ? "Shipping Hide" : rule.type === "ShippingRename" ? "Shipping Rename" : "Product Block"}
+                              </span>
+                            </td>
+                            <td>{rule.description}</td>
+                            <td>{rule.pincodes.length} pincodes</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {canApprove && (
+                <div className="bsure-card">
+                  <div className="bsure-card-header">
+                    <h2>Approve import</h2>
+                  </div>
+                  <div className="bsure-card-body">
+                    <p className="import-note">
+                      Approving will activate {batch.validRows} valid pincode records and
+                      {autoRulePreview.length > 0 ? ` auto-create ${autoRulePreview.length} rules` : " update the active pincode dataset"}.
+                      Any previously approved batch will be deactivated.
+                    </p>
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="approve" />
+                      <input type="hidden" name="batchId" value={batch.id} />
+                      <button className="bsure-button" type="submit">
+                        Approve and generate rules
+                      </button>
+                    </Form>
+                  </div>
+                </div>
+              )}
+
+              {batch.status === "approved" && rulesCreated === 0 && (
+                <div className="import-banner import-banner-info">
+                  This batch is already approved. {batch.validRows} pincode records are active.
+                </div>
+              )}
+            </>
+          )}
+
+          {recentBatches.length > 0 && (
+            <div className="bsure-card">
+              <div className="bsure-card-header">
+                <h2>Recent imports</h2>
+              </div>
+              <div className="bsure-card-body">
+                <table className="rules-table">
+                  <thead>
+                    <tr>
+                      <th>Filename</th>
+                      <th>Status</th>
+                      <th>Total rows</th>
+                      <th>Valid</th>
+                      <th>Uploaded</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentBatches.map((b) => (
+                      <tr className="rules-row" key={b.id}>
+                        <td>
+                          <a className="rules-name-link" href={`/app/import?batchId=${b.id}`}>
+                            {b.filename}
+                          </a>
+                        </td>
+                        <td>
+                          <span className={`rules-status ${b.status === "approved" ? "active" : "deactivated"}`}>
+                            {b.status}
+                          </span>
+                        </td>
+                        <td>{b.totalRows}</td>
+                        <td>{b.validRows}</td>
+                        <td>{new Date(b.createdAt).toLocaleDateString("en-IN")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
   );
 }
 
-function SummaryBox({ label, value }: { label: string; value: number }) {
+function SummaryBox({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color?: "green" | "red" | "orange";
+}) {
+  const colorMap = { green: "#008060", red: "#d82c0d", orange: "#e07800" };
   return (
-    <div
-      style={{
-        border: "1px solid #d8ddd2",
-        borderRadius: "8px",
-        padding: "0.75rem",
-      }}
-    >
-      <strong style={{ display: "block", fontSize: "1.35rem" }}>{value}</strong>
+    <div className="import-summary-box">
+      <strong style={{ color: color ? colorMap[color] : "#202223" }}>{value}</strong>
       <span>{label}</span>
     </div>
   );
@@ -185,83 +303,52 @@ function PreviewTable({
   rows: NonNullable<Awaited<ReturnType<typeof getImportBatchForPreview>>>["records"];
 }) {
   if (rows.length === 0) {
-    return <p>No rows available for preview.</p>;
+    return <p className="import-note">No rows available for preview.</p>;
   }
 
+  const cols = [
+    "Row", "Status", "Errors", "State", "District", "Pincode",
+    "Location name", "Area group", "Delivery", "Same day",
+    "Next day", "Product avail.", "Remarks", "Charges",
+    "Upd. same day", "Upd. next day",
+  ];
+
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ borderCollapse: "collapse", minWidth: "90rem" }}>
+    <div className="import-table-scroll">
+      <table className="rules-table import-preview-table">
         <thead>
           <tr>
-            {[
-              "Row",
-              "Status",
-              "Errors",
-              "State",
-              "District",
-              "Pincode",
-              "Location",
-              "Area group",
-              "Delivery",
-              "Same day",
-              "Next day",
-              "Product availability",
-              "Remarks",
-              "Charges text",
-              "Updated same day",
-              "Updated next day",
-            ].map((heading) => (
-              <th
-                key={heading}
-                style={{
-                  borderBottom: "1px solid #d8ddd2",
-                  padding: "0.5rem",
-                  textAlign: "left",
-                }}
-              >
-                {heading}
-              </th>
-            ))}
+            {cols.map((h) => <th key={h}>{h}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id}>
-              <Cell>{row.rowNumber}</Cell>
-              <Cell>{row.rowStatus}</Cell>
-              <Cell>{parseJsonList(row.rowErrorsJson).join("; ")}</Cell>
-              <Cell>{row.state}</Cell>
-              <Cell>{row.district}</Cell>
-              <Cell>{row.pincode}</Cell>
-              <Cell>{row.locationName}</Cell>
-              <Cell>{row.areaGroup}</Cell>
-              <Cell>{row.deliveryAvailability}</Cell>
-              <Cell>{row.sameDayDeliveryRule}</Cell>
-              <Cell>{row.nextDayDeliveryRule}</Cell>
-              <Cell>{row.productAvailabilityRule}</Cell>
-              <Cell>{row.remarks}</Cell>
-              <Cell>{row.chargesPricingText}</Cell>
-              <Cell>{row.updatedSameDayRule}</Cell>
-              <Cell>{row.updatedNextDayRule}</Cell>
+            <tr className="rules-row" key={row.id}>
+              <td>{row.rowNumber}</td>
+              <td>
+                <span className={`rules-status ${row.rowStatus === "valid" ? "active" : "deactivated"}`}>
+                  {row.rowStatus}
+                </span>
+              </td>
+              <td className="import-error-cell">{parseJsonList(row.rowErrorsJson).join("; ")}</td>
+              <td>{row.state}</td>
+              <td>{row.district}</td>
+              <td><code>{row.pincode}</code></td>
+              <td>{row.locationName}</td>
+              <td>{row.areaGroup}</td>
+              <td>{row.deliveryAvailability}</td>
+              <td>{row.sameDayDeliveryRule}</td>
+              <td>{row.nextDayDeliveryRule}</td>
+              <td>{row.productAvailabilityRule}</td>
+              <td>{row.remarks}</td>
+              <td>{row.chargesPricingText}</td>
+              <td>{row.updatedSameDayRule}</td>
+              <td>{row.updatedNextDayRule}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
-  );
-}
-
-function Cell({ children }: { children: React.ReactNode }) {
-  return (
-    <td
-      style={{
-        borderBottom: "1px solid #edf0e8",
-        padding: "0.5rem",
-        verticalAlign: "top",
-      }}
-    >
-      {children}
-    </td>
   );
 }
 

@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useLoaderData } from "react-router";
+import { Form, Link, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getRuleManagerData, handleRuleManagerAction } from "../services/rule-config-storage.server";
@@ -26,10 +26,10 @@ export default function ShippingMappingsPage() {
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <a className="bsure-back" href="/app">←</a>
+            <Link className="bsure-back" to="/app">←</Link>
             <h1>Shipping method mappings</h1>
           </div>
-          <a className="bsure-more" href="/app/shipping-rules">Shipping rules</a>
+          <Link className="bsure-more" to="/app/shipping-rules">Shipping rules</Link>
         </div>
 
         <div className="bsure-flow">

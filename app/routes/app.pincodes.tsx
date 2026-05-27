@@ -17,7 +17,7 @@ export default function PincodeGroupsPage() {
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <a className="bsure-back" href="/app">←</a>
+            <Link className="bsure-back" to="/app">←</Link>
             <h1>Pincode groups</h1>
           </div>
           <Link className="bsure-more" to="/app/import">Import CSV</Link>

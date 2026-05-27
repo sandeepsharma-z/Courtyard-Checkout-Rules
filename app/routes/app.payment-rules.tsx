@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useLoaderData } from "react-router";
+import { Form, Link, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
@@ -31,10 +31,10 @@ export default function PaymentRulesPage() {
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <a className="bsure-back" href="/app">←</a>
+            <Link className="bsure-back" to="/app">←</Link>
             <h1>Update hide payment methods rule</h1>
           </div>
-          <a className="bsure-more" href="/app/payment-mappings">Manage mappings</a>
+          <Link className="bsure-more" to="/app/payment-mappings">Manage mappings</Link>
         </div>
 
         <div className="bsure-rule-shell">
@@ -73,9 +73,9 @@ export default function PaymentRulesPage() {
 
           {/* ── Actions ── */}
           <div className="bsure-bottom-bar">
-            <a className="bsure-button secondary" href="/app/payment-mappings">Manage mappings</a>
-            <a className="bsure-button secondary" href="/app/pincodes">View pincodes</a>
-            <a className="bsure-button" href="/app/publish">Publish config</a>
+            <Link className="bsure-button secondary" to="/app/payment-mappings">Manage mappings</Link>
+            <Link className="bsure-button secondary" to="/app/pincodes">View pincodes</Link>
+            <Link className="bsure-button" to="/app/publish">Publish config</Link>
           </div>
 
           {/* ── Existing rules ── */}

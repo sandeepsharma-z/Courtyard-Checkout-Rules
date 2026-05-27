@@ -82,15 +82,7 @@ export default function ProductRestrictionsPage() {
           {/* ── RULE FORM ── */}
           <WhenThenBlock areaGroups={pincodeOptions.areaGroups} deliveryAvailabilityValues={pincodeOptions.deliveryAvailabilityValues} pincodeOptions={pincodeOptions.pincodes} />
 
-          {/* ── If app fails ── */}
-          <div className="bsure-lastly" style={{ marginTop: "12px" }}>
-            <p>If the app fails to determine the time/date or customer location...</p>
-            <div className="bsure-if-radio"><input defaultChecked name="fallback" type="radio" value="nothing" /><span>Do nothing</span></div>
-            <div className="bsure-if-radio"><input name="fallback" type="radio" value="action" /><span>Do this action</span></div>
-          </div>
-
-          {/* ── Actions ── */}
-          <div className="bsure-bottom-bar">
+          <div className="bsure-bottom-bar" style={{ marginTop: "12px" }}>
             <Link className="bsure-button secondary" to="/app/pincodes">View imported pincodes</Link>
             <Link className="bsure-button" to="/app/publish">Publish config</Link>
           </div>
@@ -114,132 +106,157 @@ export default function ProductRestrictionsPage() {
 }
 
 function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions }: { areaGroups: string[]; deliveryAvailabilityValues: string[]; pincodeOptions: PincodeOption[] }) {
-  const [subCondIds, setSubCondIds] = useState<number[]>([]);
-  const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
+  const [blockIds, setBlockIds] = useState<number[]>([0]);
+  const nextId = useRef(1);
+
+  const addBlock = () => { setBlockIds((p) => [...p, nextId.current++]); };
+  const removeBlock = (id: number) => setBlockIds((p) => p.filter((x) => x !== id));
+
   return (
     <Form method="post">
-      <input name="intent" type="hidden" value="productRestriction:create" />
+      <input name="blockCount" type="hidden" value={blockIds.length} />
+      <input name="intent" type="hidden" value="productRestriction:createMulti" />
 
-      {/* When card */}
-      <div className="bsure-when-card">
-        <div className="bsure-when-header">
-          <div>
-            <div className="bsure-when-title">When...</div>
-            <div className="bsure-when-sub">Select the conditions here which will trigger the execution</div>
-          </div>
-          <button className="bsure-when-close" title="Close" type="button">x</button>
-        </div>
-
-        {/* Zip code condition */}
-        <div className="bsure-cond-row">
-          <ConditionFieldSelect defaultValue="postalCode" />
-          <ConditionOperatorSelect defaultValue="any" />
-          <button className="bsure-cond-del" disabled type="button">Delete</button>
-        </div>
-        <PincodeChips options={pincodeOptions} />
-
-        <div className="bsure-mini-or">And</div>
-
-        {/* Product tags condition */}
-        <div className="bsure-cond-row">
-          <ConditionFieldSelect defaultValue="productTags" />
-          <ConditionOperatorSelect defaultValue="any" />
-          <button className="bsure-cond-del" disabled type="button">Delete</button>
-        </div>
-        <div style={{ marginBottom: "8px" }}>
-          <input className="bsure-input" name="productTags" placeholder="Comma-separated product tags (admin-configured)" style={{ width: "100%" }} />
-          <span className="bsure-help">Tags must come from admin configuration, not hardcoded.</span>
-        </div>
-
-        <div className="bsure-mini-or">And</div>
-
-        {/* Area / delivery condition */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-          <select className="bsure-select" name="areaGroups">
-            <option value="">Any area group</option>
-            {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
-          </select>
-          <select className="bsure-select" name="deliveryAvailabilityText">
-            <option value="">Any delivery text</option>
-            {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </div>
-
-        {subCondIds.map((id) => (
-          <div key={id}>
-            <div className="bsure-mini-or">And</div>
-            <div className="bsure-cond-row">
-              <ConditionFieldSelect defaultValue="postalCode" />
-              <ConditionOperatorSelect defaultValue="any" />
-              <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
-              <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
-            </div>
-          </div>
-        ))}
-        <div className="bsure-condition-actions">
-          <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
-          <span>Or</span>
-          <button className="bsure-add-link" onClick={() => setExtraAreaIds((p) => [...p, Date.now()])} type="button">+ Add another condition</button>
-        </div>
-      </div>
-
-      {extraAreaIds.map((id, idx) => (
+      {blockIds.map((id, idx) => (
         <div key={id}>
-          <div className="bsure-or-divider">Or</div>
-          <ExtraAreaBlock
+          {idx > 0 && <div className="bsure-or-divider">Or</div>}
+
+          <WhenArea
             areaGroups={areaGroups}
-            areaNum={idx + 2}
+            blockIdx={idx}
             deliveryAvailabilityValues={deliveryAvailabilityValues}
-            onRemove={() => setExtraAreaIds((p) => p.filter((x) => x !== id))}
+            onRemove={blockIds.length > 1 ? () => removeBlock(id) : undefined}
             pincodeOptions={pincodeOptions}
           />
+
+          <div className="bsure-connector-badge">Then</div>
+
+          <ThenArea blockIdx={idx} />
         </div>
       ))}
 
-      {/* Then block */}
-      <div style={{ marginTop: "12px", padding: "14px", background: "#fff", border: "1px solid #d4d4d4", borderRadius: "8px" }}>
-        <div className="bsure-then-label">Then block checkout and show an error message...</div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", margin: "10px 0 8px" }}>
-          <F label="Target">
-            <input className="bsure-input" defaultValue="Shipping zip code" readOnly />
-            <span className="bsure-help">Where the error message will be displayed at checkout.</span>
-          </F>
-        </div>
-
-        <F label="Error message">
-          <input className="bsure-input" name="validationMessage" placeholder="Product not available at your location (Connect with Customer Support)" style={{ width: "100%" }} />
-          <span className="bsure-help">Shown to customer at checkout when conditions match.</span>
-        </F>
-        <div style={{ marginTop: "6px" }}>
-          <a className="bsure-add-link" href="#add-translation">+ Add translation</a>
-        </div>
+      <div className="bsure-add-block-row">
+        <button className="bsure-add-link" onClick={addBlock} type="button">+ Add another condition</button>
       </div>
 
-      {/* Rule meta */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
-        <F label="Rule name"><input className="bsure-input" name="name" placeholder="Validation rule label" /></F>
-        <F label="Priority">
-          <input className="bsure-input" defaultValue="100" name="priority" type="number" />
-          <span className="bsure-help">Lower numbers evaluate first.</span>
-        </F>
+      <div className="bsure-connector-badge lastly">Lastly</div>
+      <div className="bsure-lastly-card">
+        <p className="bsure-help">If the app fails or experiences a problem...</p>
+        <div className="bsure-if-radio"><input defaultChecked name="fallback" type="radio" value="nothing" /><span>Allow customer to complete checkout</span></div>
+        <div className="bsure-if-radio"><input name="fallback" type="radio" value="block" /><span>Block customer from completing checkout</span></div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
+        <F label="Rule group name"><input className="bsure-input" name="name" placeholder="Label for this group of rules" /></F>
+        <F label="Priority"><input className="bsure-input" defaultValue="100" name="priority" type="number" /></F>
       </div>
       <div className="bsure-radio" style={{ margin: "10px 0" }}>
-        <input defaultChecked name="enabled" type="checkbox" />
-        <span><strong>Enabled</strong> - <span className="bsure-help">Include in next published config snapshot</span></span>
+        <input defaultChecked id="pr-enabled" name="enabled" type="checkbox" />
+        <label htmlFor="pr-enabled"><strong>Enabled</strong> <span className="bsure-help">Include in next published config</span></label>
       </div>
       <F label="Notes" style={{ marginTop: "8px" }}>
         <textarea className="bsure-textarea" name="notes" placeholder="Internal note" rows={2} />
       </F>
       <div className="bsure-actions" style={{ marginTop: "10px" }}>
-        <button className="bsure-button" type="submit">Save validation rule</button>
+        <button className="bsure-button" type="submit">Save rules</button>
         <button className="bsure-button secondary" type="reset">Cancel</button>
+      </div>
+      <div style={{ marginTop: "12px", textAlign: "center" }}>
+        <a className="bsure-add-link" href="https://bsure.app/help" rel="noreferrer" target="_blank">Need help?</a>
       </div>
     </Form>
   );
 }
 
-function PincodeChips({ options }: { options: PincodeOption[] }) {
+function WhenArea({ areaGroups, blockIdx, deliveryAvailabilityValues, onRemove, pincodeOptions }: { areaGroups: string[]; blockIdx: number; deliveryAvailabilityValues: string[]; onRemove?: () => void; pincodeOptions: PincodeOption[] }) {
+  const [subCondIds, setSubCondIds] = useState<number[]>([]);
+  return (
+    <div className="bsure-when-card">
+      <div className="bsure-when-header">
+        <div>
+          <div className="bsure-when-title">When...</div>
+          <div className="bsure-when-sub">Select conditions that trigger this rule</div>
+        </div>
+        {onRemove && <button className="bsure-when-close" onClick={onRemove} title="Remove" type="button">×</button>}
+      </div>
+
+      <div className="bsure-cond-row">
+        <ConditionFieldSelect defaultValue="postalCode" />
+        <ConditionOperatorSelect defaultValue="any" />
+        <button className="bsure-cond-del" disabled type="button">Delete</button>
+      </div>
+      <PincodeChips fieldName={`pincodes_${blockIdx}`} options={pincodeOptions} />
+
+      <div className="bsure-mini-or">And</div>
+
+      <div className="bsure-cond-row">
+        <ConditionFieldSelect defaultValue="productTags" />
+        <ConditionOperatorSelect defaultValue="any" />
+        <button className="bsure-cond-del" disabled type="button">Delete</button>
+      </div>
+      <div style={{ marginBottom: "8px" }}>
+        <input className="bsure-input" name={`productTags_${blockIdx}`} placeholder="Comma-separated product tags" style={{ width: "100%" }} />
+        <span className="bsure-help">Tags must come from admin configuration, not hardcoded.</span>
+      </div>
+
+      <div className="bsure-mini-or">And</div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+        <select className="bsure-select" name={`areaGroups_${blockIdx}`}>
+          <option value="">Any area group</option>
+          {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
+        </select>
+        <select className="bsure-select" name={`deliveryAvailabilityText_${blockIdx}`}>
+          <option value="">Any delivery text</option>
+          {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
+        </select>
+      </div>
+
+      {subCondIds.map((id) => (
+        <div key={id}>
+          <div className="bsure-mini-or">And</div>
+          <div className="bsure-cond-row">
+            <ConditionFieldSelect defaultValue="postalCode" />
+            <ConditionOperatorSelect defaultValue="any" />
+            <input className="bsure-input" name={`subCondValue_${blockIdx}`} placeholder="Enter value…" style={{ flex: 1 }} />
+            <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+          </div>
+        </div>
+      ))}
+      <div className="bsure-condition-actions">
+        <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
+      </div>
+    </div>
+  );
+}
+
+function ThenArea({ blockIdx }: { blockIdx: number }) {
+  return (
+    <div className="bsure-then-action-card">
+      <div className="bsure-then-label">Then block checkout and show an error message...</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", margin: "10px 0 8px" }}>
+        <F label="Target">
+          <input className="bsure-input" defaultValue="Shipping zip code / postal code" readOnly />
+          <span className="bsure-help">Where the error is displayed at checkout.</span>
+        </F>
+      </div>
+      <F label="Error message">
+        <input
+          className="bsure-input"
+          name={`validationMessage_${blockIdx}`}
+          placeholder="e.g. Product not available at your location"
+          style={{ width: "100%" }}
+        />
+        <span className="bsure-help">Shown to customer when conditions match.</span>
+      </F>
+      <div style={{ marginTop: "6px" }}>
+        <button className="bsure-add-link" type="button">+ Add translation</button>
+      </div>
+    </div>
+  );
+}
+
+function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string; options: PincodeOption[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -312,7 +329,7 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
       />
 
       {selected.map((pincode) => (
-        <input key={pincode} name="pincodes" type="hidden" value={pincode} />
+        <input key={pincode} name={fieldName} type="hidden" value={pincode} />
       ))}
 
       <label className="bsure-tag-box">
@@ -376,52 +393,6 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
             </button>
           )}
         </span>
-      </div>
-    </div>
-  );
-}
-
-function ExtraAreaBlock({ areaGroups, areaNum, deliveryAvailabilityValues, onRemove, pincodeOptions }: { areaGroups: string[]; areaNum: number; deliveryAvailabilityValues: string[]; onRemove: () => void; pincodeOptions: PincodeOption[] }) {
-  const [subCondIds, setSubCondIds] = useState<number[]>([]);
-  return (
-    <div className="bsure-when-card">
-      <div className="bsure-when-header">
-        <div>
-          <div className="bsure-when-title">Area {areaNum} — Or</div>
-          <div className="bsure-when-sub">Match any of these conditions instead</div>
-        </div>
-        <button className="bsure-when-close" onClick={onRemove} title="Remove area" type="button">×</button>
-      </div>
-      <div className="bsure-cond-row">
-        <ConditionFieldSelect defaultValue="postalCode" />
-        <ConditionOperatorSelect defaultValue="any" />
-        <button className="bsure-cond-del" disabled type="button">Delete</button>
-      </div>
-      <PincodeChips options={pincodeOptions} />
-      <div className="bsure-mini-or">And</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-        <select className="bsure-select" name="areaGroups">
-          <option value="">Any area group</option>
-          {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
-        </select>
-        <select className="bsure-select" name="deliveryAvailabilityText">
-          <option value="">Any delivery text</option>
-          {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </div>
-      {subCondIds.map((id) => (
-        <div key={id}>
-          <div className="bsure-mini-or">And</div>
-          <div className="bsure-cond-row">
-            <ConditionFieldSelect defaultValue="postalCode" />
-            <ConditionOperatorSelect defaultValue="any" />
-            <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
-            <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
-          </div>
-        </div>
-      ))}
-      <div className="bsure-condition-actions">
-        <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
       </div>
     </div>
   );

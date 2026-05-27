@@ -742,6 +742,47 @@ body {
   font-size: 12px;
 }
 
+.bsure-connector-badge {
+  background: #e8f4e8;
+  border: 1px solid #b5d6b5;
+  border-radius: 20px;
+  color: #176337;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  margin: 10px auto;
+  padding: 4px 16px;
+  text-align: center;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.bsure-connector-badge.lastly {
+  background: #fff3e0;
+  border-color: #f5a623;
+  color: #8a5500;
+}
+
+.bsure-then-action-card {
+  background: #fff;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.bsure-lastly-card {
+  background: #fff;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+
+.bsure-add-block-row {
+  margin: 10px 0;
+  text-align: center;
+}
+
 .bsure-rule-list {
   display: grid;
   gap: 12px;

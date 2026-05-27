@@ -93,6 +93,32 @@ export async function handleRuleManagerAction(formData: FormData) {
           notes: getString(formData, "notes"),
         },
       });
+    case "productRestriction:createMulti": {
+      const blockCount = Math.min(Number(getString(formData, "blockCount")) || 1, 20);
+      const baseName = getString(formData, "name");
+      const basePriority = getPriority(formData);
+      const baseEnabled = formData.get("enabled") === "on";
+      const baseNotes = getString(formData, "notes");
+      const creates = Array.from({ length: blockCount }, (_, i) => {
+        const pincodes = listJson(formData, `pincodes_${i}`);
+        const validationMessage = getString(formData, `validationMessage_${i}`);
+        if (pincodes === "[]" && !validationMessage) return null;
+        return prisma.productRestrictionRule.create({
+          data: {
+            name: getString(formData, `name_${i}`) || baseName || `Rule ${i + 1}`,
+            enabled: baseEnabled,
+            priority: basePriority + i,
+            productTagsJson: listJson(formData, `productTags_${i}`),
+            pincodesJson: pincodes,
+            areaGroupsJson: listJson(formData, `areaGroups_${i}`),
+            deliveryAvailabilityText: getString(formData, `deliveryAvailabilityText_${i}`),
+            validationMessage,
+            notes: baseNotes,
+          },
+        });
+      }).filter(Boolean);
+      return Promise.all(creates);
+    }
     case "shippingMapping:create":
       return prisma.shippingMethodMapping.create({
         data: methodMappingData(formData),

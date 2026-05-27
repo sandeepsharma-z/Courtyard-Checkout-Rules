@@ -8,7 +8,22 @@
     "build": "shopify app function build",
     "preview": "shopify app function run",
     "test": "vitest run",
-    "typegen": "shopify app function typegen"
+    "typegen": "echo \"No typegen needed for JavaScript Shopify Function\""
+  },
+  "codegen": {
+    "schema": "schema.graphql",
+    "documents": "src/*.graphql",
+    "generates": {
+      "./generated/api.ts": {
+        "plugins": [
+          "typescript",
+          "typescript-operations"
+        ]
+      }
+    },
+    "config": {
+      "omitOperationSuffix": true
+    }
   },
   "dependencies": {
     "@shopify/shopify_function": "^2.0.1"

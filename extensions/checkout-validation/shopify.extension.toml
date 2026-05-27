@@ -8,12 +8,11 @@ type = "function"
 description = "Blocks checkout for pincodes that have product restriction rules configured in Courtyard Checkout Rules."
 
   [[extensions.targeting]]
-  target = "purchase.cart-checkout-validation.run"
+  target = "cart.validations.generate.run"
   input_query = "src/run.graphql"
   export = "run"
 
   [extensions.build]
-  command = "npm run build"
   path = "dist/function.wasm"
 
   [extensions.ui.paths]

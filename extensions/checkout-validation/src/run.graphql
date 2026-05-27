@@ -1,17 +1,8 @@
-query RunInput {
+query CartValidationsGenerateRunInput {
   cart {
     deliveryGroups {
       deliveryAddress {
         zip
-      }
-    }
-    lines {
-      merchandise {
-        ... on ProductVariant {
-          product {
-            tags
-          }
-        }
       }
     }
   }

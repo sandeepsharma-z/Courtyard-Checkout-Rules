@@ -1,6 +1,6 @@
 // @ts-check
 
-const NO_ERRORS = { errors: [] };
+const NO_OPERATIONS = { operations: [] };
 const PUBLISHED_CONFIG_MAX_CHARS = 100000;
 const SUPPORTED_SCHEMA_VERSION = 2;
 const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
@@ -9,13 +9,13 @@ const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
  * Blocks checkout when the customer's pincode matches a product restriction rule.
  *
  * @param {unknown} input
- * @returns {{ errors: Array<{ localizedMessage: string, target: string }> }}
+ * @returns {{ operations: Array<{ validationAdd: { errors: Array<{ message: string, target: string }> } }> }}
  */
 export function run(input) {
   const config = parsePublishedConfig(input);
 
   if (!config) {
-    return NO_ERRORS;
+    return NO_OPERATIONS;
   }
 
   const restrictions = Array.isArray(config.rules?.productRestrictions)
@@ -23,7 +23,7 @@ export function run(input) {
     : [];
 
   if (restrictions.length === 0) {
-    return NO_ERRORS;
+    return NO_OPERATIONS;
   }
 
   const deliveryGroups = Array.isArray(input?.cart?.deliveryGroups)
@@ -44,19 +44,20 @@ export function run(input) {
         pincodeMatchesRule(rule, pincode, pincodeRecord) &&
         productTagsMatchRule(rule, cartTags)
       ) {
-        const message =
-          trim(rule.validationMessage) ||
-          "This product cannot be delivered to your pincode.";
-        errors.push({ localizedMessage: message, target: "cart" });
+        const message = trim(rule.validationMessage);
+        if (!message) continue;
+        errors.push({ message, target: "cart" });
         break;
       }
     }
   }
 
-  return errors.length > 0 ? { errors } : NO_ERRORS;
+  return errors.length > 0
+    ? { operations: [{ validationAdd: { errors } }] }
+    : NO_OPERATIONS;
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 function parsePublishedConfig(input) {
   const value = input?.shop?.metafield?.value;
@@ -133,9 +134,8 @@ function pincodeMatchesRule(rule, pincode, pincodeRecord) {
 
 function productTagsMatchRule(rule, cartTags) {
   const ruleTags = Array.isArray(rule.productTags) ? rule.productTags : [];
-  // No tags on rule = applies to all products
+  // Configured tag rules require product-tag input support in a later phase.
   if (ruleTags.length === 0) return true;
-  // At least one cart product must carry a matching tag
   return ruleTags.map(trim).some((tag) => cartTags.has(tag));
 }
 

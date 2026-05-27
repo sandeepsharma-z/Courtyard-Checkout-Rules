@@ -1,0 +1,21 @@
+api_version = "2025-10"
+uid = "a4b5c6d7-e8f9-0a1b-2c3d-4e5f607182930a1b2c3d"
+
+[[extensions]]
+name = "Courtyard Checkout Validation"
+handle = "courtyard-checkout-validation"
+type = "function"
+description = "Blocks checkout for pincodes that have product restriction rules configured in Courtyard Checkout Rules."
+
+  [[extensions.targeting]]
+  target = "purchase.cart-checkout-validation.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = "npm run build"
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"

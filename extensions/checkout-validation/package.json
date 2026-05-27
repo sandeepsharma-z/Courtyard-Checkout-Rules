@@ -1,0 +1,19 @@
+{
+  "name": "courtyard-checkout-validation",
+  "version": "0.0.1",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "shopify app function build",
+    "preview": "shopify app function run",
+    "test": "vitest run",
+    "typegen": "shopify app function typegen"
+  },
+  "dependencies": {
+    "@shopify/shopify_function": "^2.0.1"
+  },
+  "devDependencies": {
+    "vitest": "^0.29.8"
+  }
+}

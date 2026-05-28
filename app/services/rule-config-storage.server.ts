@@ -25,6 +25,17 @@ const getListValues = (formData: FormData, key: string) =>
     .map((value) => String(value ?? "").trim())
     .filter(Boolean);
 
+function assertProductRestrictionCanBeEnabled(input: {
+  enabled: boolean;
+  validationMessage: string;
+}) {
+  if (input.enabled && !input.validationMessage) {
+    throw new Error(
+      "Product validation rules need an error message before they can be enabled.",
+    );
+  }
+}
+
 export async function getRuleManagerData() {
   const [
     productRestrictionRules,
@@ -87,6 +98,10 @@ export async function handleRuleManagerAction(formData: FormData) {
 
   switch (intent) {
     case "productRestriction:create":
+      assertProductRestrictionCanBeEnabled({
+        enabled: formData.get("enabled") === "on",
+        validationMessage: getString(formData, "validationMessage"),
+      });
       return prisma.productRestrictionRule.create({
         data: {
           name: getString(formData, "name"),
@@ -116,6 +131,10 @@ export async function handleRuleManagerAction(formData: FormData) {
         const pincodes = listJson(formData, `pincodes_${i}`);
         const validationMessage = getString(formData, `validationMessage_${i}`);
         if (pincodes === "[]" && !validationMessage) return null;
+        assertProductRestrictionCanBeEnabled({
+          enabled: baseEnabled,
+          validationMessage,
+        });
         return prisma.productRestrictionRule.create({
           data: {
             name:
@@ -265,6 +284,12 @@ async function toggleRule(kind: string, id: string) {
       const item = await prisma.productRestrictionRule.findUnique({
         where: { id },
       });
+      if (item && !item.enabled) {
+        assertProductRestrictionCanBeEnabled({
+          enabled: true,
+          validationMessage: item.validationMessage,
+        });
+      }
       return item
         ? prisma.productRestrictionRule.update({
             where: { id },
@@ -340,6 +365,10 @@ async function toggleRule(kind: string, id: string) {
 async function updateRule(kind: string, id: string, formData: FormData) {
   switch (kind) {
     case "productRestriction":
+      assertProductRestrictionCanBeEnabled({
+        enabled: formData.get("enabled") === "on",
+        validationMessage: getString(formData, "validationMessage"),
+      });
       return prisma.productRestrictionRule.update({
         where: { id },
         data: {

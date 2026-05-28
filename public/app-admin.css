@@ -1531,6 +1531,12 @@ body {
   color: #1a3660;
 }
 
+.import-banner-warning {
+  background: #fff8e5;
+  border: 1px solid #eec200;
+  color: #5f4200;
+}
+
 .import-upload-row {
   align-items: flex-end;
   display: flex;

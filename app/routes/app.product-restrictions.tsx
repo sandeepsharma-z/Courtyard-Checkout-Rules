@@ -4,7 +4,13 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, Link, redirect, useLoaderData } from "react-router";
+import {
+  Form,
+  Link,
+  redirect,
+  useActionData,
+  useLoaderData,
+} from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
@@ -47,12 +53,26 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   await authenticate.admin(request);
-  await handleRuleManagerAction(await request.formData());
+  try {
+    await handleRuleManagerAction(await request.formData());
+  } catch (error) {
+    return {
+      status: "error",
+      message:
+        error instanceof Error
+          ? error.message
+          : "Product validation rule could not be saved.",
+    };
+  }
   return redirect("/app/product-restrictions");
 };
 
 export default function ProductRestrictionsPage() {
   const { pincodeOptions, rules } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
+  const enabledRulesWithoutMessage = rules.filter(
+    (rule) => rule.enabled && !rule.validationMessage.trim(),
+  );
 
   return (
     <div className="bsure-page">
@@ -70,6 +90,20 @@ export default function ProductRestrictionsPage() {
         </div>
 
         <div className="bsure-rule-shell">
+          {actionData?.status === "error" && (
+            <div className="import-banner import-banner-warning">
+              {actionData.message}
+            </div>
+          )}
+          {enabledRulesWithoutMessage.length > 0 && (
+            <div className="import-banner import-banner-warning">
+              {enabledRulesWithoutMessage.length} active product validation rule
+              {enabledRulesWithoutMessage.length === 1 ? "" : "s"} will not
+              block checkout until an error message is saved and config is
+              published again.
+            </div>
+          )}
+
           {/* ── Name ── */}
           <section className="bsure-card" style={{ marginBottom: "12px" }}>
             <F label="Name">
@@ -491,6 +525,7 @@ function ThenArea({ blockIdx }: { blockIdx: number }) {
           className="bsure-input"
           name={`validationMessage_${blockIdx}`}
           placeholder="e.g. Product not available at your location"
+          required
           style={{ width: "100%" }}
         />
         <span className="bsure-help">
@@ -856,7 +891,11 @@ function RuleItem({ item }: { item: ProductRestrictionRule }) {
               className="bsure-input"
               defaultValue={item.validationMessage}
               name="validationMessage"
+              required={item.enabled}
             />
+            <span className="bsure-help">
+              Required before an active validation rule can block checkout.
+            </span>
           </F>
           <F label="Notes" style={{ marginTop: "10px" }}>
             <textarea

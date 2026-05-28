@@ -3,6 +3,9 @@ on:
   issue_comment:
     types: [created]
   workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
 jobs:
   remove-labels-on-activity:
     runs-on: ubuntu-latest

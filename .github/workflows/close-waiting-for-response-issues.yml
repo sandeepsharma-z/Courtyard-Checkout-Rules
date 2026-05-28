@@ -3,6 +3,9 @@ on:
   schedule:
     - cron: "30 1 * * *"
   workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
 jobs:
   check-need-info:
     runs-on: ubuntu-latest

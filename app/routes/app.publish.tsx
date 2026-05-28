@@ -14,6 +14,8 @@ import {
   getPublishHistorySnapshot,
 } from "../services/published-config.server";
 import {
+  enableCheckoutValidation,
+  getCheckoutValidationStatus,
   getShopIdentity,
   publishConfigMetafield,
 } from "../services/shopify-config.server";
@@ -30,16 +32,27 @@ const formatBytes = (bytes: number) =>
   }).format(bytes);
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
 
-  const [snapshot, history] = await Promise.all([
+  const [snapshot, history, validationStatus] = await Promise.all([
     buildPublishedConfigSnapshot(),
     getPublishHistory(),
+    getCheckoutValidationStatus(admin).catch((error) => ({
+      title: "Courtyard Checkout Validation",
+      handle: "courtyard-checkout-validation",
+      validation: null,
+      isActive: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to read checkout validation status.",
+    })),
   ]);
 
   return {
     snapshot,
     history,
+    validationStatus,
   };
 };
 
@@ -65,6 +78,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         status: "success",
         message:
           "Publish history entry was deleted locally. Shopify metafield configuration was not changed.",
+      } satisfies ActionResult;
+    }
+
+    if (intent === "enableCheckoutValidation") {
+      const result = await enableCheckoutValidation(admin);
+
+      return {
+        status: "success",
+        message: `Checkout validation was ${result.action} and enabled for this Shopify app installation.`,
       } satisfies ActionResult;
     }
 
@@ -171,7 +193,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PublishPage() {
-  const { snapshot, history } = useLoaderData<typeof loader>();
+  const { snapshot, history, validationStatus } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionResult | undefined;
 
   return (
@@ -193,6 +216,59 @@ export default function PublishPage() {
               </strong>{" "}
               {actionData.message}
             </p>
+          )}
+        </div>
+      </s-section>
+
+      <s-section heading="Checkout validation activation">
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <p>
+            Product validation rules only block checkout after the checkout
+            validation Function is deployed and enabled for this store. Saving a
+            rule and publishing config alone will not activate checkout
+            blocking.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gap: "0.75rem",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            }}
+          >
+            <SummaryBox
+              label="Status"
+              value={validationStatus.isActive ? "Active" : "Inactive"}
+            />
+            <SummaryBox
+              label="Function"
+              value={validationStatus.validation?.shopifyFunction.title ?? "n/a"}
+            />
+            <SummaryBox
+              label="Block on failure"
+              value={
+                validationStatus.validation?.blockOnFailure ? "Enabled" : "No"
+              }
+            />
+          </div>
+          {"error" in validationStatus && validationStatus.error && (
+            <p>
+              <strong>Status error:</strong> {validationStatus.error}
+            </p>
+          )}
+          {validationStatus.validation && (
+            <p>
+              Validation ID: <strong>{validationStatus.validation.id}</strong>
+            </p>
+          )}
+          {!validationStatus.isActive && (
+            <Form method="post">
+              <input
+                type="hidden"
+                name="intent"
+                value="enableCheckoutValidation"
+              />
+              <button type="submit">Enable checkout validation</button>
+            </Form>
           )}
         </div>
       </s-section>

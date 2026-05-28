@@ -8,6 +8,20 @@ import {
 
 const parseList = (value: string) => JSON.parse(value) as string[];
 
+const parsePincodeList = (value: string) => {
+  const parsed = parseList(value);
+  return Array.from(
+    new Set(
+      parsed.flatMap((item) => {
+        const text = String(item ?? "").trim();
+        if (!text) return [];
+        const matches = text.match(/[1-9]\d{5}/g);
+        return matches?.length ? matches : [text];
+      }),
+    ),
+  );
+};
+
 const byteSize = (value: string) => Buffer.byteLength(value, "utf8");
 
 export function getSingleMetafieldMaxBytes() {
@@ -116,7 +130,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         name: rule.name,
         priority: rule.priority,
         productTags: parseList(rule.productTagsJson),
-        pincodes: parseList(rule.pincodesJson),
+        pincodes: parsePincodeList(rule.pincodesJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         validationMessage: rule.validationMessage,
@@ -145,7 +159,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         shippingMethodMappingId: rule.shippingMethodMappingId,
         cutoffRuleSettingId: rule.cutoffRuleSettingId,
         productTags: parseList(rule.productTagsJson),
-        pincodes: parseList(rule.pincodesJson),
+        pincodes: parsePincodeList(rule.pincodesJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         notes: rule.notes,
@@ -158,7 +172,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         cutoffRuleSettingId: rule.cutoffRuleSettingId,
         newLabel: rule.newLabel,
         productTags: parseList(rule.productTagsJson),
-        pincodes: parseList(rule.pincodesJson),
+        pincodes: parsePincodeList(rule.pincodesJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         notes: rule.notes,
@@ -171,7 +185,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         cutoffRuleSettingId: rule.cutoffRuleSettingId,
         selectedShippingContains: rule.selectedShippingContains,
         productTags: parseList(rule.productTagsJson),
-        pincodes: parseList(rule.pincodesJson),
+        pincodes: parsePincodeList(rule.pincodesJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         notes: rule.notes,

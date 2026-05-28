@@ -48,6 +48,31 @@ describe("delivery customization no-op", () => {
     });
   });
 
+  it("matches product restriction pincodes from pasted or concatenated pincode text", () => {
+    const config = validConfig({
+      productRestrictions: [
+        {
+          id: "product-restriction",
+          name: "Product restriction",
+          priority: 1,
+          productTags: ["TAG_FROM_ADMIN_CONFIG"],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG122506"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
+          notes: "",
+        },
+      ],
+      shippingHideRules: [],
+    });
+
+    expect(run(inputWithConfig(config, "122506"))).toEqual({
+      operations: [
+        { hide: { deliveryOptionHandle: "standard-shipping" } },
+      ],
+    });
+  });
+
   it("still applies product restrictions when a shipping rule has unsupported conditions", () => {
     const config = validConfig({
       productRestrictions: [
@@ -236,13 +261,13 @@ describe("delivery customization no-op", () => {
   });
 });
 
-function inputWithConfig(config) {
+function inputWithConfig(config, zip = "PINCODE_FROM_ADMIN_CONFIG") {
   return {
     cart: {
       deliveryGroups: [
         {
           deliveryAddress: {
-            zip: "PINCODE_FROM_ADMIN_CONFIG",
+            zip,
           },
           deliveryOptions: [
             {

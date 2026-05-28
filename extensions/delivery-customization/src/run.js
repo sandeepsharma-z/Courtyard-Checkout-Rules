@@ -232,11 +232,24 @@ function mappingMatches(mapping, option) {
 }
 
 function pincodeMatches(rule, pincode) {
+  const rulePincodes = expandPincodeValues(rule.pincodes);
   return (
-    !Array.isArray(rule.pincodes) ||
-    rule.pincodes.length === 0 ||
-    rule.pincodes.map(normalize).includes(pincode)
+    rulePincodes.length === 0 ||
+    rulePincodes.includes(pincode)
   );
+}
+
+function expandPincodeValues(value) {
+  const rawValues = Array.isArray(value) ? value : [];
+  return [
+    ...new Set(
+      rawValues.flatMap((item) => {
+        const text = normalize(item);
+        if (!text) return [];
+        return text.match(/[1-9]\d{5}/g) ?? [];
+      }),
+    ),
+  ];
 }
 
 function areaGroupMatches(rule, pincodeRecord) {

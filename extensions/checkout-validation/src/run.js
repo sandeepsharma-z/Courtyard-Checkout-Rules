@@ -111,12 +111,12 @@ function findPincodeRecord(config, pincode) {
 }
 
 function pincodeMatchesRule(rule, pincode, pincodeRecord) {
-  const rulePincodes = Array.isArray(rule.pincodes) ? rule.pincodes : [];
+  const rulePincodes = expandPincodeValues(rule.pincodes);
   const ruleAreaGroups = Array.isArray(rule.areaGroups) ? rule.areaGroups : [];
   const ruleDeliveryText = trim(rule.deliveryAvailabilityText);
 
   // If explicit pincodes listed, must be in list
-  if (rulePincodes.length > 0 && !rulePincodes.map(trim).includes(pincode)) {
+  if (rulePincodes.length > 0 && !rulePincodes.includes(pincode)) {
     return false;
   }
 
@@ -133,6 +133,19 @@ function pincodeMatchesRule(rule, pincode, pincodeRecord) {
   }
 
   return true;
+}
+
+function expandPincodeValues(value) {
+  const rawValues = Array.isArray(value) ? value : [];
+  return [
+    ...new Set(
+      rawValues.flatMap((item) => {
+        const text = trim(item);
+        if (!text) return [];
+        return text.match(/[1-9]\d{5}/g) ?? [];
+      }),
+    ),
+  ];
 }
 
 function productTagsMatchRule(rule, cartTags) {

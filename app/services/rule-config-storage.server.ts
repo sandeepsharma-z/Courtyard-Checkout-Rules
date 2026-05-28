@@ -2,9 +2,15 @@ import prisma from "../db.server";
 
 const splitList = (value: FormDataEntryValue | null) =>
   String(value ?? "")
-    .split(",")
+    .split(/[,\r\n]+/)
     .map((item) => item.trim())
     .filter(Boolean);
+
+const splitPincodeList = (value: FormDataEntryValue | null) => {
+  const text = String(value ?? "");
+  const matches = text.match(/[1-9]\d{5}/g);
+  return matches?.length ? Array.from(new Set(matches)) : splitList(value);
+};
 
 const getString = (formData: FormData, key: string) =>
   String(formData.get(key) ?? "").trim();
@@ -15,7 +21,10 @@ const getPriority = (formData: FormData) => {
 };
 
 const listJson = (formData: FormData, key: string) => {
-  const values = formData.getAll(key).flatMap((value) => splitList(value));
+  const splitter = key.toLowerCase().includes("pincode")
+    ? splitPincodeList
+    : splitList;
+  const values = formData.getAll(key).flatMap((value) => splitter(value));
   return JSON.stringify(Array.from(new Set(values)));
 };
 

@@ -104,6 +104,36 @@ describe("checkout validation function", () => {
     });
   });
 
+  test("matches pincodes from pasted or concatenated pincode text", () => {
+    const config = {
+      ...baseConfig,
+      rules: {
+        productRestrictions: [
+          {
+            priority: "10",
+            pincodes: ["PINCODE_PLACEHOLDER122506 122507"],
+            validationMessage: "VALIDATION_MESSAGE_PLACEHOLDER",
+          },
+        ],
+      },
+    };
+
+    expect(run(inputWithConfig(config, "122506"))).toEqual({
+      operations: [
+        {
+          validationAdd: {
+            errors: [
+              {
+                message: "VALIDATION_MESSAGE_PLACEHOLDER",
+                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
   test("returns no operations when product tag input is available but does not match", () => {
     const config = {
       ...baseConfig,

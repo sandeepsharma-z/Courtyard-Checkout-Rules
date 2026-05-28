@@ -11,11 +11,29 @@ const APP_URL =
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
   "https://courtyard-checkout-rules.vercel.app";
 
+const REQUIRED_SCOPES = [
+  "read_products",
+  "read_metaobjects",
+  "write_metaobjects",
+  "read_metafields",
+  "write_metafields",
+  "write_delivery_customizations",
+  "read_validations",
+  "write_validations",
+];
+
+const configuredScopes =
+  process.env.SCOPES?.split(",")
+    .map((scope) => scope.trim())
+    .filter(Boolean) ?? [];
+
+const scopes = Array.from(new Set([...configuredScopes, ...REQUIRED_SCOPES]));
+
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",
   apiVersion: ApiVersion.October25,
-  scopes: process.env.SCOPES?.split(","),
+  scopes,
   appUrl: APP_URL,
   authPathPrefix: "/auth",
   sessionStorage: runtimeSessionStorage,

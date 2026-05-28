@@ -20,7 +20,10 @@ const listJson = (formData: FormData, key: string) => {
 };
 
 const getListValues = (formData: FormData, key: string) =>
-  formData.getAll(key).map((value) => String(value ?? "").trim()).filter(Boolean);
+  formData
+    .getAll(key)
+    .map((value) => String(value ?? "").trim())
+    .filter(Boolean);
 
 export async function getRuleManagerData() {
   const [
@@ -74,6 +77,10 @@ export async function handleRuleManagerAction(formData: FormData) {
     return toggleRule(intent.replace(":toggle", ""), id);
   }
 
+  if (intent.endsWith(":update") && id) {
+    return updateRule(intent.replace(":update", ""), id, formData);
+  }
+
   if (intent.endsWith(":delete") && id) {
     return deleteRule(intent.replace(":delete", ""), id);
   }
@@ -88,13 +95,19 @@ export async function handleRuleManagerAction(formData: FormData) {
           productTagsJson: listJson(formData, "productTags"),
           pincodesJson: listJson(formData, "pincodes"),
           areaGroupsJson: listJson(formData, "areaGroups"),
-          deliveryAvailabilityText: getString(formData, "deliveryAvailabilityText"),
+          deliveryAvailabilityText: getString(
+            formData,
+            "deliveryAvailabilityText",
+          ),
           validationMessage: getString(formData, "validationMessage"),
           notes: getString(formData, "notes"),
         },
       });
     case "productRestriction:createMulti": {
-      const blockCount = Math.min(Number(getString(formData, "blockCount")) || 1, 20);
+      const blockCount = Math.min(
+        Number(getString(formData, "blockCount")) || 1,
+        20,
+      );
       const baseName = getString(formData, "name");
       const basePriority = getPriority(formData);
       const baseEnabled = formData.get("enabled") === "on";
@@ -105,13 +118,17 @@ export async function handleRuleManagerAction(formData: FormData) {
         if (pincodes === "[]" && !validationMessage) return null;
         return prisma.productRestrictionRule.create({
           data: {
-            name: getString(formData, `name_${i}`) || baseName || `Rule ${i + 1}`,
+            name:
+              getString(formData, `name_${i}`) || baseName || `Rule ${i + 1}`,
             enabled: baseEnabled,
             priority: basePriority + i,
             productTagsJson: listJson(formData, `productTags_${i}`),
             pincodesJson: pincodes,
             areaGroupsJson: listJson(formData, `areaGroups_${i}`),
-            deliveryAvailabilityText: getString(formData, `deliveryAvailabilityText_${i}`),
+            deliveryAvailabilityText: getString(
+              formData,
+              `deliveryAvailabilityText_${i}`,
+            ),
             validationMessage,
             notes: baseNotes,
           },
@@ -139,11 +156,17 @@ export async function handleRuleManagerAction(formData: FormData) {
           priority: getPriority(formData),
           paymentMethodMappingId: getString(formData, "paymentMethodMappingId"),
           cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
-          selectedShippingContains: getString(formData, "selectedShippingContains"),
+          selectedShippingContains: getString(
+            formData,
+            "selectedShippingContains",
+          ),
           productTagsJson: listJson(formData, "productTags"),
           pincodesJson: listJson(formData, "pincodes"),
           areaGroupsJson: listJson(formData, "areaGroups"),
-          deliveryAvailabilityText: getString(formData, "deliveryAvailabilityText"),
+          deliveryAvailabilityText: getString(
+            formData,
+            "deliveryAvailabilityText",
+          ),
           notes: getString(formData, "notes"),
         },
       });
@@ -239,7 +262,9 @@ function methodMappingData(formData: FormData) {
 async function toggleRule(kind: string, id: string) {
   switch (kind) {
     case "productRestriction": {
-      const item = await prisma.productRestrictionRule.findUnique({ where: { id } });
+      const item = await prisma.productRestrictionRule.findUnique({
+        where: { id },
+      });
       return item
         ? prisma.productRestrictionRule.update({
             where: { id },
@@ -248,7 +273,9 @@ async function toggleRule(kind: string, id: string) {
         : null;
     }
     case "shippingMapping": {
-      const item = await prisma.shippingMethodMapping.findUnique({ where: { id } });
+      const item = await prisma.shippingMethodMapping.findUnique({
+        where: { id },
+      });
       return item
         ? prisma.shippingMethodMapping.update({
             where: { id },
@@ -257,7 +284,9 @@ async function toggleRule(kind: string, id: string) {
         : null;
     }
     case "paymentMapping": {
-      const item = await prisma.paymentMethodMapping.findUnique({ where: { id } });
+      const item = await prisma.paymentMethodMapping.findUnique({
+        where: { id },
+      });
       return item
         ? prisma.paymentMethodMapping.update({
             where: { id },
@@ -275,7 +304,9 @@ async function toggleRule(kind: string, id: string) {
         : null;
     }
     case "shippingRename": {
-      const item = await prisma.shippingRenameRule.findUnique({ where: { id } });
+      const item = await prisma.shippingRenameRule.findUnique({
+        where: { id },
+      });
       return item
         ? prisma.shippingRenameRule.update({
             where: { id },
@@ -303,6 +334,100 @@ async function toggleRule(kind: string, id: string) {
     }
     default:
       throw new Error("Unsupported toggle action.");
+  }
+}
+
+async function updateRule(kind: string, id: string, formData: FormData) {
+  switch (kind) {
+    case "productRestriction":
+      return prisma.productRestrictionRule.update({
+        where: { id },
+        data: {
+          name: getString(formData, "name"),
+          enabled: formData.get("enabled") === "on",
+          priority: getPriority(formData),
+          productTagsJson: listJson(formData, "productTags"),
+          pincodesJson: listJson(formData, "pincodes"),
+          areaGroupsJson: listJson(formData, "areaGroups"),
+          deliveryAvailabilityText: getString(
+            formData,
+            "deliveryAvailabilityText",
+          ),
+          validationMessage: getString(formData, "validationMessage"),
+          notes: getString(formData, "notes"),
+        },
+      });
+    case "shippingMapping":
+      return prisma.shippingMethodMapping.update({
+        where: { id },
+        data: methodMappingData(formData),
+      });
+    case "paymentMapping":
+      return prisma.paymentMethodMapping.update({
+        where: { id },
+        data: methodMappingData(formData),
+      });
+    case "shippingHide":
+      return prisma.shippingHideRule.update({
+        where: { id },
+        data: {
+          ...shippingRuleBaseData(formData),
+          shippingMethodMappingId: getString(
+            formData,
+            "shippingMethodMappingId",
+          ),
+        },
+      });
+    case "shippingRename":
+      return prisma.shippingRenameRule.update({
+        where: { id },
+        data: {
+          ...shippingRuleBaseData(formData),
+          shippingMethodMappingId: getString(
+            formData,
+            "shippingMethodMappingId",
+          ),
+          newLabel: getString(formData, "newLabel"),
+        },
+      });
+    case "paymentHide":
+      return prisma.paymentHideRule.update({
+        where: { id },
+        data: {
+          name: getString(formData, "name"),
+          enabled: formData.get("enabled") === "on",
+          priority: getPriority(formData),
+          paymentMethodMappingId: getString(formData, "paymentMethodMappingId"),
+          cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
+          selectedShippingContains: getString(
+            formData,
+            "selectedShippingContains",
+          ),
+          productTagsJson: listJson(formData, "productTags"),
+          pincodesJson: listJson(formData, "pincodes"),
+          areaGroupsJson: listJson(formData, "areaGroups"),
+          deliveryAvailabilityText: getString(
+            formData,
+            "deliveryAvailabilityText",
+          ),
+          notes: getString(formData, "notes"),
+        },
+      });
+    case "cutoff":
+      return prisma.cutoffRuleSetting.update({
+        where: { id },
+        data: {
+          name: getString(formData, "name"),
+          enabled: formData.get("enabled") === "on",
+          priority: getPriority(formData),
+          timeValue: getString(formData, "timeValue"),
+          timezone: getString(formData, "timezone"),
+          matchMode: getString(formData, "matchMode") || "before",
+          notes: getString(formData, "notes"),
+        },
+      });
+    default:
+      throw new Error("Unsupported update action.");
   }
 }
 

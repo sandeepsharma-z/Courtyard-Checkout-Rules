@@ -1,20 +1,56 @@
 import { useRef, useState } from "react";
-import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
 import { Form, Link, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
-import { getRuleManagerData, handleRuleManagerAction } from "../services/rule-config-storage.server";
+import {
+  getRuleManagerData,
+  handleRuleManagerAction,
+} from "../services/rule-config-storage.server";
 import { parseJsonList } from "../components/rule-manager-ui";
 
 type Option = { id: string; name: string };
-type PincodeOption = { id: string; pincode: string; areaGroup: string; deliveryAvailability: string; district: string; locationName: string; state: string };
-type PaymentHideRule = { id: string; name: string; enabled: boolean; priority: number; paymentMethodMappingId: string; cutoffRuleSettingId: string; selectedShippingContains: string; productTagsJson: string; pincodesJson: string; areaGroupsJson: string; deliveryAvailabilityText: string; notes: string };
+type PincodeOption = {
+  id: string;
+  pincode: string;
+  areaGroup: string;
+  deliveryAvailability: string;
+  district: string;
+  locationName: string;
+  state: string;
+};
+type PaymentHideRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  paymentMethodMappingId: string;
+  cutoffRuleSettingId: string;
+  selectedShippingContains: string;
+  productTagsJson: string;
+  pincodesJson: string;
+  areaGroupsJson: string;
+  deliveryAvailabilityText: string;
+  notes: string;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  const [ruleData, pincodeOptions] = await Promise.all([getRuleManagerData(), getActivePincodeRuleOptions()]);
-  return { rules: ruleData.paymentHideRules, mappings: ruleData.paymentMethodMappings, cutoffs: ruleData.cutoffRuleSettings, pincodeOptions };
+  const [ruleData, pincodeOptions] = await Promise.all([
+    getRuleManagerData(),
+    getActivePincodeRuleOptions(),
+  ]);
+  return {
+    rules: ruleData.paymentHideRules,
+    mappings: ruleData.paymentMethodMappings,
+    cutoffs: ruleData.cutoffRuleSettings,
+    pincodeOptions,
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -24,17 +60,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PaymentRulesPage() {
-  const { cutoffs, mappings, pincodeOptions, rules } = useLoaderData<typeof loader>();
+  const { cutoffs, mappings, pincodeOptions, rules } =
+    useLoaderData<typeof loader>();
 
   return (
     <div className="bsure-page">
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <Link className="bsure-back" to="/app">←</Link>
+            <Link className="bsure-back" to="/app">
+              ←
+            </Link>
             <h1>Update hide payment methods rule</h1>
           </div>
-          <Link className="bsure-more" to="/app/payment-mappings">Manage mappings</Link>
+          <Link className="bsure-more" to="/app/payment-mappings">
+            Manage mappings
+          </Link>
         </div>
 
         <div className="bsure-rule-shell">
@@ -42,10 +83,18 @@ export default function PaymentRulesPage() {
           <section className="bsure-card" style={{ marginBottom: "12px" }}>
             <F label="Name">
               <div className="bsure-name-row">
-                <input className="bsure-input bsure-name-input" defaultValue="All Payment Method Hide" maxLength={70} name="ruleName" readOnly />
+                <input
+                  className="bsure-input bsure-name-input"
+                  defaultValue="All Payment Method Hide"
+                  maxLength={70}
+                  name="ruleName"
+                  readOnly
+                />
                 <span className="bsure-char-count">24/70</span>
               </div>
-              <span className="bsure-help">Optional. Not shown to customers.</span>
+              <span className="bsure-help">
+                Optional. Not shown to customers.
+              </span>
             </F>
           </section>
 
@@ -53,29 +102,70 @@ export default function PaymentRulesPage() {
           <section className="bsure-card" style={{ marginBottom: "12px" }}>
             <h2>Status</h2>
             <div className="bsure-radio-stack" style={{ marginTop: "10px" }}>
-              <Sradio label="Testing" pill="testing" sub="Test this rule without affecting checkout for your customers. Write test@testing.com in the email field on the checkout to see this rule in action." />
-              <Sradio defaultChecked label="Active" pill="active" sub="Rule will be enabled on your store, this will affect checkout for all customers." />
-              <Sradio label="Deactivated" pill="disabled" sub="Disable this rule without deleting it. Deactivated rules will not affect checkout for your customers." />
+              <Sradio
+                label="Testing"
+                pill="testing"
+                sub="Test this rule without affecting checkout for your customers. Write test@testing.com in the email field on the checkout to see this rule in action."
+              />
+              <Sradio
+                defaultChecked
+                label="Active"
+                pill="active"
+                sub="Rule will be enabled on your store, this will affect checkout for all customers."
+              />
+              <Sradio
+                label="Deactivated"
+                pill="disabled"
+                sub="Disable this rule without deleting it. Deactivated rules will not affect checkout for your customers."
+              />
             </div>
           </section>
 
           <div className="bsure-connector">And</div>
 
           {/* ── HIDE RULE FORM ── */}
-          <WhenThenHide areaGroups={pincodeOptions.areaGroups} cutoffs={cutoffs} deliveryAvailabilityValues={pincodeOptions.deliveryAvailabilityValues} mappings={mappings} pincodeOptions={pincodeOptions.pincodes} />
+          <WhenThenHide
+            areaGroups={pincodeOptions.areaGroups}
+            cutoffs={cutoffs}
+            deliveryAvailabilityValues={
+              pincodeOptions.deliveryAvailabilityValues
+            }
+            mappings={mappings}
+            pincodeOptions={pincodeOptions.pincodes}
+          />
 
           {/* ── If app fails ── */}
           <div className="bsure-lastly" style={{ marginTop: "12px" }}>
-            <p>If the app fails to determine the time/date or customer location...</p>
-            <div className="bsure-if-radio"><input defaultChecked name="fallback" type="radio" value="nothing" /><span>Do nothing</span></div>
-            <div className="bsure-if-radio"><input name="fallback" type="radio" value="action" /><span>Do this action</span></div>
+            <p>
+              If the app fails to determine the time/date or customer
+              location...
+            </p>
+            <div className="bsure-if-radio">
+              <input
+                defaultChecked
+                name="fallback"
+                type="radio"
+                value="nothing"
+              />
+              <span>Do nothing</span>
+            </div>
+            <div className="bsure-if-radio">
+              <input name="fallback" type="radio" value="action" />
+              <span>Do this action</span>
+            </div>
           </div>
 
           {/* ── Actions ── */}
           <div className="bsure-bottom-bar">
-            <Link className="bsure-button secondary" to="/app/payment-mappings">Manage mappings</Link>
-            <Link className="bsure-button secondary" to="/app/pincodes">View pincodes</Link>
-            <Link className="bsure-button" to="/app/publish">Publish config</Link>
+            <Link className="bsure-button secondary" to="/app/payment-mappings">
+              Manage mappings
+            </Link>
+            <Link className="bsure-button secondary" to="/app/pincodes">
+              View pincodes
+            </Link>
+            <Link className="bsure-button" to="/app/publish">
+              Publish config
+            </Link>
           </div>
 
           {/* ── Existing rules ── */}
@@ -83,10 +173,14 @@ export default function PaymentRulesPage() {
             <section className="bsure-card" style={{ marginTop: "24px" }}>
               <div className="bsure-section-top">
                 <h2>Configured payment hide rules</h2>
-                <span className="bsure-help">{rules.length} rule{rules.length !== 1 ? "s" : ""}</span>
+                <span className="bsure-help">
+                  {rules.length} rule{rules.length !== 1 ? "s" : ""}
+                </span>
               </div>
               <div className="bsure-rule-list">
-                {rules.map((item) => <RuleItem item={item} key={item.id} mappings={mappings} />)}
+                {rules.map((item) => (
+                  <RuleItem item={item} key={item.id} mappings={mappings} />
+                ))}
               </div>
             </section>
           )}
@@ -96,7 +190,19 @@ export default function PaymentRulesPage() {
   );
 }
 
-function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mappings, pincodeOptions }: { areaGroups: string[]; cutoffs: Option[]; deliveryAvailabilityValues: string[]; mappings: Option[]; pincodeOptions: PincodeOption[] }) {
+function WhenThenHide({
+  areaGroups,
+  cutoffs,
+  deliveryAvailabilityValues,
+  mappings,
+  pincodeOptions,
+}: {
+  areaGroups: string[];
+  cutoffs: Option[];
+  deliveryAvailabilityValues: string[];
+  mappings: Option[];
+  pincodeOptions: PincodeOption[];
+}) {
   const [subCondIds, setSubCondIds] = useState<number[]>([]);
   const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
   return (
@@ -108,16 +214,26 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
         <div className="bsure-when-header">
           <div>
             <div className="bsure-when-title">When...</div>
-            <div className="bsure-when-sub">Select the conditions here which will trigger the execution</div>
+            <div className="bsure-when-sub">
+              Select the conditions here which will trigger the execution
+            </div>
           </div>
-          <button className="bsure-when-close" title="Close" type="button">×</button>
+          <button className="bsure-when-close" title="Close" type="button">
+            ×
+          </button>
         </div>
 
         {/* Zip code condition */}
         <div className="bsure-cond-row">
-          <select className="bsure-select" disabled><option>Zip code / Postal code</option></select>
-          <select className="bsure-select" disabled><option>Has any of these values</option></select>
-          <button className="bsure-cond-del" disabled type="button">🗑</button>
+          <select className="bsure-select" disabled>
+            <option>Zip code / Postal code</option>
+          </select>
+          <select className="bsure-select" disabled>
+            <option>Has any of these values</option>
+          </select>
+          <button className="bsure-cond-del" disabled type="button">
+            🗑
+          </button>
         </div>
         <PincodeChips options={pincodeOptions} />
 
@@ -125,14 +241,28 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
 
         {/* Payment method condition */}
         <div className="bsure-cond-row">
-          <select className="bsure-select" disabled><option>Payment method</option></select>
-          <select className="bsure-select" disabled><option>Matches configured mapping</option></select>
-          <button className="bsure-cond-del" disabled type="button">🗑</button>
+          <select className="bsure-select" disabled>
+            <option>Payment method</option>
+          </select>
+          <select className="bsure-select" disabled>
+            <option>Matches configured mapping</option>
+          </select>
+          <button className="bsure-cond-del" disabled type="button">
+            🗑
+          </button>
         </div>
         <div style={{ marginBottom: "8px" }}>
-          <select className="bsure-select" name="paymentMethodMappingId" style={{ width: "100%" }}>
+          <select
+            className="bsure-select"
+            name="paymentMethodMappingId"
+            style={{ width: "100%" }}
+          >
             <option value="">Select payment method mapping</option>
-            {mappings.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            {mappings.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -140,25 +270,51 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
 
         {/* Shipping method text condition */}
         <div className="bsure-cond-row">
-          <select className="bsure-select" disabled><option>Selected shipping method</option></select>
-          <select className="bsure-select" disabled><option>Contains text</option></select>
-          <button className="bsure-cond-del" disabled type="button">🗑</button>
+          <select className="bsure-select" disabled>
+            <option>Selected shipping method</option>
+          </select>
+          <select className="bsure-select" disabled>
+            <option>Contains text</option>
+          </select>
+          <button className="bsure-cond-del" disabled type="button">
+            🗑
+          </button>
         </div>
         <div style={{ marginBottom: "8px" }}>
-          <input className="bsure-input" name="selectedShippingContains" placeholder="Leave blank to match any shipping method" style={{ width: "100%" }} />
+          <input
+            className="bsure-input"
+            name="selectedShippingContains"
+            placeholder="Leave blank to match any shipping method"
+            style={{ width: "100%" }}
+          />
         </div>
 
         <div className="bsure-mini-or">And</div>
 
         {/* Area / delivery condition */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "8px",
+            marginBottom: "8px",
+          }}
+        >
           <select className="bsure-select" name="areaGroups">
             <option value="">Any area group</option>
-            {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
+            {areaGroups.map((ag) => (
+              <option key={ag} value={ag}>
+                {ag}
+              </option>
+            ))}
           </select>
           <select className="bsure-select" name="deliveryAvailabilityText">
             <option value="">Any delivery text</option>
-            {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
+            {deliveryAvailabilityValues.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -168,17 +324,49 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
             <div className="bsure-cond-row">
               <ConditionFieldSelect defaultValue="postalCode" />
               <ConditionOperatorSelect defaultValue="any" />
-              <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
-              <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+              <input
+                className="bsure-input"
+                name="subCondValue"
+                placeholder="Enter value…"
+                style={{ flex: 1 }}
+              />
+              <button
+                className="bsure-cond-del"
+                onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))}
+                type="button"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
-        <div style={{ display: "flex", gap: "12px", alignItems: "center", marginTop: "8px" }}>
-          <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+            marginTop: "8px",
+          }}
+        >
+          <button
+            className="bsure-add-link"
+            onClick={() => setSubCondIds((p) => [...p, Date.now()])}
+            type="button"
+          >
+            + Add sub-condition
+          </button>
           <span style={{ color: "#d4d4d4" }}>|</span>
-          <span className="bsure-mini-or" style={{ margin: 0 }}>Or</span>
+          <span className="bsure-mini-or" style={{ margin: 0 }}>
+            Or
+          </span>
           <span style={{ color: "#d4d4d4" }}>|</span>
-          <button className="bsure-add-link" onClick={() => setExtraAreaIds((p) => [...p, Date.now()])} type="button">+ Add another condition</button>
+          <button
+            className="bsure-add-link"
+            onClick={() => setExtraAreaIds((p) => [...p, Date.now()])}
+            type="button"
+          >
+            + Add another condition
+          </button>
         </div>
       </div>
 
@@ -196,88 +384,201 @@ function WhenThenHide({ areaGroups, cutoffs, deliveryAvailabilityValues, mapping
       ))}
 
       {/* Then block */}
-      <div style={{ marginTop: "12px", padding: "14px", background: "#fff", border: "1px solid #d4d4d4", borderRadius: "8px" }}>
+      <div
+        style={{
+          marginTop: "12px",
+          padding: "14px",
+          background: "#fff",
+          border: "1px solid #d4d4d4",
+          borderRadius: "8px",
+        }}
+      >
         <div className="bsure-then-label">Then hide payment methods...</div>
         <table className="bsure-method-table">
           <thead>
-            <tr><th>No.</th><th>Payment method mapping</th><th></th></tr>
+            <tr>
+              <th>No.</th>
+              <th>Payment method mapping</th>
+              <th></th>
+            </tr>
           </thead>
           <tbody>
             <tr>
               <td style={{ color: "#6d7175", width: "40px" }}>1</td>
               <td>
-                <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: "8px" }}>
-                  <select className="bsure-select" disabled><option>Is</option></select>
-                  <select className="bsure-select" name="paymentMethodMappingId_then">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "90px 1fr",
+                    gap: "8px",
+                  }}
+                >
+                  <select className="bsure-select" disabled>
+                    <option>Is</option>
+                  </select>
+                  <select
+                    className="bsure-select"
+                    name="paymentMethodMappingId_then"
+                  >
                     <option value="">Select mapping</option>
-                    {mappings.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    {mappings.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </td>
-              <td style={{ width: "40px" }}><button className="bsure-cond-del" disabled type="button">🗑</button></td>
+              <td style={{ width: "40px" }}>
+                <button className="bsure-cond-del" disabled type="button">
+                  🗑
+                </button>
+              </td>
             </tr>
             <tr className="bsure-method-add-row">
-              <td colSpan={3}><button className="bsure-add-link" type="button">+ Add payment method</button></td>
+              <td colSpan={3}>
+                <button className="bsure-add-link" type="button">
+                  + Add payment method
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Rule meta */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "10px" }}>
-        <F label="Rule name"><input className="bsure-input" name="name" placeholder="Payment hide rule label" /></F>
-        <F label="Priority"><input className="bsure-input" defaultValue="100" name="priority" type="number" /></F>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          marginTop: "10px",
+        }}
+      >
+        <F label="Rule name">
+          <input
+            className="bsure-input"
+            name="name"
+            placeholder="Payment hide rule label"
+          />
+        </F>
+        <F label="Priority">
+          <input
+            className="bsure-input"
+            defaultValue="100"
+            name="priority"
+            type="number"
+          />
+        </F>
       </div>
       <div className="bsure-radio" style={{ margin: "10px 0" }}>
         <input defaultChecked name="enabled" type="checkbox" />
-        <span><strong>Enabled</strong> — <span className="bsure-help">Include in next published config</span></span>
+        <span>
+          <strong>Enabled</strong> —{" "}
+          <span className="bsure-help">Include in next published config</span>
+        </span>
       </div>
       <F label="Cutoff setting">
         <select className="bsure-select" name="cutoffRuleSettingId">
           <option value="">No cutoff condition</option>
-          {cutoffs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {cutoffs.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
         </select>
       </F>
       <F label="Product tags (optional)" style={{ marginTop: "8px" }}>
-        <input className="bsure-input" name="productTags" placeholder="Comma-separated product tags" />
-        <span className="bsure-help">No live effect until payment Function is activated.</span>
+        <input
+          className="bsure-input"
+          name="productTags"
+          placeholder="Comma-separated product tags"
+        />
+        <span className="bsure-help">
+          No live effect until payment Function is activated.
+        </span>
       </F>
       <F label="Notes" style={{ marginTop: "8px" }}>
-        <textarea className="bsure-textarea" name="notes" placeholder="Internal note" rows={2} />
+        <textarea
+          className="bsure-textarea"
+          name="notes"
+          placeholder="Internal note"
+          rows={2}
+        />
       </F>
       <div className="bsure-actions" style={{ marginTop: "10px" }}>
-        <button className="bsure-button" type="submit">Save payment hide rule</button>
+        <button className="bsure-button" type="submit">
+          Save payment hide rule
+        </button>
       </div>
     </Form>
   );
 }
 
-function ExtraAreaBlock({ areaGroups, areaNum, deliveryAvailabilityValues, onRemove, pincodeOptions }: { areaGroups: string[]; areaNum: number; deliveryAvailabilityValues: string[]; onRemove: () => void; pincodeOptions: PincodeOption[] }) {
+function ExtraAreaBlock({
+  areaGroups,
+  areaNum,
+  deliveryAvailabilityValues,
+  onRemove,
+  pincodeOptions,
+}: {
+  areaGroups: string[];
+  areaNum: number;
+  deliveryAvailabilityValues: string[];
+  onRemove: () => void;
+  pincodeOptions: PincodeOption[];
+}) {
   const [subCondIds, setSubCondIds] = useState<number[]>([]);
   return (
     <div className="bsure-when-card">
       <div className="bsure-when-header">
         <div>
           <div className="bsure-when-title">Area {areaNum} — Or</div>
-          <div className="bsure-when-sub">Match any of these conditions instead</div>
+          <div className="bsure-when-sub">
+            Match any of these conditions instead
+          </div>
         </div>
-        <button className="bsure-when-close" onClick={onRemove} title="Remove area" type="button">×</button>
+        <button
+          className="bsure-when-close"
+          onClick={onRemove}
+          title="Remove area"
+          type="button"
+        >
+          ×
+        </button>
       </div>
       <div className="bsure-cond-row">
         <ConditionFieldSelect defaultValue="postalCode" />
         <ConditionOperatorSelect defaultValue="any" />
-        <button className="bsure-cond-del" disabled type="button">Delete</button>
+        <button className="bsure-cond-del" disabled type="button">
+          Delete
+        </button>
       </div>
       <PincodeChips options={pincodeOptions} />
       <div className="bsure-mini-or">And</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          marginBottom: "8px",
+        }}
+      >
         <select className="bsure-select" name="areaGroups">
           <option value="">Any area group</option>
-          {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
+          {areaGroups.map((ag) => (
+            <option key={ag} value={ag}>
+              {ag}
+            </option>
+          ))}
         </select>
         <select className="bsure-select" name="deliveryAvailabilityText">
           <option value="">Any delivery text</option>
-          {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
+          {deliveryAvailabilityValues.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
         </select>
       </div>
       {subCondIds.map((id) => (
@@ -286,13 +587,30 @@ function ExtraAreaBlock({ areaGroups, areaNum, deliveryAvailabilityValues, onRem
           <div className="bsure-cond-row">
             <ConditionFieldSelect defaultValue="postalCode" />
             <ConditionOperatorSelect defaultValue="any" />
-            <input className="bsure-input" name="subCondValue" placeholder="Enter value…" style={{ flex: 1 }} />
-            <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+            <input
+              className="bsure-input"
+              name="subCondValue"
+              placeholder="Enter value…"
+              style={{ flex: 1 }}
+            />
+            <button
+              className="bsure-cond-del"
+              onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))}
+              type="button"
+            >
+              Delete
+            </button>
           </div>
         </div>
       ))}
       <div className="bsure-condition-actions">
-        <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
+        <button
+          className="bsure-add-link"
+          onClick={() => setSubCondIds((p) => [...p, Date.now()])}
+          type="button"
+        >
+          + Add sub-condition
+        </button>
       </div>
     </div>
   );
@@ -331,17 +649,20 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
 
   const selectedSet = new Set(selected);
 
-  const suggestions = inputValue.length > 0
-    ? options
-        .filter(
-          (o) =>
-            !selectedSet.has(o.pincode) &&
-            (o.pincode.startsWith(inputValue) ||
-              o.district.toLowerCase().includes(inputValue.toLowerCase()) ||
-              o.locationName.toLowerCase().includes(inputValue.toLowerCase())),
-        )
-        .slice(0, 25)
-    : [];
+  const suggestions =
+    inputValue.length > 0
+      ? options
+          .filter(
+            (o) =>
+              !selectedSet.has(o.pincode) &&
+              (o.pincode.startsWith(inputValue) ||
+                o.district.toLowerCase().includes(inputValue.toLowerCase()) ||
+                o.locationName
+                  .toLowerCase()
+                  .includes(inputValue.toLowerCase())),
+          )
+          .slice(0, 25)
+      : [];
 
   const add = (pincode: string) => {
     const val = pincode.trim();
@@ -389,7 +710,13 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
         <input key={pincode} name="pincodes" type="hidden" value={pincode} />
       ))}
 
-      <input accept=".csv,.txt,.xlsx" onChange={handleCsvFile} ref={fileRef} style={{ display: "none" }} type="file" />
+      <input
+        accept=".csv,.txt,.xlsx"
+        onChange={handleCsvFile}
+        ref={fileRef}
+        style={{ display: "none" }}
+        type="file"
+      />
 
       <label className="bsure-tag-box">
         {selected.map((pincode) => (
@@ -397,18 +724,28 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
             {pincode}
             <button
               className="bsure-tag-x"
-              onClick={(e) => { e.stopPropagation(); remove(pincode); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                remove(pincode);
+              }}
               type="button"
-            >×</button>
+            >
+              ×
+            </button>
           </span>
         ))}
         <input
           className="bsure-tag-input"
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onChange={(e) => { setInputValue(e.target.value); setOpen(true); }}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setOpen(true);
+          }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={selected.length === 0 ? "Type a pincode and press Enter…" : ""}
+          placeholder={
+            selected.length === 0 ? "Type a pincode and press Enter…" : ""
+          }
           ref={inputRef}
           type="text"
           value={inputValue}
@@ -421,12 +758,17 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
             <button
               className="bsure-tag-suggestion"
               key={o.id}
-              onMouseDown={(e) => { e.preventDefault(); add(o.pincode); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                add(o.pincode);
+              }}
               type="button"
             >
               <strong>{o.pincode}</strong>
               {o.district && <span> · {o.district}</span>}
-              {o.locationName && <span className="bsure-tag-sugg-area"> · {o.locationName}</span>}
+              {o.locationName && (
+                <span className="bsure-tag-sugg-area"> · {o.locationName}</span>
+              )}
             </button>
           ))}
         </div>
@@ -434,16 +776,25 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
 
       <div className="bsure-chip-meta">
         <span>
-          {csvMsg || (options.length === 0
-            ? "Approve a CSV import first."
-            : `${selected.length} selected · ${options.length} available from CSV`)}
+          {csvMsg ||
+            (options.length === 0
+              ? "Approve a CSV import first."
+              : `${selected.length} selected · ${options.length} available from CSV`)}
         </span>
         <span className="bsure-tag-actions">
-          <button className="bsure-link-btn" onClick={() => fileRef.current?.click()} type="button">
+          <button
+            className="bsure-link-btn"
+            onClick={() => fileRef.current?.click()}
+            type="button"
+          >
             ↑ Import from CSV
           </button>
           {selected.length > 0 && (
-            <button className="bsure-link-btn" onClick={() => setSelected([])} type="button">
+            <button
+              className="bsure-link-btn"
+              onClick={() => setSelected([])}
+              type="button"
+            >
               Clear all
             </button>
           )}
@@ -453,38 +804,209 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
   );
 }
 
-function Sradio({ defaultChecked, label, pill, sub }: { defaultChecked?: boolean; label: string; pill: string; sub: string }) {
+function Sradio({
+  defaultChecked,
+  label,
+  pill,
+  sub,
+}: {
+  defaultChecked?: boolean;
+  label: string;
+  pill: string;
+  sub: string;
+}) {
   return (
     <div className="bsure-radio">
-      <input defaultChecked={defaultChecked} name="status" type="radio" value={label.toLowerCase()} />
+      <input
+        defaultChecked={defaultChecked}
+        name="status"
+        type="radio"
+        value={label.toLowerCase()}
+      />
       <span>
-        <span className={`bsure-pill ${pill}`}>{label}</span><br />
+        <span className={`bsure-pill ${pill}`}>{label}</span>
+        <br />
         <span className="bsure-help">{sub}</span>
       </span>
     </div>
   );
 }
 
-function RuleItem({ item, mappings }: { item: PaymentHideRule; mappings: Option[] }) {
+function RuleItem({
+  item,
+  mappings,
+}: {
+  item: PaymentHideRule;
+  mappings: Option[];
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const pincodes = parseJsonList(item.pincodesJson);
+  const productTags = parseJsonList(item.productTagsJson);
+  const areaGroups = parseJsonList(item.areaGroupsJson);
+
   return (
     <article className="bsure-rule-item">
       <div className="bsure-rule-item-top">
         <div>
           <h3>{item.name}</h3>
-          <span className={item.enabled ? "bsure-pill active" : "bsure-pill disabled"}>{item.enabled ? "Active" : "Deactivated"}</span>
+          <span
+            className={
+              item.enabled ? "bsure-pill active" : "bsure-pill disabled"
+            }
+          >
+            {item.enabled ? "Active" : "Deactivated"}
+          </span>
           <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>
-            Priority {item.priority} &nbsp;·&nbsp; Mapping: {mappings.find((m) => m.id === item.paymentMethodMappingId)?.name || "Unmapped"}
-            {item.selectedShippingContains && <> &nbsp;·&nbsp; Shipping: {item.selectedShippingContains}</>}
+            Priority {item.priority} &nbsp;·&nbsp; Mapping:{" "}
+            {mappings.find((m) => m.id === item.paymentMethodMappingId)?.name ||
+              "Unmapped"}
+            {item.selectedShippingContains && (
+              <> &nbsp;·&nbsp; Shipping: {item.selectedShippingContains}</>
+            )}
           </div>
           {item.notes && <div className="bsure-rule-meta">{item.notes}</div>}
-          <ChipRow items={parseJsonList(item.pincodesJson)} label="Pincodes" />
+          <ChipRow items={pincodes} label="Pincodes" />
         </div>
-        <Form className="bsure-actions" method="post">
-          <input name="id" type="hidden" value={item.id} />
-          <button className="bsure-button secondary" name="intent" type="submit" value="paymentHide:toggle">Toggle</button>
-          <button className="bsure-button danger" name="intent" type="submit" value="paymentHide:delete">Delete</button>
-        </Form>
+        <div className="bsure-actions">
+          <button
+            className="bsure-button secondary"
+            onClick={() => setIsEditing((value) => !value)}
+            type="button"
+          >
+            {isEditing ? "Cancel edit" : "Edit"}
+          </button>
+          <Form className="bsure-actions" method="post">
+            <input name="id" type="hidden" value={item.id} />
+            <button
+              className="bsure-button secondary"
+              name="intent"
+              type="submit"
+              value="paymentHide:toggle"
+            >
+              Toggle
+            </button>
+            <button
+              className="bsure-button danger"
+              name="intent"
+              type="submit"
+              value="paymentHide:delete"
+            >
+              Delete
+            </button>
+          </Form>
+        </div>
       </div>
+      {isEditing && (
+        <Form className="bsure-edit-form" method="post">
+          <input name="id" type="hidden" value={item.id} />
+          <input name="intent" type="hidden" value="paymentHide:update" />
+          <div className="bsure-form-row">
+            <F label="Rule name">
+              <input
+                className="bsure-input"
+                defaultValue={item.name}
+                name="name"
+              />
+            </F>
+            <F label="Priority">
+              <input
+                className="bsure-input"
+                defaultValue={item.priority}
+                name="priority"
+                type="number"
+              />
+            </F>
+          </div>
+          <div className="bsure-radio" style={{ marginTop: "10px" }}>
+            <input
+              defaultChecked={item.enabled}
+              id={`enabled-${item.id}`}
+              name="enabled"
+              type="checkbox"
+            />
+            <label htmlFor={`enabled-${item.id}`}>Enabled</label>
+          </div>
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <F label="Payment method mapping">
+              <select
+                className="bsure-select"
+                defaultValue={item.paymentMethodMappingId}
+                name="paymentMethodMappingId"
+              >
+                <option value="">No mapping selected</option>
+                {mappings.map((mapping) => (
+                  <option key={mapping.id} value={mapping.id}>
+                    {mapping.name}
+                  </option>
+                ))}
+              </select>
+            </F>
+            <F label="Selected shipping contains">
+              <input
+                className="bsure-input"
+                defaultValue={item.selectedShippingContains}
+                name="selectedShippingContains"
+              />
+            </F>
+          </div>
+          <input
+            name="cutoffRuleSettingId"
+            type="hidden"
+            value={item.cutoffRuleSettingId}
+          />
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <F label="Pincodes">
+              <textarea
+                className="bsure-textarea"
+                defaultValue={pincodes.join(", ")}
+                name="pincodes"
+              />
+            </F>
+            <F label="Product tags">
+              <textarea
+                className="bsure-textarea"
+                defaultValue={productTags.join(", ")}
+                name="productTags"
+              />
+            </F>
+          </div>
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <F label="Area groups">
+              <textarea
+                className="bsure-textarea"
+                defaultValue={areaGroups.join(", ")}
+                name="areaGroups"
+              />
+            </F>
+            <F label="Delivery text">
+              <input
+                className="bsure-input"
+                defaultValue={item.deliveryAvailabilityText}
+                name="deliveryAvailabilityText"
+              />
+            </F>
+          </div>
+          <F label="Notes" style={{ marginTop: "10px" }}>
+            <textarea
+              className="bsure-textarea"
+              defaultValue={item.notes}
+              name="notes"
+            />
+          </F>
+          <div className="bsure-actions" style={{ marginTop: "10px" }}>
+            <button className="bsure-button" type="submit">
+              Save changes
+            </button>
+            <button
+              className="bsure-button secondary"
+              onClick={() => setIsEditing(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </Form>
+      )}
     </article>
   );
 }
@@ -494,13 +1016,27 @@ function ChipRow({ items, label }: { items: string[]; label: string }) {
   return (
     <div className="bsure-chip-list" style={{ marginTop: "8px" }}>
       <span className="bsure-help">{label}:</span>
-      {items.slice(0, 8).map((item) => <span className="bsure-chip" key={item}>{item}</span>)}
-      {items.length > 8 && <span className="bsure-help">+{items.length - 8} more</span>}
+      {items.slice(0, 8).map((item) => (
+        <span className="bsure-chip" key={item}>
+          {item}
+        </span>
+      ))}
+      {items.length > 8 && (
+        <span className="bsure-help">+{items.length - 8} more</span>
+      )}
     </div>
   );
 }
 
-function F({ children, label, style }: { children: React.ReactNode; label: string; style?: React.CSSProperties }) {
+function F({
+  children,
+  label,
+  style,
+}: {
+  children: React.ReactNode;
+  label: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <div className="bsure-field" style={style}>
       <span className="bsure-label">{label}</span>
@@ -509,4 +1045,5 @@ function F({ children, label, style }: { children: React.ReactNode; label: strin
   );
 }
 
-export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);
+export const headers: HeadersFunction = (headersArgs) =>
+  boundary.headers(headersArgs);

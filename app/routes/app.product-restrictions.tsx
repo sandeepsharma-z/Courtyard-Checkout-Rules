@@ -1,18 +1,47 @@
 import { useRef, useState } from "react";
-import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
 import { Form, Link, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
-import { getRuleManagerData, handleRuleManagerAction } from "../services/rule-config-storage.server";
+import {
+  getRuleManagerData,
+  handleRuleManagerAction,
+} from "../services/rule-config-storage.server";
 import { parseJsonList } from "../components/rule-manager-ui";
 
-type PincodeOption = { id: string; pincode: string; areaGroup: string; deliveryAvailability: string; district: string; locationName: string; state: string };
-type ProductRestrictionRule = { id: string; name: string; enabled: boolean; priority: number; productTagsJson: string; pincodesJson: string; areaGroupsJson: string; deliveryAvailabilityText: string; validationMessage: string; notes: string };
+type PincodeOption = {
+  id: string;
+  pincode: string;
+  areaGroup: string;
+  deliveryAvailability: string;
+  district: string;
+  locationName: string;
+  state: string;
+};
+type ProductRestrictionRule = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  productTagsJson: string;
+  pincodesJson: string;
+  areaGroupsJson: string;
+  deliveryAvailabilityText: string;
+  validationMessage: string;
+  notes: string;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  const [{ productRestrictionRules }, pincodeOptions] = await Promise.all([getRuleManagerData(), getActivePincodeRuleOptions()]);
+  const [{ productRestrictionRules }, pincodeOptions] = await Promise.all([
+    getRuleManagerData(),
+    getActivePincodeRuleOptions(),
+  ]);
   return { rules: productRestrictionRules, pincodeOptions };
 };
 
@@ -30,10 +59,14 @@ export default function ProductRestrictionsPage() {
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <Link className="bsure-back" to="/app">←</Link>
+            <Link className="bsure-back" to="/app">
+              ←
+            </Link>
             <h1>Update validates/block checkout rule</h1>
           </div>
-          <Link className="bsure-more" to="/app/publish">Publish config</Link>
+          <Link className="bsure-more" to="/app/publish">
+            Publish config
+          </Link>
         </div>
 
         <div className="bsure-rule-shell">
@@ -41,10 +74,18 @@ export default function ProductRestrictionsPage() {
           <section className="bsure-card" style={{ marginBottom: "12px" }}>
             <F label="Name">
               <div className="bsure-name-row">
-                <input className="bsure-input bsure-name-input" defaultValue="All Product Validation" maxLength={70} name="ruleName" readOnly />
+                <input
+                  className="bsure-input bsure-name-input"
+                  defaultValue="All Product Validation"
+                  maxLength={70}
+                  name="ruleName"
+                  readOnly
+                />
                 <span className="bsure-char-count">22/70</span>
               </div>
-              <span className="bsure-help">Optional. Not shown to customers.</span>
+              <span className="bsure-help">
+                Optional. Not shown to customers.
+              </span>
             </F>
           </section>
 
@@ -52,9 +93,22 @@ export default function ProductRestrictionsPage() {
           <section className="bsure-card" style={{ marginBottom: "12px" }}>
             <h2>Status</h2>
             <div className="bsure-radio-stack" style={{ marginTop: "10px" }}>
-              <Sradio label="Testing" pill="testing" sub="Test this rule without affecting checkout for your customers. Write test@testing.com in the email field on the checkout to see this rule in action." />
-              <Sradio defaultChecked label="Active" pill="active" sub="Rule will be enabled on your store, this will affect checkout for all customers." />
-              <Sradio label="Deactivated" pill="disabled" sub="Disable this rule without deleting it. Deactivated rules will not affect checkout for your customers." />
+              <Sradio
+                label="Testing"
+                pill="testing"
+                sub="Test this rule without affecting checkout for your customers. Write test@testing.com in the email field on the checkout to see this rule in action."
+              />
+              <Sradio
+                defaultChecked
+                label="Active"
+                pill="active"
+                sub="Rule will be enabled on your store, this will affect checkout for all customers."
+              />
+              <Sradio
+                label="Deactivated"
+                pill="disabled"
+                sub="Disable this rule without deleting it. Deactivated rules will not affect checkout for your customers."
+              />
             </div>
           </section>
 
@@ -63,16 +117,43 @@ export default function ProductRestrictionsPage() {
             <h2>Behavior</h2>
             <div className="bsure-radio-stack" style={{ marginTop: "10px" }}>
               <div className="bsure-radio">
-                <input defaultChecked name="behavior" type="radio" value="block" />
-                <span><strong>Block checkout and show error message</strong><br /><span className="bsure-help">Stop the customer from completing checkout if this rule is active.</span></span>
+                <input
+                  defaultChecked
+                  name="behavior"
+                  type="radio"
+                  value="block"
+                />
+                <span>
+                  <strong>Block checkout and show error message</strong>
+                  <br />
+                  <span className="bsure-help">
+                    Stop the customer from completing checkout if this rule is
+                    active.
+                  </span>
+                </span>
               </div>
               <div className="bsure-radio">
                 <input name="behavior" type="radio" value="warn" />
-                <span><strong>Show warning without blocking checkout</strong><br /><span className="bsure-help">Warn the customer but allow them to continue.</span></span>
+                <span>
+                  <strong>Show warning without blocking checkout</strong>
+                  <br />
+                  <span className="bsure-help">
+                    Warn the customer but allow them to continue.
+                  </span>
+                </span>
               </div>
               <div className="bsure-radio">
                 <input name="behavior" type="radio" value="block-on-complete" />
-                <span><strong>Block only when customer tries to complete order</strong><br /><span className="bsure-help">Allow the customer to continue through checkout, then block when completion is triggered.</span></span>
+                <span>
+                  <strong>
+                    Block only when customer tries to complete order
+                  </strong>
+                  <br />
+                  <span className="bsure-help">
+                    Allow the customer to continue through checkout, then block
+                    when completion is triggered.
+                  </span>
+                </span>
               </div>
             </div>
           </section>
@@ -80,11 +161,21 @@ export default function ProductRestrictionsPage() {
           <div className="bsure-connector">And</div>
 
           {/* ── RULE FORM ── */}
-          <WhenThenBlock areaGroups={pincodeOptions.areaGroups} deliveryAvailabilityValues={pincodeOptions.deliveryAvailabilityValues} pincodeOptions={pincodeOptions.pincodes} />
+          <WhenThenBlock
+            areaGroups={pincodeOptions.areaGroups}
+            deliveryAvailabilityValues={
+              pincodeOptions.deliveryAvailabilityValues
+            }
+            pincodeOptions={pincodeOptions.pincodes}
+          />
 
           <div className="bsure-bottom-bar" style={{ marginTop: "12px" }}>
-            <Link className="bsure-button secondary" to="/app/pincodes">View imported pincodes</Link>
-            <Link className="bsure-button" to="/app/publish">Publish config</Link>
+            <Link className="bsure-button secondary" to="/app/pincodes">
+              View imported pincodes
+            </Link>
+            <Link className="bsure-button" to="/app/publish">
+              Publish config
+            </Link>
           </div>
 
           {/* ── Existing rules ── */}
@@ -92,10 +183,14 @@ export default function ProductRestrictionsPage() {
             <section className="bsure-card" style={{ marginTop: "24px" }}>
               <div className="bsure-section-top">
                 <h2>Configured validation rules</h2>
-                <span className="bsure-help">{rules.length} rule{rules.length !== 1 ? "s" : ""}</span>
+                <span className="bsure-help">
+                  {rules.length} rule{rules.length !== 1 ? "s" : ""}
+                </span>
               </div>
               <div className="bsure-rule-list">
-                {rules.map((item) => <RuleItem item={item} key={item.id} />)}
+                {rules.map((item) => (
+                  <RuleItem item={item} key={item.id} />
+                ))}
               </div>
             </section>
           )}
@@ -105,17 +200,32 @@ export default function ProductRestrictionsPage() {
   );
 }
 
-function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions }: { areaGroups: string[]; deliveryAvailabilityValues: string[]; pincodeOptions: PincodeOption[] }) {
+function WhenThenBlock({
+  areaGroups,
+  deliveryAvailabilityValues,
+  pincodeOptions,
+}: {
+  areaGroups: string[];
+  deliveryAvailabilityValues: string[];
+  pincodeOptions: PincodeOption[];
+}) {
   const [blockIds, setBlockIds] = useState<number[]>([0]);
   const nextId = useRef(1);
 
-  const addBlock = () => { setBlockIds((p) => [...p, nextId.current++]); };
-  const removeBlock = (id: number) => setBlockIds((p) => p.filter((x) => x !== id));
+  const addBlock = () => {
+    setBlockIds((p) => [...p, nextId.current++]);
+  };
+  const removeBlock = (id: number) =>
+    setBlockIds((p) => p.filter((x) => x !== id));
 
   return (
     <Form method="post">
       <input name="blockCount" type="hidden" value={blockIds.length} />
-      <input name="intent" type="hidden" value="productRestriction:createMulti" />
+      <input
+        name="intent"
+        type="hidden"
+        value="productRestriction:createMulti"
+      />
 
       {blockIds.map((id, idx) => (
         <div key={id}>
@@ -136,79 +246,183 @@ function WhenThenBlock({ areaGroups, deliveryAvailabilityValues, pincodeOptions 
       ))}
 
       <div className="bsure-add-block-row">
-        <button className="bsure-add-link" onClick={addBlock} type="button">+ Add another condition</button>
+        <button className="bsure-add-link" onClick={addBlock} type="button">
+          + Add another condition
+        </button>
       </div>
 
       <div className="bsure-connector-badge lastly">Lastly</div>
       <div className="bsure-lastly-card">
-        <p className="bsure-help">If the app fails or experiences a problem...</p>
-        <div className="bsure-if-radio"><input defaultChecked name="fallback" type="radio" value="nothing" /><span>Allow customer to complete checkout</span></div>
-        <div className="bsure-if-radio"><input name="fallback" type="radio" value="block" /><span>Block customer from completing checkout</span></div>
+        <p className="bsure-help">
+          If the app fails or experiences a problem...
+        </p>
+        <div className="bsure-if-radio">
+          <input defaultChecked name="fallback" type="radio" value="nothing" />
+          <span>Allow customer to complete checkout</span>
+        </div>
+        <div className="bsure-if-radio">
+          <input name="fallback" type="radio" value="block" />
+          <span>Block customer from completing checkout</span>
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
-        <F label="Rule group name"><input className="bsure-input" name="name" placeholder="Label for this group of rules" /></F>
-        <F label="Priority"><input className="bsure-input" defaultValue="100" name="priority" type="number" /></F>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          marginTop: "12px",
+        }}
+      >
+        <F label="Rule group name">
+          <input
+            className="bsure-input"
+            name="name"
+            placeholder="Label for this group of rules"
+          />
+        </F>
+        <F label="Priority">
+          <input
+            className="bsure-input"
+            defaultValue="100"
+            name="priority"
+            type="number"
+          />
+        </F>
       </div>
       <div className="bsure-radio" style={{ margin: "10px 0" }}>
         <input defaultChecked id="pr-enabled" name="enabled" type="checkbox" />
-        <label htmlFor="pr-enabled"><strong>Enabled</strong> <span className="bsure-help">Include in next published config</span></label>
+        <label htmlFor="pr-enabled">
+          <strong>Enabled</strong>{" "}
+          <span className="bsure-help">Include in next published config</span>
+        </label>
       </div>
       <F label="Notes" style={{ marginTop: "8px" }}>
-        <textarea className="bsure-textarea" name="notes" placeholder="Internal note" rows={2} />
+        <textarea
+          className="bsure-textarea"
+          name="notes"
+          placeholder="Internal note"
+          rows={2}
+        />
       </F>
       <div className="bsure-actions" style={{ marginTop: "10px" }}>
-        <button className="bsure-button" type="submit">Save rules</button>
-        <button className="bsure-button secondary" type="reset">Cancel</button>
+        <button className="bsure-button" type="submit">
+          Save rules
+        </button>
+        <button className="bsure-button secondary" type="reset">
+          Cancel
+        </button>
       </div>
       <div style={{ marginTop: "12px", textAlign: "center" }}>
-        <a className="bsure-add-link" href="https://bsure.app/help" rel="noreferrer" target="_blank">Need help?</a>
+        <a
+          className="bsure-add-link"
+          href="https://bsure.app/help"
+          rel="noreferrer"
+          target="_blank"
+        >
+          Need help?
+        </a>
       </div>
     </Form>
   );
 }
 
-function WhenArea({ areaGroups, blockIdx, deliveryAvailabilityValues, onRemove, pincodeOptions }: { areaGroups: string[]; blockIdx: number; deliveryAvailabilityValues: string[]; onRemove?: () => void; pincodeOptions: PincodeOption[] }) {
+function WhenArea({
+  areaGroups,
+  blockIdx,
+  deliveryAvailabilityValues,
+  onRemove,
+  pincodeOptions,
+}: {
+  areaGroups: string[];
+  blockIdx: number;
+  deliveryAvailabilityValues: string[];
+  onRemove?: () => void;
+  pincodeOptions: PincodeOption[];
+}) {
   const [subCondIds, setSubCondIds] = useState<number[]>([]);
   return (
     <div className="bsure-when-card">
       <div className="bsure-when-header">
         <div>
           <div className="bsure-when-title">When...</div>
-          <div className="bsure-when-sub">Select conditions that trigger this rule</div>
+          <div className="bsure-when-sub">
+            Select conditions that trigger this rule
+          </div>
         </div>
-        {onRemove && <button className="bsure-when-close" onClick={onRemove} title="Remove" type="button">×</button>}
+        {onRemove && (
+          <button
+            className="bsure-when-close"
+            onClick={onRemove}
+            title="Remove"
+            type="button"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <div className="bsure-cond-row">
         <ConditionFieldSelect defaultValue="postalCode" />
         <ConditionOperatorSelect defaultValue="any" />
-        <button className="bsure-cond-del" disabled type="button">Delete</button>
+        <button className="bsure-cond-del" disabled type="button">
+          Delete
+        </button>
       </div>
-      <PincodeChips fieldName={`pincodes_${blockIdx}`} options={pincodeOptions} />
+      <PincodeChips
+        fieldName={`pincodes_${blockIdx}`}
+        options={pincodeOptions}
+      />
 
       <div className="bsure-mini-or">And</div>
 
       <div className="bsure-cond-row">
         <ConditionFieldSelect defaultValue="productTags" />
         <ConditionOperatorSelect defaultValue="any" />
-        <button className="bsure-cond-del" disabled type="button">Delete</button>
+        <button className="bsure-cond-del" disabled type="button">
+          Delete
+        </button>
       </div>
       <div style={{ marginBottom: "8px" }}>
-        <input className="bsure-input" name={`productTags_${blockIdx}`} placeholder="Comma-separated product tags" style={{ width: "100%" }} />
-        <span className="bsure-help">Tags must come from admin configuration, not hardcoded.</span>
+        <input
+          className="bsure-input"
+          name={`productTags_${blockIdx}`}
+          placeholder="Comma-separated product tags"
+          style={{ width: "100%" }}
+        />
+        <span className="bsure-help">
+          Tags must come from admin configuration, not hardcoded.
+        </span>
       </div>
 
       <div className="bsure-mini-or">And</div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          marginBottom: "8px",
+        }}
+      >
         <select className="bsure-select" name={`areaGroups_${blockIdx}`}>
           <option value="">Any area group</option>
-          {areaGroups.map((ag) => <option key={ag} value={ag}>{ag}</option>)}
+          {areaGroups.map((ag) => (
+            <option key={ag} value={ag}>
+              {ag}
+            </option>
+          ))}
         </select>
-        <select className="bsure-select" name={`deliveryAvailabilityText_${blockIdx}`}>
+        <select
+          className="bsure-select"
+          name={`deliveryAvailabilityText_${blockIdx}`}
+        >
           <option value="">Any delivery text</option>
-          {deliveryAvailabilityValues.map((v) => <option key={v} value={v}>{v}</option>)}
+          {deliveryAvailabilityValues.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -218,13 +432,30 @@ function WhenArea({ areaGroups, blockIdx, deliveryAvailabilityValues, onRemove, 
           <div className="bsure-cond-row">
             <ConditionFieldSelect defaultValue="postalCode" />
             <ConditionOperatorSelect defaultValue="any" />
-            <input className="bsure-input" name={`subCondValue_${blockIdx}`} placeholder="Enter value…" style={{ flex: 1 }} />
-            <button className="bsure-cond-del" onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))} type="button">Delete</button>
+            <input
+              className="bsure-input"
+              name={`subCondValue_${blockIdx}`}
+              placeholder="Enter value…"
+              style={{ flex: 1 }}
+            />
+            <button
+              className="bsure-cond-del"
+              onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))}
+              type="button"
+            >
+              Delete
+            </button>
           </div>
         </div>
       ))}
       <div className="bsure-condition-actions">
-        <button className="bsure-add-link" onClick={() => setSubCondIds((p) => [...p, Date.now()])} type="button">+ Add sub-condition</button>
+        <button
+          className="bsure-add-link"
+          onClick={() => setSubCondIds((p) => [...p, Date.now()])}
+          type="button"
+        >
+          + Add sub-condition
+        </button>
       </div>
     </div>
   );
@@ -233,11 +464,26 @@ function WhenArea({ areaGroups, blockIdx, deliveryAvailabilityValues, onRemove, 
 function ThenArea({ blockIdx }: { blockIdx: number }) {
   return (
     <div className="bsure-then-action-card">
-      <div className="bsure-then-label">Then block checkout and show an error message...</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", margin: "10px 0 8px" }}>
+      <div className="bsure-then-label">
+        Then block checkout and show an error message...
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "8px",
+          margin: "10px 0 8px",
+        }}
+      >
         <F label="Target">
-          <input className="bsure-input" defaultValue="Shipping zip code / postal code" readOnly />
-          <span className="bsure-help">Where the error is displayed at checkout.</span>
+          <input
+            className="bsure-input"
+            defaultValue="Shipping zip code / postal code"
+            readOnly
+          />
+          <span className="bsure-help">
+            Where the error is displayed at checkout.
+          </span>
         </F>
       </div>
       <F label="Error message">
@@ -247,16 +493,26 @@ function ThenArea({ blockIdx }: { blockIdx: number }) {
           placeholder="e.g. Product not available at your location"
           style={{ width: "100%" }}
         />
-        <span className="bsure-help">Shown to customer when conditions match.</span>
+        <span className="bsure-help">
+          Shown to customer when conditions match.
+        </span>
       </F>
       <div style={{ marginTop: "6px" }}>
-        <button className="bsure-add-link" type="button">+ Add translation</button>
+        <button className="bsure-add-link" type="button">
+          + Add translation
+        </button>
       </div>
     </div>
   );
 }
 
-function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string; options: PincodeOption[] }) {
+function PincodeChips({
+  fieldName = "pincodes",
+  options,
+}: {
+  fieldName?: string;
+  options: PincodeOption[];
+}) {
   const [selected, setSelected] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -266,17 +522,20 @@ function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string;
 
   const selectedSet = new Set(selected);
 
-  const suggestions = inputValue.length > 0
-    ? options
-        .filter(
-          (o) =>
-            !selectedSet.has(o.pincode) &&
-            (o.pincode.startsWith(inputValue) ||
-              o.district.toLowerCase().includes(inputValue.toLowerCase()) ||
-              o.locationName.toLowerCase().includes(inputValue.toLowerCase())),
-        )
-        .slice(0, 25)
-    : [];
+  const suggestions =
+    inputValue.length > 0
+      ? options
+          .filter(
+            (o) =>
+              !selectedSet.has(o.pincode) &&
+              (o.pincode.startsWith(inputValue) ||
+                o.district.toLowerCase().includes(inputValue.toLowerCase()) ||
+                o.locationName
+                  .toLowerCase()
+                  .includes(inputValue.toLowerCase())),
+          )
+          .slice(0, 25)
+      : [];
 
   const add = (pincode: string) => {
     const val = pincode.trim();
@@ -338,18 +597,28 @@ function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string;
             {pincode}
             <button
               className="bsure-tag-x"
-              onClick={(e) => { e.stopPropagation(); remove(pincode); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                remove(pincode);
+              }}
               type="button"
-            >×</button>
+            >
+              ×
+            </button>
           </span>
         ))}
         <input
           className="bsure-tag-input"
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          onChange={(e) => { setInputValue(e.target.value); setOpen(true); }}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            setOpen(true);
+          }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder={selected.length === 0 ? "Type a pincode and press Enter…" : ""}
+          placeholder={
+            selected.length === 0 ? "Type a pincode and press Enter…" : ""
+          }
           ref={inputRef}
           type="text"
           value={inputValue}
@@ -362,12 +631,17 @@ function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string;
             <button
               className="bsure-tag-suggestion"
               key={o.id}
-              onMouseDown={(e) => { e.preventDefault(); add(o.pincode); }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                add(o.pincode);
+              }}
               type="button"
             >
               <strong>{o.pincode}</strong>
               {o.district && <span> · {o.district}</span>}
-              {o.locationName && <span className="bsure-tag-sugg-area"> · {o.locationName}</span>}
+              {o.locationName && (
+                <span className="bsure-tag-sugg-area"> · {o.locationName}</span>
+              )}
             </button>
           ))}
         </div>
@@ -375,9 +649,10 @@ function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string;
 
       <div className="bsure-chip-meta">
         <span>
-          {csvMsg || (options.length === 0
-            ? "Approve a CSV import first, or type pincodes manually."
-            : `${selected.length} selected · ${options.length} in active CSV`)}
+          {csvMsg ||
+            (options.length === 0
+              ? "Approve a CSV import first, or type pincodes manually."
+              : `${selected.length} selected · ${options.length} in active CSV`)}
         </span>
         <span className="bsure-tag-actions">
           <button
@@ -388,7 +663,11 @@ function PincodeChips({ fieldName = "pincodes", options }: { fieldName?: string;
             ↑ Import from CSV
           </button>
           {selected.length > 0 && (
-            <button className="bsure-link-btn" onClick={() => setSelected([])} type="button">
+            <button
+              className="bsure-link-btn"
+              onClick={() => setSelected([])}
+              type="button"
+            >
               Clear all
             </button>
           )}
@@ -419,12 +698,28 @@ function ConditionOperatorSelect({ defaultValue }: { defaultValue: string }) {
   );
 }
 
-function Sradio({ defaultChecked, label, pill, sub }: { defaultChecked?: boolean; label: string; pill: string; sub: string }) {
+function Sradio({
+  defaultChecked,
+  label,
+  pill,
+  sub,
+}: {
+  defaultChecked?: boolean;
+  label: string;
+  pill: string;
+  sub: string;
+}) {
   return (
     <div className="bsure-radio">
-      <input defaultChecked={defaultChecked} name="status" type="radio" value={label.toLowerCase()} />
+      <input
+        defaultChecked={defaultChecked}
+        name="status"
+        type="radio"
+        value={label.toLowerCase()}
+      />
       <span>
-        <span className={`bsure-pill ${pill}`}>{label}</span><br />
+        <span className={`bsure-pill ${pill}`}>{label}</span>
+        <br />
         <span className="bsure-help">{sub}</span>
       </span>
     </div>
@@ -432,24 +727,158 @@ function Sradio({ defaultChecked, label, pill, sub }: { defaultChecked?: boolean
 }
 
 function RuleItem({ item }: { item: ProductRestrictionRule }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const pincodes = parseJsonList(item.pincodesJson);
+  const tags = parseJsonList(item.productTagsJson);
+  const areaGroups = parseJsonList(item.areaGroupsJson);
+
   return (
     <article className="bsure-rule-item">
       <div className="bsure-rule-item-top">
         <div>
           <h3>{item.name}</h3>
-          <span className={item.enabled ? "bsure-pill active" : "bsure-pill disabled"}>{item.enabled ? "Active" : "Deactivated"}</span>
-          <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>Priority {item.priority}</div>
-          {item.validationMessage && <div className="bsure-rule-meta">Message: {item.validationMessage}</div>}
+          <span
+            className={
+              item.enabled ? "bsure-pill active" : "bsure-pill disabled"
+            }
+          >
+            {item.enabled ? "Active" : "Deactivated"}
+          </span>
+          <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>
+            Priority {item.priority}
+          </div>
+          {item.validationMessage && (
+            <div className="bsure-rule-meta">
+              Message: {item.validationMessage}
+            </div>
+          )}
           {item.notes && <div className="bsure-rule-meta">{item.notes}</div>}
-          <ChipRow items={parseJsonList(item.pincodesJson)} label="Pincodes" />
-          <ChipRow items={parseJsonList(item.productTagsJson)} label="Tags" />
+          <ChipRow items={pincodes} label="Pincodes" />
+          <ChipRow items={tags} label="Tags" />
         </div>
-        <Form className="bsure-actions" method="post">
-          <input name="id" type="hidden" value={item.id} />
-          <button className="bsure-button secondary" name="intent" type="submit" value="productRestriction:toggle">Toggle</button>
-          <button className="bsure-button danger" name="intent" type="submit" value="productRestriction:delete">Delete</button>
-        </Form>
+        <div className="bsure-actions">
+          <button
+            className="bsure-button secondary"
+            onClick={() => setIsEditing((value) => !value)}
+            type="button"
+          >
+            {isEditing ? "Cancel edit" : "Edit"}
+          </button>
+          <Form className="bsure-actions" method="post">
+            <input name="id" type="hidden" value={item.id} />
+            <button
+              className="bsure-button secondary"
+              name="intent"
+              type="submit"
+              value="productRestriction:toggle"
+            >
+              Toggle
+            </button>
+            <button
+              className="bsure-button danger"
+              name="intent"
+              type="submit"
+              value="productRestriction:delete"
+            >
+              Delete
+            </button>
+          </Form>
+        </div>
       </div>
+      {isEditing && (
+        <Form className="bsure-edit-form" method="post">
+          <input name="id" type="hidden" value={item.id} />
+          <input
+            name="intent"
+            type="hidden"
+            value="productRestriction:update"
+          />
+          <div className="bsure-form-row">
+            <F label="Rule name">
+              <input
+                className="bsure-input"
+                defaultValue={item.name}
+                name="name"
+              />
+            </F>
+            <F label="Priority">
+              <input
+                className="bsure-input"
+                defaultValue={item.priority}
+                name="priority"
+                type="number"
+              />
+            </F>
+          </div>
+          <div className="bsure-radio" style={{ marginTop: "10px" }}>
+            <input
+              defaultChecked={item.enabled}
+              id={`enabled-${item.id}`}
+              name="enabled"
+              type="checkbox"
+            />
+            <label htmlFor={`enabled-${item.id}`}>Enabled</label>
+          </div>
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <F label="Pincodes">
+              <textarea
+                className="bsure-textarea"
+                defaultValue={pincodes.join(", ")}
+                name="pincodes"
+              />
+            </F>
+            <F label="Product tags">
+              <textarea
+                className="bsure-textarea"
+                defaultValue={tags.join(", ")}
+                name="productTags"
+              />
+            </F>
+          </div>
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <F label="Area groups">
+              <textarea
+                className="bsure-textarea"
+                defaultValue={areaGroups.join(", ")}
+                name="areaGroups"
+              />
+            </F>
+            <F label="Delivery text">
+              <input
+                className="bsure-input"
+                defaultValue={item.deliveryAvailabilityText}
+                name="deliveryAvailabilityText"
+              />
+            </F>
+          </div>
+          <F label="Error message" style={{ marginTop: "10px" }}>
+            <input
+              className="bsure-input"
+              defaultValue={item.validationMessage}
+              name="validationMessage"
+            />
+          </F>
+          <F label="Notes" style={{ marginTop: "10px" }}>
+            <textarea
+              className="bsure-textarea"
+              defaultValue={item.notes}
+              name="notes"
+            />
+          </F>
+          <div className="bsure-actions" style={{ marginTop: "10px" }}>
+            <button className="bsure-button" type="submit">
+              Save changes
+            </button>
+            <button
+              className="bsure-button secondary"
+              onClick={() => setIsEditing(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </Form>
+      )}
     </article>
   );
 }
@@ -459,13 +888,27 @@ function ChipRow({ items, label }: { items: string[]; label: string }) {
   return (
     <div className="bsure-chip-list" style={{ marginTop: "8px" }}>
       <span className="bsure-help">{label}:</span>
-      {items.slice(0, 8).map((item) => <span className="bsure-chip" key={item}>{item}</span>)}
-      {items.length > 8 && <span className="bsure-help">+{items.length - 8} more</span>}
+      {items.slice(0, 8).map((item) => (
+        <span className="bsure-chip" key={item}>
+          {item}
+        </span>
+      ))}
+      {items.length > 8 && (
+        <span className="bsure-help">+{items.length - 8} more</span>
+      )}
     </div>
   );
 }
 
-function F({ children, label, style }: { children: React.ReactNode; label: string; style?: React.CSSProperties }) {
+function F({
+  children,
+  label,
+  style,
+}: {
+  children: React.ReactNode;
+  label: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <div className="bsure-field" style={style}>
       <span className="bsure-label">{label}</span>
@@ -474,4 +917,5 @@ function F({ children, label, style }: { children: React.ReactNode; label: strin
   );
 }
 
-export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);
+export const headers: HeadersFunction = (headersArgs) =>
+  boundary.headers(headersArgs);

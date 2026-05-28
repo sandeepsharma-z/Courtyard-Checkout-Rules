@@ -1360,6 +1360,12 @@ body {
 .bsure-rule-item h3 { font-size: 14px; }
 .bsure-rule-item    { padding: 12px; }
 
+.bsure-edit-form {
+  border-top: 1px solid #e1e3e5;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
 /* Bottom actions bar */
 .bsure-bottom-bar {
   align-items: center;
@@ -1620,4 +1626,3 @@ body {
     align-items: stretch;
   }
 }
-

@@ -1,10 +1,26 @@
-import type { ActionFunctionArgs, HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { useState } from "react";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
 import { Form, Link, redirect, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getRuleManagerData, handleRuleManagerAction } from "../services/rule-config-storage.server";
+import {
+  getRuleManagerData,
+  handleRuleManagerAction,
+} from "../services/rule-config-storage.server";
 
-type Mapping = { id: string; name: string; enabled: boolean; priority: number; matchType: string; matchValue: string; notes: string };
+type Mapping = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  priority: number;
+  matchType: string;
+  matchValue: string;
+  notes: string;
+};
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
@@ -26,52 +42,95 @@ export default function PaymentMappingsPage() {
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <Link className="bsure-back" to="/app">←</Link>
+            <Link className="bsure-back" to="/app">
+              ←
+            </Link>
             <h1>Payment method mappings</h1>
           </div>
-          <Link className="bsure-more" to="/app/payment-rules">Payment rules</Link>
+          <Link className="bsure-more" to="/app/payment-rules">
+            Payment rules
+          </Link>
         </div>
 
         <div className="bsure-flow">
           <section className="bsure-card">
             <h2>Create mapping</h2>
-            <p>Map a Shopify payment method name so it can be referenced in payment hide rules. Method names are never hardcoded.</p>
+            <p>
+              Map a Shopify payment method name so it can be referenced in
+              payment hide rules. Method names are never hardcoded.
+            </p>
             <Form method="post" style={{ marginTop: "18px" }}>
-              <input type="hidden" name="intent" value="paymentMapping:create" />
+              <input
+                type="hidden"
+                name="intent"
+                value="paymentMapping:create"
+              />
               <div className="bsure-form-row">
                 <Field label="Admin label">
-                  <input className="bsure-input" name="name" placeholder="e.g. Cash on Delivery" />
+                  <input
+                    className="bsure-input"
+                    name="name"
+                    placeholder="e.g. Cash on Delivery"
+                  />
                 </Field>
                 <Field label="Priority">
-                  <input className="bsure-input" defaultValue="100" name="priority" type="number" />
+                  <input
+                    className="bsure-input"
+                    defaultValue="100"
+                    name="priority"
+                    type="number"
+                  />
                   <span className="bsure-help">Lower number runs first.</span>
                 </Field>
               </div>
               <div className="bsure-form-row" style={{ marginTop: "14px" }}>
                 <Field label="Match type">
-                  <select className="bsure-select" defaultValue="exact" name="matchType">
+                  <select
+                    className="bsure-select"
+                    defaultValue="exact"
+                    name="matchType"
+                  >
                     <option value="exact">Exact match</option>
                     <option value="contains">Contains</option>
                   </select>
                 </Field>
                 <Field label="Match value">
-                  <input className="bsure-input" name="matchValue" placeholder="Payment method title as shown at checkout" />
-                  <span className="bsure-help">Must come from Shopify admin, not hardcoded.</span>
+                  <input
+                    className="bsure-input"
+                    name="matchValue"
+                    placeholder="Payment method title as shown at checkout"
+                  />
+                  <span className="bsure-help">
+                    Must come from Shopify admin, not hardcoded.
+                  </span>
                 </Field>
               </div>
               <div className="bsure-radio" style={{ marginTop: "16px" }}>
-                <input aria-label="Enable mapping" defaultChecked name="enabled" type="checkbox" />
+                <input
+                  aria-label="Enable mapping"
+                  defaultChecked
+                  name="enabled"
+                  type="checkbox"
+                />
                 <span>
                   <strong>Enabled</strong>
                   <br />
-                  <span className="bsure-help">Only enabled mappings appear in payment rule selectors.</span>
+                  <span className="bsure-help">
+                    Only enabled mappings appear in payment rule selectors.
+                  </span>
                 </span>
               </div>
               <Field label="Notes" style={{ marginTop: "14px" }}>
-                <textarea className="bsure-textarea" name="notes" placeholder="Internal notes" />
+                <textarea
+                  className="bsure-textarea"
+                  name="notes"
+                  placeholder="Internal notes"
+                />
               </Field>
               <div className="bsure-actions" style={{ marginTop: "18px" }}>
-                <button className="bsure-button" type="submit">Create mapping</button>
+                <button className="bsure-button" type="submit">
+                  Create mapping
+                </button>
               </div>
             </Form>
           </section>
@@ -79,11 +138,17 @@ export default function PaymentMappingsPage() {
           <section className="bsure-card">
             <h2>Configured mappings ({mappings.length})</h2>
             {mappings.length === 0 ? (
-              <p className="bsure-help" style={{ marginTop: "12px" }}>No mappings yet. Create one above to use in payment rules.</p>
+              <p className="bsure-help" style={{ marginTop: "12px" }}>
+                No mappings yet. Create one above to use in payment rules.
+              </p>
             ) : (
               <div className="bsure-rule-list" style={{ marginTop: "12px" }}>
                 {mappings.map((item) => (
-                  <MappingItem item={item} key={item.id} kind="paymentMapping" />
+                  <MappingItem
+                    item={item}
+                    key={item.id}
+                    kind="paymentMapping"
+                  />
                 ))}
               </div>
             )}
@@ -95,30 +160,139 @@ export default function PaymentMappingsPage() {
 }
 
 function MappingItem({ item, kind }: { item: Mapping; kind: string }) {
+  const [isEditing, setIsEditing] = useState(false);
+
   return (
     <article className="bsure-rule-item">
       <div className="bsure-rule-item-top">
         <div>
           <h3>{item.name}</h3>
-          <span className={item.enabled ? "bsure-pill active" : "bsure-pill disabled"}>
+          <span
+            className={
+              item.enabled ? "bsure-pill active" : "bsure-pill disabled"
+            }
+          >
             {item.enabled ? "Active" : "Deactivated"}
           </span>
           <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>
-            Priority {item.priority} &nbsp;·&nbsp; {item.matchType === "exact" ? "Exact" : "Contains"}: <strong>{item.matchValue || "—"}</strong>
+            Priority {item.priority} &nbsp;·&nbsp;{" "}
+            {item.matchType === "exact" ? "Exact" : "Contains"}:{" "}
+            <strong>{item.matchValue || "—"}</strong>
           </div>
           {item.notes && <div className="bsure-rule-meta">{item.notes}</div>}
         </div>
-        <Form className="bsure-actions" method="post">
-          <input name="id" type="hidden" value={item.id} />
-          <button className="bsure-button secondary" name="intent" type="submit" value={`${kind}:toggle`}>Toggle</button>
-          <button className="bsure-button danger" name="intent" type="submit" value={`${kind}:delete`}>Delete</button>
-        </Form>
+        <div className="bsure-actions">
+          <button
+            className="bsure-button secondary"
+            onClick={() => setIsEditing((value) => !value)}
+            type="button"
+          >
+            {isEditing ? "Cancel edit" : "Edit"}
+          </button>
+          <Form className="bsure-actions" method="post">
+            <input name="id" type="hidden" value={item.id} />
+            <button
+              className="bsure-button secondary"
+              name="intent"
+              type="submit"
+              value={`${kind}:toggle`}
+            >
+              Toggle
+            </button>
+            <button
+              className="bsure-button danger"
+              name="intent"
+              type="submit"
+              value={`${kind}:delete`}
+            >
+              Delete
+            </button>
+          </Form>
+        </div>
       </div>
+      {isEditing && (
+        <Form className="bsure-edit-form" method="post">
+          <input name="id" type="hidden" value={item.id} />
+          <input name="intent" type="hidden" value={`${kind}:update`} />
+          <div className="bsure-form-row">
+            <Field label="Admin label">
+              <input
+                className="bsure-input"
+                defaultValue={item.name}
+                name="name"
+              />
+            </Field>
+            <Field label="Priority">
+              <input
+                className="bsure-input"
+                defaultValue={item.priority}
+                name="priority"
+                type="number"
+              />
+            </Field>
+          </div>
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <Field label="Match type">
+              <select
+                className="bsure-select"
+                defaultValue={item.matchType}
+                name="matchType"
+              >
+                <option value="exact">Exact match</option>
+                <option value="contains">Contains</option>
+              </select>
+            </Field>
+            <Field label="Match value">
+              <input
+                className="bsure-input"
+                defaultValue={item.matchValue}
+                name="matchValue"
+              />
+            </Field>
+          </div>
+          <div className="bsure-radio" style={{ marginTop: "10px" }}>
+            <input
+              defaultChecked={item.enabled}
+              id={`enabled-${item.id}`}
+              name="enabled"
+              type="checkbox"
+            />
+            <label htmlFor={`enabled-${item.id}`}>Enabled</label>
+          </div>
+          <Field label="Notes" style={{ marginTop: "10px" }}>
+            <textarea
+              className="bsure-textarea"
+              defaultValue={item.notes}
+              name="notes"
+            />
+          </Field>
+          <div className="bsure-actions" style={{ marginTop: "10px" }}>
+            <button className="bsure-button" type="submit">
+              Save changes
+            </button>
+            <button
+              className="bsure-button secondary"
+              onClick={() => setIsEditing(false)}
+              type="button"
+            >
+              Cancel
+            </button>
+          </div>
+        </Form>
+      )}
     </article>
   );
 }
 
-function Field({ children, label, style }: { children: React.ReactNode; label: string; style?: React.CSSProperties }) {
+function Field({
+  children,
+  label,
+  style,
+}: {
+  children: React.ReactNode;
+  label: string;
+  style?: React.CSSProperties;
+}) {
   return (
     <div className="bsure-field" style={style}>
       <span className="bsure-label">{label}</span>
@@ -127,4 +301,5 @@ function Field({ children, label, style }: { children: React.ReactNode; label: s
   );
 }
 
-export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);
+export const headers: HeadersFunction = (headersArgs) =>
+  boundary.headers(headersArgs);

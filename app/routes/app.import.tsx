@@ -30,9 +30,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     getRecentImportBatches(),
   ]);
 
-  const autoRulePreview = batchId && batch && batch.status !== "approved"
-    ? await previewAutoRulesFromBatch(batchId)
-    : [];
+  const autoRulePreview =
+    batchId && batch && batch.status !== "approved"
+      ? await previewAutoRulesFromBatch(batchId)
+      : [];
 
   return {
     batch,
@@ -58,7 +59,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     await approvePincodeImportBatch(batchId);
     const rulesCreated = await generateAutoRulesFromBatch(batchId);
-    return redirect(`/app/import?batchId=${batchId}&rulesCreated=${rulesCreated}`);
+    return redirect(
+      `/app/import?batchId=${batchId}&rulesCreated=${rulesCreated}`,
+    );
   }
 
   const file = formData.get("csvFile");
@@ -74,28 +77,41 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ImportPage() {
-  const { batch, recentBatches, autoRulePreview, rulesCreated, missingHeaders, extraHeaders } =
-    useLoaderData<typeof loader>();
+  const {
+    batch,
+    recentBatches,
+    autoRulePreview,
+    rulesCreated,
+    missingHeaders,
+    extraHeaders,
+  } = useLoaderData<typeof loader>();
   const previewRows = batch?.records ?? [];
-  const canApprove = batch && batch.status !== "approved" && batch.validRows > 0;
+  const canApprove =
+    batch && batch.status !== "approved" && batch.validRows > 0;
 
   return (
     <div className="bsure-page">
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-topbar-left">
-            <Link className="bsure-back" to="/app">&#8592;</Link>
+            <Link className="bsure-back" to="/app">
+              &#8592;
+            </Link>
             <strong className="bsure-topbar-title">Pincode CSV import</strong>
           </div>
         </div>
 
         <div className="bsure-rule-shell">
-
           {rulesCreated > 0 && (
             <div className="import-banner import-banner-success">
-              <strong>{rulesCreated} rules auto-created</strong> and set to Inactive for your review.{" "}
+              <strong>{rulesCreated} rules auto-created</strong> from imported
+              delivery text. Rename rules are auto-enabled only when exactly one
+              enabled shipping method mapping exists; otherwise they stay
+              inactive for review.{" "}
               <Link to="/app/shipping-rules">View shipping rules</Link> &middot;{" "}
-              <Link to="/app/product-restrictions">View product restrictions</Link>
+              <Link to="/app/product-restrictions">
+                View product restrictions
+              </Link>
             </div>
           )}
 
@@ -136,29 +152,44 @@ export default function ImportPage() {
                 <div className="bsure-card-body">
                   <div className="import-summary-grid">
                     <SummaryBox label="Total rows" value={batch.totalRows} />
-                    <SummaryBox label="Valid" value={batch.validRows} color="green" />
-                    <SummaryBox label="Invalid" value={batch.invalidRows} color={batch.invalidRows > 0 ? "red" : undefined} />
-                    <SummaryBox label="Duplicate" value={batch.duplicateRows} color={batch.duplicateRows > 0 ? "orange" : undefined} />
+                    <SummaryBox
+                      label="Valid"
+                      value={batch.validRows}
+                      color="green"
+                    />
+                    <SummaryBox
+                      label="Invalid"
+                      value={batch.invalidRows}
+                      color={batch.invalidRows > 0 ? "red" : undefined}
+                    />
+                    <SummaryBox
+                      label="Duplicate"
+                      value={batch.duplicateRows}
+                      color={batch.duplicateRows > 0 ? "orange" : undefined}
+                    />
                   </div>
 
                   {(missingHeaders.length > 0 || extraHeaders.length > 0) && (
                     <div className="import-header-warnings">
                       {missingHeaders.length > 0 && (
                         <p className="import-warning">
-                          <strong>Missing headers:</strong> {missingHeaders.join(", ")}
+                          <strong>Missing headers:</strong>{" "}
+                          {missingHeaders.join(", ")}
                         </p>
                       )}
                       {extraHeaders.length > 0 && (
                         <p className="import-info">
-                          <strong>Unrecognised headers (ignored):</strong> {extraHeaders.join(", ")}
+                          <strong>Unrecognised headers (ignored):</strong>{" "}
+                          {extraHeaders.join(", ")}
                         </p>
                       )}
                     </div>
                   )}
 
                   <p className="import-note">
-                    Showing first {previewRows.length} rows from the uploaded file.
-                    Invalid and duplicate rows are stored for reference but will not be activated.
+                    Showing first {previewRows.length} rows from the uploaded
+                    file. Invalid and duplicate rows are stored for reference
+                    but will not be activated.
                   </p>
 
                   <PreviewTable rows={previewRows} />
@@ -172,14 +203,19 @@ export default function ImportPage() {
                   </div>
                   <div className="bsure-card-body">
                     <p className="import-note">
-                      After approval these rules will be created automatically in Inactive state.
-                      You can review and enable them from the shipping and product restriction pages.
+                      After approval these rules will be created automatically
+                      from imported columns. Shipping rename rules need one
+                      enabled shipping method mapping before they can be safely
+                      enabled. Payment, cutoff, product tag, and shipping method
+                      names are not inferred unless they exist in imported data
+                      or admin configuration.
                     </p>
                     <table className="rules-table">
                       <thead>
                         <tr>
                           <th>Rule name</th>
                           <th>Type</th>
+                          <th>Publish state</th>
                           <th>Description</th>
                           <th>Pincodes</th>
                         </tr>
@@ -189,8 +225,23 @@ export default function ImportPage() {
                           <tr className="rules-row" key={i}>
                             <td>{rule.name}</td>
                             <td>
-                              <span className={`rules-status ${rule.type === "ShippingHide" ? "deactivated" : rule.type === "ProductRestriction" ? "deactivated" : "active"}`}>
-                                {rule.type === "ShippingHide" ? "Shipping Hide" : rule.type === "ShippingRename" ? "Shipping Rename" : "Product Block"}
+                              <span
+                                className={`rules-status ${rule.type === "ShippingHide" ? "deactivated" : rule.type === "ProductRestriction" ? "deactivated" : "active"}`}
+                              >
+                                {rule.type === "ShippingHide"
+                                  ? "Shipping Hide"
+                                  : rule.type === "ShippingRename"
+                                    ? "Shipping Rename"
+                                    : "Product Block"}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                className={`rules-status ${rule.willAutoEnable ? "active" : "deactivated"}`}
+                              >
+                                {rule.willAutoEnable
+                                  ? "Auto-enabled"
+                                  : "Needs review"}
                               </span>
                             </td>
                             <td>{rule.description}</td>
@@ -210,9 +261,12 @@ export default function ImportPage() {
                   </div>
                   <div className="bsure-card-body">
                     <p className="import-note">
-                      Approving will activate {batch.validRows} valid pincode records and
-                      {autoRulePreview.length > 0 ? ` auto-create ${autoRulePreview.length} rules` : " update the active pincode dataset"}.
-                      Any previously approved batch will be deactivated.
+                      Approving will activate {batch.validRows} valid pincode
+                      records and
+                      {autoRulePreview.length > 0
+                        ? ` auto-create ${autoRulePreview.length} rules`
+                        : " update the active pincode dataset"}
+                      . Any previously approved batch will be deactivated.
                     </p>
                     <Form method="post">
                       <input type="hidden" name="intent" value="approve" />
@@ -227,7 +281,8 @@ export default function ImportPage() {
 
               {batch.status === "approved" && rulesCreated === 0 && (
                 <div className="import-banner import-banner-info">
-                  This batch is already approved. {batch.validRows} pincode records are active.
+                  This batch is already approved. {batch.validRows} pincode
+                  records are active.
                 </div>
               )}
             </>
@@ -253,18 +308,25 @@ export default function ImportPage() {
                     {recentBatches.map((b) => (
                       <tr className="rules-row" key={b.id}>
                         <td>
-                          <a className="rules-name-link" href={`/app/import?batchId=${b.id}`}>
+                          <a
+                            className="rules-name-link"
+                            href={`/app/import?batchId=${b.id}`}
+                          >
                             {b.filename}
                           </a>
                         </td>
                         <td>
-                          <span className={`rules-status ${b.status === "approved" ? "active" : "deactivated"}`}>
+                          <span
+                            className={`rules-status ${b.status === "approved" ? "active" : "deactivated"}`}
+                          >
                             {b.status}
                           </span>
                         </td>
                         <td>{b.totalRows}</td>
                         <td>{b.validRows}</td>
-                        <td>{new Date(b.createdAt).toLocaleDateString("en-IN")}</td>
+                        <td>
+                          {new Date(b.createdAt).toLocaleDateString("en-IN")}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -272,7 +334,6 @@ export default function ImportPage() {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
@@ -291,7 +352,9 @@ function SummaryBox({
   const colorMap = { green: "#008060", red: "#d82c0d", orange: "#e07800" };
   return (
     <div className="import-summary-box">
-      <strong style={{ color: color ? colorMap[color] : "#202223" }}>{value}</strong>
+      <strong style={{ color: color ? colorMap[color] : "#202223" }}>
+        {value}
+      </strong>
       <span>{label}</span>
     </div>
   );
@@ -300,17 +363,31 @@ function SummaryBox({
 function PreviewTable({
   rows,
 }: {
-  rows: NonNullable<Awaited<ReturnType<typeof getImportBatchForPreview>>>["records"];
+  rows: NonNullable<
+    Awaited<ReturnType<typeof getImportBatchForPreview>>
+  >["records"];
 }) {
   if (rows.length === 0) {
     return <p className="import-note">No rows available for preview.</p>;
   }
 
   const cols = [
-    "Row", "Status", "Errors", "State", "District", "Pincode",
-    "Location name", "Area group", "Delivery", "Same day",
-    "Next day", "Product avail.", "Remarks", "Charges",
-    "Upd. same day", "Upd. next day",
+    "Row",
+    "Status",
+    "Errors",
+    "State",
+    "District",
+    "Pincode",
+    "Location name",
+    "Area group",
+    "Delivery",
+    "Same day",
+    "Next day",
+    "Product avail.",
+    "Remarks",
+    "Charges",
+    "Upd. same day",
+    "Upd. next day",
   ];
 
   return (
@@ -318,7 +395,9 @@ function PreviewTable({
       <table className="rules-table import-preview-table">
         <thead>
           <tr>
-            {cols.map((h) => <th key={h}>{h}</th>)}
+            {cols.map((h) => (
+              <th key={h}>{h}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -326,14 +405,20 @@ function PreviewTable({
             <tr className="rules-row" key={row.id}>
               <td>{row.rowNumber}</td>
               <td>
-                <span className={`rules-status ${row.rowStatus === "valid" ? "active" : "deactivated"}`}>
+                <span
+                  className={`rules-status ${row.rowStatus === "valid" ? "active" : "deactivated"}`}
+                >
                   {row.rowStatus}
                 </span>
               </td>
-              <td className="import-error-cell">{parseJsonList(row.rowErrorsJson).join("; ")}</td>
+              <td className="import-error-cell">
+                {parseJsonList(row.rowErrorsJson).join("; ")}
+              </td>
               <td>{row.state}</td>
               <td>{row.district}</td>
-              <td><code>{row.pincode}</code></td>
+              <td>
+                <code>{row.pincode}</code>
+              </td>
               <td>{row.locationName}</td>
               <td>{row.areaGroup}</td>
               <td>{row.deliveryAvailability}</td>

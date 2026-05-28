@@ -1,7 +1,9 @@
 import prisma from "../db.server";
 import type { ParsedPincodeImport } from "../types/pincode-import";
 
-export async function createPincodeImportBatch(parsedImport: ParsedPincodeImport) {
+export async function createPincodeImportBatch(
+  parsedImport: ParsedPincodeImport,
+) {
   return prisma.pincodeImportBatch.create({
     data: {
       filename: parsedImport.filename,
@@ -123,39 +125,90 @@ type AutoRulePreviewEntry = {
   name: string;
   description: string;
   pincodes: string[];
+  source: "same_day_delivery" | "next_day_delivery" | "product_availability";
   newLabel?: string;
+  willAutoEnable: boolean;
 };
 
-export async function previewAutoRulesFromBatch(batchId: string): Promise<AutoRulePreviewEntry[]> {
-  const records = await prisma.pincodeRecord.findMany({
-    where: { batchId, rowStatus: "valid", pincode: { not: "" } },
-    select: {
-      pincode: true,
-      sameDayDeliveryRule: true,
-      updatedSameDayRule: true,
-    },
-  });
+export async function previewAutoRulesFromBatch(
+  batchId: string,
+): Promise<AutoRulePreviewEntry[]> {
+  const [records, enabledMappingCount] = await Promise.all([
+    prisma.pincodeRecord.findMany({
+      where: { batchId, rowStatus: "valid", pincode: { not: "" } },
+      select: {
+        pincode: true,
+        nextDayDeliveryRule: true,
+        productAvailabilityRule: true,
+        sameDayDeliveryRule: true,
+        updatedNextDayRule: true,
+        updatedSameDayRule: true,
+      },
+    }),
+    prisma.shippingMethodMapping.count({ where: { enabled: true } }),
+  ]);
 
   const sameDayLabels = new Map<string, string[]>();
+  const nextDayLabels = new Map<string, string[]>();
+  const productAvailabilityRules = new Map<string, string[]>();
 
   for (const r of records) {
     const sameDayLabel = importedSameDayLabel(r);
     if (sameDayLabel) {
-      const pincodes = sameDayLabels.get(sameDayLabel) ?? [];
-      pincodes.push(r.pincode);
-      sameDayLabels.set(sameDayLabel, pincodes);
+      addPincodeToGroup(sameDayLabels, sameDayLabel, r.pincode);
+    }
+
+    const nextDayLabel = importedNextDayLabel(r);
+    if (nextDayLabel) {
+      addPincodeToGroup(nextDayLabels, nextDayLabel, r.pincode);
+    }
+
+    const productAvailabilityText = r.productAvailabilityRule.trim();
+    if (productAvailabilityText) {
+      addPincodeToGroup(
+        productAvailabilityRules,
+        productAvailabilityText,
+        r.pincode,
+      );
     }
   }
 
   const preview: AutoRulePreviewEntry[] = [];
+  const hasOneEnabledMapping = enabledMappingCount === 1;
 
   for (const [label, pincodes] of sameDayLabels) {
     preview.push({
       type: "ShippingRename",
-      name: `Rename shipping - imported label ${preview.length + 1}`,
-      description: `Rename configured shipping method for ${pincodes.length} pincodes using imported delivery text`,
+      name: `Imported same-day delivery label ${preview.length + 1}`,
+      description: `Rename a configured shipping method for ${pincodes.length} pincodes using imported same-day delivery text.`,
       pincodes,
+      source: "same_day_delivery",
       newLabel: label,
+      willAutoEnable: hasOneEnabledMapping,
+    });
+  }
+
+  for (const [label, pincodes] of nextDayLabels) {
+    preview.push({
+      type: "ShippingRename",
+      name: `Imported next-day delivery label ${preview.length + 1}`,
+      description: `Rename a configured shipping method for ${pincodes.length} pincodes using imported next-day delivery text.`,
+      pincodes,
+      source: "next_day_delivery",
+      newLabel: label,
+      willAutoEnable: hasOneEnabledMapping,
+    });
+  }
+
+  for (const [availabilityText, pincodes] of productAvailabilityRules) {
+    preview.push({
+      type: "ProductRestriction",
+      name: `Imported product availability rule ${preview.length + 1}`,
+      description: `Create a product availability restriction draft for ${pincodes.length} pincodes using imported product availability text.`,
+      pincodes,
+      source: "product_availability",
+      newLabel: availabilityText,
+      willAutoEnable: false,
     });
   }
 
@@ -163,32 +216,44 @@ export async function previewAutoRulesFromBatch(batchId: string): Promise<AutoRu
 }
 
 export async function generateAutoRulesFromBatch(batchId: string) {
-  const rules = await previewAutoRulesFromBatch(batchId);
+  const [rules, enabledMappings] = await Promise.all([
+    previewAutoRulesFromBatch(batchId),
+    prisma.shippingMethodMapping.findMany({
+      where: { enabled: true },
+      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
+      select: { id: true },
+    }),
+  ]);
   const noteTag = `auto:${batchId}`;
+  const mappingId = enabledMappings.length === 1 ? enabledMappings[0].id : "";
 
   const base = (rule: AutoRulePreviewEntry) => ({
     name: rule.name,
-    enabled: false,
+    enabled: rule.willAutoEnable,
     priority: 100,
     pincodesJson: JSON.stringify(rule.pincodes),
     areaGroupsJson: "[]",
     productTagsJson: "[]",
     deliveryAvailabilityText: "",
-    notes: noteTag,
+    notes: `${noteTag}; source:${rule.source}`,
   });
 
   let created = 0;
   for (const rule of rules) {
     if (rule.type === "ShippingHide") {
       await prisma.shippingHideRule.create({
-        data: { ...base(rule), shippingMethodMappingId: "", cutoffRuleSettingId: "" },
+        data: {
+          ...base(rule),
+          shippingMethodMappingId: "",
+          cutoffRuleSettingId: "",
+        },
       });
       created++;
     } else if (rule.type === "ShippingRename") {
       await prisma.shippingRenameRule.create({
         data: {
           ...base(rule),
-          shippingMethodMappingId: "",
+          shippingMethodMappingId: mappingId,
           cutoffRuleSettingId: "",
           newLabel: rule.newLabel ?? "",
         },
@@ -196,7 +261,12 @@ export async function generateAutoRulesFromBatch(batchId: string) {
       created++;
     } else if (rule.type === "ProductRestriction") {
       await prisma.productRestrictionRule.create({
-        data: { ...base(rule), validationMessage: "" },
+        data: {
+          ...base(rule),
+          enabled: false,
+          deliveryAvailabilityText: rule.newLabel ?? "",
+          validationMessage: "",
+        },
       });
       created++;
     }
@@ -220,7 +290,9 @@ export async function getActivePincodeRuleOptions() {
     },
   });
 
-  const pincodeRecords = records.filter((record) => isPincodeValue(record.pincode));
+  const pincodeRecords = records.filter((record) =>
+    isPincodeValue(record.pincode),
+  );
 
   const uniqueRecords = Array.from(
     new Map(pincodeRecords.map((record) => [record.pincode, record])).values(),
@@ -228,9 +300,15 @@ export async function getActivePincodeRuleOptions() {
 
   return {
     pincodes: uniqueRecords,
-    areaGroups: Array.from(new Set(pincodeRecords.map((record) => record.areaGroup).filter(Boolean))).sort(),
+    areaGroups: Array.from(
+      new Set(pincodeRecords.map((record) => record.areaGroup).filter(Boolean)),
+    ).sort(),
     deliveryAvailabilityValues: Array.from(
-      new Set(pincodeRecords.map((record) => record.deliveryAvailability).filter(Boolean)),
+      new Set(
+        pincodeRecords
+          .map((record) => record.deliveryAvailability)
+          .filter(Boolean),
+      ),
     ).sort(),
   };
 }
@@ -244,4 +322,24 @@ function importedSameDayLabel(record: {
   updatedSameDayRule: string;
 }) {
   return (record.updatedSameDayRule || record.sameDayDeliveryRule || "").trim();
+}
+
+function importedNextDayLabel(record: {
+  nextDayDeliveryRule: string;
+  updatedNextDayRule: string;
+}) {
+  return (record.updatedNextDayRule || record.nextDayDeliveryRule || "").trim();
+}
+
+function addPincodeToGroup(
+  groups: Map<string, string[]>,
+  label: string,
+  pincode: string,
+) {
+  const value = label.trim();
+  if (!value) return;
+
+  const pincodes = groups.get(value) ?? [];
+  pincodes.push(pincode);
+  groups.set(value, pincodes);
 }

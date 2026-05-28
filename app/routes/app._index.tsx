@@ -2,6 +2,8 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
+import { getActivePincodeSummary } from "../services/pincode-storage.server";
+import { getPublishHistory } from "../services/published-config.server";
 import { getRuleManagerData } from "../services/rule-config-storage.server";
 
 type RuleRow = {
@@ -17,7 +19,11 @@ type RuleRow = {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  const data = await getRuleManagerData();
+  const [data, pincodeSummary, publishHistory] = await Promise.all([
+    getRuleManagerData(),
+    getActivePincodeSummary(),
+    getPublishHistory(),
+  ]);
 
   const fmt = (d: Date | string) =>
     new Intl.DateTimeFormat("en-US", {
@@ -89,39 +95,126 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     })),
   ];
 
-  const dashboardRows = mergeDashboardRows(rows);
+  const latestPublishedSnapshot = publishHistory.find(
+    (snapshot) => snapshot.status === "published",
+  );
+  const dashboardRows = mergeDashboardRows(rows, {
+    importActivatedOn: pincodeSummary.approvedBatch?.approvedAt
+      ? fmt(pincodeSummary.approvedBatch.approvedAt)
+      : "",
+    importIsActive: pincodeSummary.activeCount > 0,
+    publishActivatedOn: latestPublishedSnapshot?.publishedAt
+      ? fmt(latestPublishedSnapshot.publishedAt)
+      : "",
+    publishIsActive: Boolean(latestPublishedSnapshot),
+  });
   const activeCount = dashboardRows.filter((r) => r.status === "Active").length;
 
   return { activeCount, rows: dashboardRows };
 };
 
 const STARTER_ROWS = [
-  { groupKey: "shipping-hide", name: "All Shipping Method Hide", type: "Shipping", subtype: "Hide", href: "/app/shipping-rules?mode=hide" },
-  { groupKey: "shipping-rename", name: "All Shipping Method Rename", type: "Shipping", subtype: "Rename", href: "/app/shipping-rules?mode=rename" },
-  { groupKey: "payment-hide", name: "All Payment Method Hide", type: "Payment", subtype: "Hide", href: "/app/payment-rules" },
-  { groupKey: "product-validation", name: "All Product Validation", type: "Validation", subtype: "Block", href: "/app/product-restrictions" },
-  { groupKey: "cutoff-settings", name: "Cutoff time settings", type: "Shipping", subtype: "Time", href: "/app/cutoff-settings" },
-  { groupKey: "shipping-mappings", name: "Shipping method mappings", type: "Shipping", subtype: "Mapping", href: "/app/shipping-mappings" },
-  { groupKey: "pincode-import", name: "Pincode CSV import", type: "Data", subtype: "Import", href: "/app/import" },
-  { groupKey: "simulator", name: "Rule simulator", type: "Testing", subtype: "Preview", href: "/app/simulator" },
-  { groupKey: "publish", name: "Publish Shopify config", type: "Config", subtype: "Snapshot", href: "/app/publish" },
+  {
+    groupKey: "shipping-hide",
+    name: "All Shipping Method Hide",
+    type: "Shipping",
+    subtype: "Hide",
+    href: "/app/shipping-rules?mode=hide",
+  },
+  {
+    groupKey: "shipping-rename",
+    name: "All Shipping Method Rename",
+    type: "Shipping",
+    subtype: "Rename",
+    href: "/app/shipping-rules?mode=rename",
+  },
+  {
+    groupKey: "payment-hide",
+    name: "All Payment Method Hide",
+    type: "Payment",
+    subtype: "Hide",
+    href: "/app/payment-rules",
+  },
+  {
+    groupKey: "product-validation",
+    name: "All Product Validation",
+    type: "Validation",
+    subtype: "Block",
+    href: "/app/product-restrictions",
+  },
+  {
+    groupKey: "cutoff-settings",
+    name: "Cutoff time settings",
+    type: "Shipping",
+    subtype: "Time",
+    href: "/app/cutoff-settings",
+  },
+  {
+    groupKey: "shipping-mappings",
+    name: "Shipping method mappings",
+    type: "Shipping",
+    subtype: "Mapping",
+    href: "/app/shipping-mappings",
+  },
+  {
+    groupKey: "pincode-import",
+    name: "Pincode CSV import",
+    type: "Data",
+    subtype: "Import",
+    href: "/app/import",
+  },
+  {
+    groupKey: "simulator",
+    name: "Rule simulator",
+    type: "Testing",
+    subtype: "Preview",
+    href: "/app/simulator",
+  },
+  {
+    groupKey: "publish",
+    name: "Publish Shopify config",
+    type: "Config",
+    subtype: "Snapshot",
+    href: "/app/publish",
+  },
 ];
 
-function mergeDashboardRows(rows: RuleRow[]) {
+function mergeDashboardRows(
+  rows: RuleRow[],
+  statusOverrides: {
+    importActivatedOn: string;
+    importIsActive: boolean;
+    publishActivatedOn: string;
+    publishIsActive: boolean;
+  },
+) {
   return STARTER_ROWS.map((starter) => {
     const groupRows = rows.filter((row) => row.groupKey === starter.groupKey);
     const activeRows = groupRows.filter((row) => row.status === "Active");
     const displayRows = activeRows.length ? activeRows : groupRows;
     const firstDisplayRow = displayRows[0];
 
+    const override =
+      starter.groupKey === "pincode-import"
+        ? {
+            active: statusOverrides.importIsActive,
+            activatedOn: statusOverrides.importActivatedOn,
+          }
+        : starter.groupKey === "publish"
+          ? {
+              active: statusOverrides.publishIsActive,
+              activatedOn: statusOverrides.publishActivatedOn,
+            }
+          : null;
+
     return {
       id: starter.groupKey,
       name: starter.name,
-      status: activeRows.length ? "Active" : "Deactivated",
+      status: override?.active || activeRows.length ? "Active" : "Deactivated",
       type: starter.type,
       subtype: starter.subtype,
       href: starter.href,
-      activatedOn: firstDisplayRow?.activatedOn ?? "",
+      activatedOn: override?.activatedOn || firstDisplayRow?.activatedOn || "",
       groupKey: starter.groupKey,
     } satisfies RuleRow;
   });
@@ -137,10 +230,10 @@ export default function Dashboard() {
           <div>
             <div className="rules-heading">
               <h1>Checkout rules</h1>
-              <span className="rules-status active">
-                {activeCount} Active
-              </span>
-              <p>Take control of the checkout with powerful conditional rules</p>
+              <span className="rules-status active">{activeCount} Active</span>
+              <p>
+                Take control of the checkout with powerful conditional rules
+              </p>
             </div>
           </div>
           <div className="rules-actions">
@@ -157,7 +250,9 @@ export default function Dashboard() {
           <table className="rules-table">
             <thead>
               <tr>
-                <th><input className="rules-checkbox-input" type="checkbox" /></th>
+                <th>
+                  <input className="rules-checkbox-input" type="checkbox" />
+                </th>
                 <th>Name</th>
                 <th>Status</th>
                 <th>Type</th>
@@ -172,7 +267,6 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-
       </div>
     </div>
   );
@@ -181,7 +275,9 @@ export default function Dashboard() {
 function DataRow({ row }: { row: RuleRow }) {
   return (
     <tr className="rules-row">
-      <td><input className="rules-checkbox-input" type="checkbox" /></td>
+      <td>
+        <input className="rules-checkbox-input" type="checkbox" />
+      </td>
       <td>
         <Link className="rules-name-link" to={row.href}>
           {row.name}
@@ -189,14 +285,22 @@ function DataRow({ row }: { row: RuleRow }) {
       </td>
       <td>
         <Link to={row.href}>
-          <span className={`rules-status ${row.status === "Active" ? "active" : "deactivated"}`}>
+          <span
+            className={`rules-status ${row.status === "Active" ? "active" : "deactivated"}`}
+          >
             {row.status}
           </span>
         </Link>
       </td>
-      <td><Link to={row.href}>{row.type}</Link></td>
-      <td><Link to={row.href}>{row.subtype}</Link></td>
-      <td><Link to={row.href}>{row.activatedOn}</Link></td>
+      <td>
+        <Link to={row.href}>{row.type}</Link>
+      </td>
+      <td>
+        <Link to={row.href}>{row.subtype}</Link>
+      </td>
+      <td>
+        <Link to={row.href}>{row.activatedOn}</Link>
+      </td>
     </tr>
   );
 }

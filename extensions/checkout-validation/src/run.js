@@ -46,7 +46,10 @@ export function run(input) {
       ) {
         const message = trim(rule.validationMessage);
         if (!message) continue;
-        errors.push({ message, target: "cart" });
+        errors.push({
+          message,
+          target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+        });
         break;
       }
     }
@@ -134,8 +137,8 @@ function pincodeMatchesRule(rule, pincode, pincodeRecord) {
 
 function productTagsMatchRule(rule, cartTags) {
   const ruleTags = Array.isArray(rule.productTags) ? rule.productTags : [];
-  // Configured tag rules require product-tag input support in a later phase.
   if (ruleTags.length === 0) return true;
+  if (cartTags.size === 0) return true;
   return ruleTags.map(trim).some((tag) => cartTags.has(tag));
 }
 

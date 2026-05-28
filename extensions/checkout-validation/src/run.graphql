@@ -1,5 +1,16 @@
 query CartValidationsGenerateRunInput {
   cart {
+    lines {
+      merchandise {
+        ... on ProductVariant {
+          product {
+            # Shopify Functions do not expose arbitrary product tag lists.
+            # This remains available only if Shopify adds tag-list support later.
+            id
+          }
+        }
+      }
+    }
     deliveryGroups {
       deliveryAddress {
         zip

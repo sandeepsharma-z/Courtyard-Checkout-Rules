@@ -64,7 +64,7 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "VALIDATION_MESSAGE_PLACEHOLDER",
-                target: "cart",
+                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
               },
             ],
           },
@@ -73,7 +73,7 @@ describe("checkout validation function", () => {
     });
   });
 
-  test("returns no operations for product-tag rules until tag input support is available", () => {
+  test("adds a validation operation for product-tag rules when tag input is unavailable", () => {
     const config = {
       ...baseConfig,
       rules: {
@@ -88,6 +88,48 @@ describe("checkout validation function", () => {
       },
     };
 
-    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
+    expect(run(inputWithConfig(config))).toEqual({
+      operations: [
+        {
+          validationAdd: {
+            errors: [
+              {
+                message: "VALIDATION_MESSAGE_PLACEHOLDER",
+                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  test("returns no operations when product tag input is available but does not match", () => {
+    const config = {
+      ...baseConfig,
+      rules: {
+        productRestrictions: [
+          {
+            priority: "10",
+            pincodes: ["PINCODE_PLACEHOLDER"],
+            productTags: ["PRODUCT_TAG_PLACEHOLDER"],
+            validationMessage: "VALIDATION_MESSAGE_PLACEHOLDER",
+          },
+        ],
+      },
+    };
+
+    const input = inputWithConfig(config);
+    input.cart.lines = [
+      {
+        merchandise: {
+          product: {
+            tags: ["OTHER_PRODUCT_TAG_PLACEHOLDER"],
+          },
+        },
+      },
+    ];
+
+    expect(run(input)).toEqual({ operations: [] });
   });
 });

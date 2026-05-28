@@ -48,6 +48,82 @@ describe("delivery customization no-op", () => {
     });
   });
 
+  it("still applies product restrictions when a shipping rule has unsupported conditions", () => {
+    const config = validConfig({
+      productRestrictions: [
+        {
+          id: "product-restriction",
+          name: "Product restriction",
+          priority: 1,
+          productTags: ["TAG_FROM_ADMIN_CONFIG"],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
+          notes: "",
+        },
+      ],
+      shippingHideRules: [
+        {
+          id: "unsupported-hide-rule",
+          name: "Unsupported hide rule",
+          priority: 1,
+          shippingMethodMappingId: "standard-map",
+          cutoffRuleSettingId: "CUTOFF_SETTING_FROM_ADMIN_CONFIG",
+          productTags: [],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          notes: "",
+        },
+      ],
+    });
+
+    expect(run(inputWithConfig(config))).toEqual({
+      operations: [
+        { hide: { deliveryOptionHandle: "standard-shipping" } },
+      ],
+    });
+  });
+
+  it("skips unsupported shipping rules without disabling supported rules", () => {
+    const config = validConfig({
+      productRestrictions: [],
+      shippingHideRules: [
+        {
+          id: "unsupported-hide-rule",
+          name: "Unsupported hide rule",
+          priority: 1,
+          shippingMethodMappingId: "standard-mapping",
+          cutoffRuleSettingId: "CUTOFF_SETTING_FROM_ADMIN_CONFIG",
+          productTags: [],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          notes: "",
+        },
+        {
+          id: "supported-hide-rule",
+          name: "Supported hide rule",
+          priority: 2,
+          shippingMethodMappingId: "standard-map",
+          cutoffRuleSettingId: "",
+          productTags: [],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          notes: "",
+        },
+      ],
+    });
+
+    expect(run(inputWithConfig(config))).toEqual({
+      operations: [
+        { hide: { deliveryOptionHandle: "standard-shipping" } },
+      ],
+    });
+  });
+
   it("does not hide all shipping methods when product tag input is available and does not match", () => {
     const config = validConfig({
       productRestrictions: [

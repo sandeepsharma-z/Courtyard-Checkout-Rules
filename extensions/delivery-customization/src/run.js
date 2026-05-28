@@ -15,7 +15,7 @@ const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
 export function run(input) {
   const config = parsePublishedConfig(input);
 
-  if (!config || hasUnsupportedDeliveryRuleConditions(config)) {
+  if (!config) {
     return NO_CHANGES;
   }
 
@@ -129,19 +129,6 @@ function isRuleSet(rules) {
   );
 }
 
-function hasUnsupportedDeliveryRuleConditions(config) {
-  const deliveryRules = [
-    ...config.rules.shippingHideRules,
-    ...config.rules.shippingRenameRules,
-  ];
-
-  return deliveryRules.some(
-    (rule) =>
-      normalize(rule.cutoffRuleSettingId) ||
-      (Array.isArray(rule.productTags) && rule.productTags.length > 0),
-  );
-}
-
 function getCartProductTags(input) {
   const tags = new Set();
   const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
@@ -175,6 +162,10 @@ function findMatchingRule({
   pincodeRecord,
 }) {
   return sortByPriority(rules).find((rule) => {
+    if (hasUnsupportedShippingRuleConditions(rule)) {
+      return false;
+    }
+
     const mapping = mappings.find(
       (item) => normalize(item.id) === normalize(rule.shippingMethodMappingId),
     );
@@ -186,6 +177,13 @@ function findMatchingRule({
       deliveryAvailabilityMatches(rule, pincodeRecord)
     );
   });
+}
+
+function hasUnsupportedShippingRuleConditions(rule) {
+  return (
+    normalize(rule.cutoffRuleSettingId) ||
+    (Array.isArray(rule.productTags) && rule.productTags.length > 0)
+  );
 }
 
 function findMatchingProductRestriction({

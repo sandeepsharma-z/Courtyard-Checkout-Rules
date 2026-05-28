@@ -9,6 +9,7 @@ import { authenticate } from "../shopify.server";
 import {
   buildPublishedConfigSnapshot,
   createPublishHistoryRecord,
+  deletePublishHistorySnapshot,
   getPublishHistory,
   getPublishHistorySnapshot,
 } from "../services/published-config.server";
@@ -49,6 +50,24 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const shop = await getShopIdentity(admin);
 
   try {
+    if (intent === "deleteSnapshot") {
+      const snapshotId = String(formData.get("snapshotId") ?? "");
+      if (!snapshotId) {
+        return {
+          status: "error",
+          message: "Missing snapshot ID.",
+        } satisfies ActionResult;
+      }
+
+      await deletePublishHistorySnapshot(snapshotId);
+
+      return {
+        status: "success",
+        message:
+          "Publish history entry was deleted locally. Shopify metafield configuration was not changed.",
+      } satisfies ActionResult;
+    }
+
     if (intent === "republish") {
       const snapshotId = String(formData.get("snapshotId") ?? "");
       const previousSnapshot = await getPublishHistorySnapshot(snapshotId);
@@ -165,14 +184,13 @@ export default function PublishPage() {
             does not change checkout behavior.
           </p>
           <p>
-            Target:{" "}
-            <strong>
-              courtyard_checkout_rules.published_config
-            </strong>
+            Target: <strong>courtyard_checkout_rules.published_config</strong>
           </p>
           {actionData && (
             <p>
-              <strong>{actionData.status === "success" ? "Success" : "Error"}:</strong>{" "}
+              <strong>
+                {actionData.status === "success" ? "Success" : "Error"}:
+              </strong>{" "}
               {actionData.message}
             </p>
           )}
@@ -245,18 +263,42 @@ export default function PublishPage() {
                   {entry.status} - {entry.sourceFilename || "stored snapshot"}
                 </strong>
                 <span>
-                  {entry.recordCount} records, {formatBytes(entry.payloadSizeBytes)}{" "}
-                  bytes, schema v{entry.schemaVersion}
+                  {entry.recordCount} records,{" "}
+                  {formatBytes(entry.payloadSizeBytes)} bytes, schema v
+                  {entry.schemaVersion}
                 </span>
                 {entry.message && <span>{entry.message}</span>}
                 {(entry.status === "published" ||
                   entry.status === "republished") && (
-                  <Form method="post">
-                    <input type="hidden" name="intent" value="republish" />
-                    <input type="hidden" name="snapshotId" value={entry.id} />
-                    <button type="submit">Republish this snapshot</button>
-                  </Form>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="republish" />
+                      <input type="hidden" name="snapshotId" value={entry.id} />
+                      <button type="submit">Republish this snapshot</button>
+                    </Form>
+                    <Form method="post">
+                      <input
+                        type="hidden"
+                        name="intent"
+                        value="deleteSnapshot"
+                      />
+                      <input type="hidden" name="snapshotId" value={entry.id} />
+                      <button type="submit">Delete history</button>
+                    </Form>
+                  </div>
                 )}
+                {entry.status !== "published" &&
+                  entry.status !== "republished" && (
+                    <Form method="post">
+                      <input
+                        type="hidden"
+                        name="intent"
+                        value="deleteSnapshot"
+                      />
+                      <input type="hidden" name="snapshotId" value={entry.id} />
+                      <button type="submit">Delete history</button>
+                    </Form>
+                  )}
               </div>
             ))}
           </div>

@@ -68,6 +68,26 @@ export async function approvePincodeImportBatch(batchId: string) {
   });
 }
 
+export async function deletePincodeImportBatch(batchId: string) {
+  const noteTag = `auto:${batchId}`;
+
+  return prisma.$transaction(async (tx) => {
+    await tx.shippingHideRule.deleteMany({
+      where: { notes: { contains: noteTag } },
+    });
+    await tx.shippingRenameRule.deleteMany({
+      where: { notes: { contains: noteTag } },
+    });
+    await tx.productRestrictionRule.deleteMany({
+      where: { notes: { contains: noteTag } },
+    });
+
+    return tx.pincodeImportBatch.delete({
+      where: { id: batchId },
+    });
+  });
+}
+
 export async function getImportBatchForPreview(batchId?: string) {
   if (!batchId) {
     return prisma.pincodeImportBatch.findFirst({

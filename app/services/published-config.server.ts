@@ -246,3 +246,9 @@ export async function getPublishHistorySnapshot(id: string) {
     where: { id },
   });
 }
+
+export async function deletePublishHistorySnapshot(id: string) {
+  return prisma.publishedConfigSnapshot.delete({
+    where: { id },
+  });
+}

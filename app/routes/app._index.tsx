@@ -250,9 +250,6 @@ export default function Dashboard() {
           <table className="rules-table">
             <thead>
               <tr>
-                <th>
-                  <input className="rules-checkbox-input" type="checkbox" />
-                </th>
                 <th>Name</th>
                 <th>Status</th>
                 <th>Type</th>
@@ -275,9 +272,6 @@ export default function Dashboard() {
 function DataRow({ row }: { row: RuleRow }) {
   return (
     <tr className="rules-row">
-      <td>
-        <input className="rules-checkbox-input" type="checkbox" />
-      </td>
       <td>
         <Link className="rules-name-link" to={row.href}>
           {row.name}

@@ -10,6 +10,7 @@ import { parsePincodeCsv } from "../services/csv-import.server";
 import {
   approvePincodeImportBatch,
   createPincodeImportBatch,
+  deletePincodeImportBatch,
   generateAutoRulesFromBatch,
   getImportBatchForPreview,
   getRecentImportBatches,
@@ -62,6 +63,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return redirect(
       `/app/import?batchId=${batchId}&rulesCreated=${rulesCreated}`,
     );
+  }
+
+  if (intent === "delete") {
+    const batchId = String(formData.get("batchId") ?? "");
+    if (!batchId) {
+      throw new Response("Missing import batch ID.", { status: 400 });
+    }
+
+    await deletePincodeImportBatch(batchId);
+    return redirect("/app/import");
   }
 
   const file = formData.get("csvFile");
@@ -145,9 +156,18 @@ export default function ImportPage() {
               <div className="bsure-card">
                 <div className="bsure-card-header">
                   <h2>Import summary — {batch.filename}</h2>
-                  {batch.status === "approved" && (
-                    <span className="rules-status active">Approved</span>
-                  )}
+                  <div className="bsure-actions">
+                    {batch.status === "approved" && (
+                      <span className="rules-status active">Approved</span>
+                    )}
+                    <Form method="post">
+                      <input name="intent" type="hidden" value="delete" />
+                      <input name="batchId" type="hidden" value={batch.id} />
+                      <button className="bsure-button danger" type="submit">
+                        Delete import
+                      </button>
+                    </Form>
+                  </div>
                 </div>
                 <div className="bsure-card-body">
                   <div className="import-summary-grid">
@@ -302,6 +322,7 @@ export default function ImportPage() {
                       <th>Total rows</th>
                       <th>Valid</th>
                       <th>Uploaded</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -326,6 +347,18 @@ export default function ImportPage() {
                         <td>{b.validRows}</td>
                         <td>
                           {new Date(b.createdAt).toLocaleDateString("en-IN")}
+                        </td>
+                        <td>
+                          <Form method="post">
+                            <input name="intent" type="hidden" value="delete" />
+                            <input name="batchId" type="hidden" value={b.id} />
+                            <button
+                              className="bsure-button danger"
+                              type="submit"
+                            >
+                              Delete
+                            </button>
+                          </Form>
                         </td>
                       </tr>
                     ))}

@@ -64,7 +64,8 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "VALIDATION_MESSAGE_PLACEHOLDER",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+                target:
+                  "$.cart.deliveryGroups[0].deliveryAddress.postalCode",
               },
             ],
           },
@@ -95,7 +96,8 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "VALIDATION_MESSAGE_PLACEHOLDER",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+                target:
+                  "$.cart.deliveryGroups[0].deliveryAddress.postalCode",
               },
             ],
           },

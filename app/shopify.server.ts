@@ -15,6 +15,7 @@ const REQUIRED_SCOPES = [
   "read_products",
   "read_metaobjects",
   "write_metaobjects",
+  "read_delivery_customizations",
   "write_delivery_customizations",
   "read_validations",
   "write_validations",

@@ -14,8 +14,10 @@ import {
   getPublishHistorySnapshot,
 } from "../services/published-config.server";
 import {
+  enableDeliveryCustomization,
   enableCheckoutValidation,
   getCheckoutValidationStatus,
+  getDeliveryCustomizationStatus,
   getShopIdentity,
   publishConfigMetafield,
 } from "../services/shopify-config.server";
@@ -34,7 +36,8 @@ const formatBytes = (bytes: number) =>
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
 
-  const [snapshot, history, validationStatus] = await Promise.all([
+  const [snapshot, history, validationStatus, deliveryCustomizationStatus] =
+    await Promise.all([
     buildPublishedConfigSnapshot(),
     getPublishHistory(),
     getCheckoutValidationStatus(admin).catch((error) => ({
@@ -47,12 +50,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           ? error.message
           : "Unable to read checkout validation status.",
     })),
+    getDeliveryCustomizationStatus(admin).catch((error) => ({
+      title: "Courtyard Delivery Customization",
+      handle: "courtyard-delivery-customization",
+      deliveryCustomization: null,
+      isActive: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to read delivery customization status.",
+    })),
   ]);
 
   return {
     snapshot,
     history,
     validationStatus,
+    deliveryCustomizationStatus,
   };
 };
 
@@ -87,6 +101,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return {
         status: "success",
         message: `Checkout validation was ${result.action} and enabled for this Shopify app installation.`,
+      } satisfies ActionResult;
+    }
+
+    if (intent === "enableDeliveryCustomization") {
+      const result = await enableDeliveryCustomization(admin);
+
+      return {
+        status: "success",
+        message: `Delivery customization was ${result.action} and enabled for this Shopify app installation.`,
       } satisfies ActionResult;
     }
 
@@ -193,7 +216,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PublishPage() {
-  const { snapshot, history, validationStatus } =
+  const {
+    snapshot,
+    history,
+    validationStatus,
+    deliveryCustomizationStatus,
+  } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionResult | undefined;
 
@@ -216,6 +244,66 @@ export default function PublishPage() {
               </strong>{" "}
               {actionData.message}
             </p>
+          )}
+        </div>
+      </s-section>
+
+      <s-section heading="Delivery customization activation">
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <p>
+            Shipping method hide and rename behavior only works after the
+            delivery customization Function is deployed and enabled for this
+            store. This is separate from checkout validation.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gap: "0.75rem",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            }}
+          >
+            <SummaryBox
+              label="Status"
+              value={deliveryCustomizationStatus.isActive ? "Active" : "Inactive"}
+            />
+            <SummaryBox
+              label="Function"
+              value={
+                deliveryCustomizationStatus.deliveryCustomization
+                  ?.shopifyFunction.title ?? "n/a"
+              }
+            />
+            <SummaryBox
+              label="Checkout effect"
+              value={
+                deliveryCustomizationStatus.isActive ? "Enabled" : "No"
+              }
+            />
+          </div>
+          {"error" in deliveryCustomizationStatus &&
+            deliveryCustomizationStatus.error && (
+              <p>
+                <strong>Status error:</strong>{" "}
+                {deliveryCustomizationStatus.error}
+              </p>
+            )}
+          {deliveryCustomizationStatus.deliveryCustomization && (
+            <p>
+              Delivery customization ID:{" "}
+              <strong>
+                {deliveryCustomizationStatus.deliveryCustomization.id}
+              </strong>
+            </p>
+          )}
+          {!deliveryCustomizationStatus.isActive && (
+            <Form method="post">
+              <input
+                type="hidden"
+                name="intent"
+                value="enableDeliveryCustomization"
+              />
+              <button type="submit">Enable delivery customization</button>
+            </Form>
           )}
         </div>
       </s-section>

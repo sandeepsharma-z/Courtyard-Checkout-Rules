@@ -67,6 +67,28 @@ type ShopifyValidationsResponse = {
   errors?: ShopifyGraphqlError[];
 };
 
+type ShopifyDeliveryCustomizationsResponse = {
+  data?: {
+    deliveryCustomizations?: {
+      nodes?: Array<ShopifyDeliveryCustomization>;
+    };
+  };
+  errors?: ShopifyGraphqlError[];
+};
+
+type ShopifyDeliveryCustomizationMutationResponse = {
+  data?: {
+    deliveryCustomizationCreate?: ShopifyDeliveryCustomizationMutationResult;
+    deliveryCustomizationUpdate?: ShopifyDeliveryCustomizationMutationResult;
+  };
+  errors?: ShopifyGraphqlError[];
+};
+
+type ShopifyDeliveryCustomizationMutationResult = {
+  deliveryCustomization?: ShopifyDeliveryCustomization | null;
+  userErrors?: Array<{ field?: string[]; message: string; code?: string }>;
+};
+
 type ShopifyValidationMutationResponse = {
   data?: {
     validationCreate?: ShopifyValidationMutationResult;
@@ -92,8 +114,21 @@ export type ShopifyValidation = {
   };
 };
 
+export type ShopifyDeliveryCustomization = {
+  id: string;
+  title: string;
+  enabled: boolean;
+  shopifyFunction: {
+    id: string;
+    title: string;
+    apiType: string;
+  };
+};
+
 const CHECKOUT_VALIDATION_TITLE = "Courtyard Checkout Validation";
 const CHECKOUT_VALIDATION_HANDLE = "courtyard-checkout-validation";
+const DELIVERY_CUSTOMIZATION_TITLE = "Courtyard Delivery Customization";
+const DELIVERY_CUSTOMIZATION_HANDLE = "courtyard-delivery-customization";
 
 function throwGraphqlErrors(errors: ShopifyGraphqlError[] | undefined) {
   if (errors?.length) {
@@ -288,6 +323,74 @@ export async function enableCheckoutValidation(admin: ShopifyAdminClient) {
   }
 }
 
+export async function getDeliveryCustomizationStatus(admin: ShopifyAdminClient) {
+  const response = await admin.graphql(`#graphql
+    query CourtyardCheckoutRulesDeliveryCustomizationStatus {
+      deliveryCustomizations(first: 50) {
+        nodes {
+          id
+          title
+          enabled
+          shopifyFunction {
+            id
+            title
+            apiType
+          }
+        }
+      }
+    }
+  `);
+  const json = (await response.json()) as ShopifyDeliveryCustomizationsResponse;
+  throwGraphqlErrors(json.errors);
+
+  const deliveryCustomization =
+    json.data?.deliveryCustomizations?.nodes?.find(
+      (node) =>
+        node.title === DELIVERY_CUSTOMIZATION_TITLE ||
+        node.shopifyFunction.title === DELIVERY_CUSTOMIZATION_TITLE,
+    ) ?? null;
+
+  return {
+    title: DELIVERY_CUSTOMIZATION_TITLE,
+    handle: DELIVERY_CUSTOMIZATION_HANDLE,
+    deliveryCustomization,
+    isActive: Boolean(deliveryCustomization?.enabled),
+  };
+}
+
+export async function enableDeliveryCustomization(admin: ShopifyAdminClient) {
+  const status = await getDeliveryCustomizationStatus(admin);
+
+  if (status.deliveryCustomization) {
+    const result = await updateDeliveryCustomization(
+      admin,
+      status.deliveryCustomization.id,
+    );
+    return {
+      action: "updated",
+      deliveryCustomization: result,
+    };
+  }
+
+  const shopifyFunction = await findDeliveryCustomizationFunction(admin);
+
+  if (!shopifyFunction) {
+    throw new Error(
+      "Delivery customization Function was not found on this shop. Deploy the delivery-customization extension first, then try again.",
+    );
+  }
+
+  const result = await createDeliveryCustomizationWithFunctionId(
+    admin,
+    shopifyFunction.id,
+  );
+
+  return {
+    action: "created",
+    deliveryCustomization: result,
+  };
+}
+
 async function updateCheckoutValidation(
   admin: ShopifyAdminClient,
   validationId: string,
@@ -453,6 +556,128 @@ async function findCheckoutValidationFunction(admin: ShopifyAdminClient) {
   return (
     json.data?.shopifyFunctions?.nodes?.find(
       (node) => node.title === CHECKOUT_VALIDATION_TITLE,
+    ) ?? null
+  );
+}
+
+async function updateDeliveryCustomization(
+  admin: ShopifyAdminClient,
+  deliveryCustomizationId: string,
+) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation CourtyardCheckoutRulesUpdateDeliveryCustomization($id: ID!, $deliveryCustomization: DeliveryCustomizationInput!) {
+        deliveryCustomizationUpdate(id: $id, deliveryCustomization: $deliveryCustomization) {
+          userErrors {
+            field
+            message
+            code
+          }
+          deliveryCustomization {
+            id
+            title
+            enabled
+            shopifyFunction {
+              id
+              title
+              apiType
+            }
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        id: deliveryCustomizationId,
+        deliveryCustomization: {
+          title: DELIVERY_CUSTOMIZATION_TITLE,
+          enabled: true,
+        },
+      },
+    },
+  );
+  const json =
+    (await response.json()) as ShopifyDeliveryCustomizationMutationResponse;
+  throwGraphqlErrors(json.errors);
+  throwUserErrors(json.data?.deliveryCustomizationUpdate?.userErrors);
+
+  const deliveryCustomization =
+    json.data?.deliveryCustomizationUpdate?.deliveryCustomization;
+  if (!deliveryCustomization) {
+    throw new Error("Shopify did not return an updated delivery customization.");
+  }
+
+  return deliveryCustomization;
+}
+
+async function createDeliveryCustomizationWithFunctionId(
+  admin: ShopifyAdminClient,
+  functionId: string,
+) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation CourtyardCheckoutRulesCreateDeliveryCustomization($deliveryCustomization: DeliveryCustomizationInput!) {
+        deliveryCustomizationCreate(deliveryCustomization: $deliveryCustomization) {
+          userErrors {
+            field
+            message
+            code
+          }
+          deliveryCustomization {
+            id
+            title
+            enabled
+            shopifyFunction {
+              id
+              title
+              apiType
+            }
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        deliveryCustomization: {
+          title: DELIVERY_CUSTOMIZATION_TITLE,
+          functionId,
+          enabled: true,
+        },
+      },
+    },
+  );
+  const json =
+    (await response.json()) as ShopifyDeliveryCustomizationMutationResponse;
+  throwGraphqlErrors(json.errors);
+  throwUserErrors(json.data?.deliveryCustomizationCreate?.userErrors);
+
+  const deliveryCustomization =
+    json.data?.deliveryCustomizationCreate?.deliveryCustomization;
+  if (!deliveryCustomization) {
+    throw new Error("Shopify did not return a created delivery customization.");
+  }
+
+  return deliveryCustomization;
+}
+
+async function findDeliveryCustomizationFunction(admin: ShopifyAdminClient) {
+  const response = await admin.graphql(`#graphql
+    query CourtyardCheckoutRulesDeliveryFunctions {
+      shopifyFunctions(first: 50) {
+        nodes {
+          id
+          title
+          apiType
+        }
+      }
+    }
+  `);
+  const json = (await response.json()) as ShopifyFunctionsResponse;
+  throwGraphqlErrors(json.errors);
+
+  return (
+    json.data?.shopifyFunctions?.nodes?.find(
+      (node) => node.title === DELIVERY_CUSTOMIZATION_TITLE,
     ) ?? null
   );
 }

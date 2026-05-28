@@ -28,7 +28,7 @@ export type PublishedConfigSnapshotPayload = {
   kind: "courtyard_checkout_rules.pincode_config";
   publishedAt: string;
   source: {
-    type: "local_import_batch";
+    type: "local_import_batch" | "manual_pincode_rules";
     batchId: string;
     filename: string;
   };
@@ -37,6 +37,13 @@ export type PublishedConfigSnapshotPayload = {
   };
   pincodeData: {
     records: PublishedPincodeRecord[];
+  };
+  settings?: {
+    blockUnknownPincode: boolean;
+    unknownPincodeMessage: string;
+    autoRenameDeliveryOption: boolean;
+    deliveryLabelSource: "same_day" | "next_day" | "updated_first";
+    hideOtherDeliveryOptions: boolean;
   };
   rules?: PublishedRuleConfig;
 };

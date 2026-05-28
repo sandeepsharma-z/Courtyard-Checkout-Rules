@@ -5,6 +5,7 @@ import {
   type BuiltPublishedConfigSnapshot,
   type PublishedConfigSnapshotPayload,
 } from "../types/published-config";
+import { getCheckoutRuleSettings } from "./checkout-settings.server";
 
 const parseList = (value: string) => JSON.parse(value) as string[];
 
@@ -64,6 +65,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
     shippingRenameRules,
     paymentHideRules,
     cutoffSettings,
+    checkoutSettings,
   ] = await Promise.all([
     prisma.productRestrictionRule.findMany({
       where: { enabled: true },
@@ -93,6 +95,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
       where: { enabled: true },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     }),
+    getCheckoutRuleSettings(),
   ]);
 
   const payload: PublishedConfigSnapshotPayload = {
@@ -124,6 +127,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         und: record.updatedNextDayRule,
       })),
     },
+    settings: checkoutSettings,
     rules: {
       productRestrictions: productRestrictionRules.map((rule) => ({
         id: rule.id,

@@ -140,6 +140,93 @@ export async function getActivePincodeSummary() {
   };
 }
 
+export async function upsertManualPincodeRecords(input: {
+  records: Array<{
+    pincode: string;
+    state?: string;
+    district?: string;
+    locationName?: string;
+    areaGroup?: string;
+    deliveryAvailability?: string;
+    sameDayDeliveryRule?: string;
+    nextDayDeliveryRule?: string;
+    productAvailabilityRule?: string;
+    remarks?: string;
+    chargesPricingText?: string;
+    updatedSameDayRule?: string;
+    updatedNextDayRule?: string;
+  }>;
+}) {
+  const records = input.records
+    .map((record) => ({
+      ...record,
+      pincode: normalizePincode(record.pincode),
+    }))
+    .filter((record) => isPincodeValue(record.pincode));
+
+  if (records.length === 0) {
+    throw new Error("Add at least one valid 6-digit pincode.");
+  }
+
+  const batch = await prisma.pincodeImportBatch.create({
+    data: {
+      filename: `Manual pincode rules ${new Date().toISOString()}`,
+      status: "approved",
+      totalRows: records.length,
+      validRows: records.length,
+      invalidRows: 0,
+      duplicateRows: 0,
+      approvedAt: new Date(),
+    },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pincodeRecord.updateMany({
+      where: { pincode: { in: records.map((record) => record.pincode) } },
+      data: { isActive: false },
+    });
+
+    await tx.pincodeRecord.createMany({
+      data: records.map((record, index) => ({
+        batchId: batch.id,
+        rowNumber: index + 1,
+        rowStatus: "valid",
+        rowErrorsJson: "[]",
+        isActive: true,
+        state: clean(record.state),
+        district: clean(record.district),
+        pincode: record.pincode,
+        locationName: clean(record.locationName),
+        areaGroup: clean(record.areaGroup),
+        deliveryAvailability: clean(record.deliveryAvailability),
+        sameDayDeliveryRule: clean(record.sameDayDeliveryRule),
+        nextDayDeliveryRule: clean(record.nextDayDeliveryRule),
+        productAvailabilityRule: clean(record.productAvailabilityRule),
+        remarks: clean(record.remarks),
+        chargesPricingText: clean(record.chargesPricingText),
+        updatedSameDayRule: clean(record.updatedSameDayRule),
+        updatedNextDayRule: clean(record.updatedNextDayRule),
+      })),
+    });
+  });
+
+  return records.length;
+}
+
+export async function deleteActivePincodeRecord(id: string) {
+  return prisma.pincodeRecord.update({
+    where: { id },
+    data: { isActive: false },
+  });
+}
+
+export async function clearActivePincodeRecords() {
+  return prisma.pincodeRecord.updateMany({
+    where: { isActive: true },
+    data: { isActive: false },
+  });
+}
+
 type AutoRulePreviewEntry = {
   type: "ShippingHide" | "ShippingRename" | "ProductRestriction";
   name: string;
@@ -347,6 +434,14 @@ export async function getActivePincodeRuleOptions() {
 
 function isPincodeValue(value: string) {
   return /^\d{6}$/.test(value.trim());
+}
+
+function normalizePincode(value: string) {
+  return String(value ?? "").match(/[1-9]\d{5}/)?.[0] ?? "";
+}
+
+function clean(value?: string) {
+  return String(value ?? "").trim();
 }
 
 function importedSameDayLabel(record: {

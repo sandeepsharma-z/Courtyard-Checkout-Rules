@@ -213,6 +213,66 @@ describe("delivery customization no-op", () => {
     });
   });
 
+  it("shows manual pincode delivery text as the shipping method label", () => {
+    const config = validConfig({
+      settings: {
+        autoRenameDeliveryOption: true,
+        deliveryLabelSource: "updated_first",
+        hideOtherDeliveryOptions: true,
+      },
+      pincodeData: {
+        records: [
+          {
+            pc: "PINCODE_FROM_ADMIN_CONFIG",
+            sd: "SAME_DAY_LABEL_FROM_ADMIN",
+            nd: "NEXT_DAY_LABEL_FROM_ADMIN",
+            usd: "",
+            und: "",
+          },
+        ],
+      },
+      productRestrictions: [],
+      shippingHideRules: [],
+      shippingRenameRules: [],
+    });
+
+    const input = inputWithConfig(config);
+    input.cart.deliveryGroups[0].deliveryOptions.push({
+      handle: "economy-shipping",
+      title: "Another shipping method from admin config",
+      code: "another-shipping-method-code",
+    });
+
+    expect(run(input)).toEqual({
+      operations: [
+        {
+          rename: {
+            deliveryOptionHandle: "standard-shipping",
+            title: "SAME_DAY_LABEL_FROM_ADMIN",
+          },
+        },
+        { hide: { deliveryOptionHandle: "economy-shipping" } },
+      ],
+    });
+  });
+
+  it("does not auto-rename when the pincode is not configured", () => {
+    const config = validConfig({
+      settings: {
+        autoRenameDeliveryOption: true,
+        deliveryLabelSource: "updated_first",
+        hideOtherDeliveryOptions: true,
+      },
+      productRestrictions: [],
+      shippingHideRules: [],
+      shippingRenameRules: [],
+    });
+
+    expect(run(inputWithConfig(config, "654321"))).toEqual({
+      operations: [],
+    });
+  });
+
   it("gives hide rules priority over rename rules", () => {
     const config = validConfig({
       shippingRenameRules: [
@@ -288,7 +348,7 @@ function inputWithConfig(config, zip = "PINCODE_FROM_ADMIN_CONFIG") {
 }
 
 function validConfig(overrides = {}) {
-  return {
+  const config = {
     v: 2,
     kind: "courtyard_checkout_rules.pincode_config",
     pincodeData: {
@@ -327,7 +387,18 @@ function validConfig(overrides = {}) {
         },
       ],
       shippingRenameRules: [],
-      ...overrides,
+    },
+  };
+
+  const { pincodeData, settings, rules, ...ruleOverrides } = overrides;
+
+  return {
+    ...config,
+    ...(pincodeData ? { pincodeData } : {}),
+    ...(settings ? { settings } : {}),
+    rules: {
+      ...config.rules,
+      ...(rules ?? ruleOverrides),
     },
   };
 }

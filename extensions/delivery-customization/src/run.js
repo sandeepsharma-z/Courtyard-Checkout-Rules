@@ -30,6 +30,7 @@ export function run(input) {
     const deliveryOptions = Array.isArray(group?.deliveryOptions)
       ? group.deliveryOptions
       : [];
+    const groupOperations = [];
     const cartTags = getCartProductTags(input);
     const productRestriction = findMatchingProductRestriction({
       rules: config.rules.productRestrictions,
@@ -42,9 +43,10 @@ export function run(input) {
       for (const option of deliveryOptions) {
         const handle = normalize(option?.handle);
         if (handle) {
-          operations.push({ hide: { deliveryOptionHandle: handle } });
+          groupOperations.push({ hide: { deliveryOptionHandle: handle } });
         }
       }
+      operations.push(...groupOperations);
       continue;
     }
 
@@ -64,7 +66,7 @@ export function run(input) {
       });
 
       if (hideRule) {
-        operations.push({ hide: { deliveryOptionHandle: handle } });
+        groupOperations.push({ hide: { deliveryOptionHandle: handle } });
         continue;
       }
 
@@ -77,7 +79,7 @@ export function run(input) {
       });
 
       if (renameRule && normalize(renameRule.newLabel)) {
-        operations.push({
+        groupOperations.push({
           rename: {
             deliveryOptionHandle: handle,
             title: normalize(renameRule.newLabel),
@@ -85,9 +87,69 @@ export function run(input) {
         });
       }
     }
+
+    if (groupOperations.length === 0) {
+      groupOperations.push(
+        ...buildManualDeliveryLabelOperations(config, pincodeRecord, deliveryOptions),
+      );
+    }
+
+    operations.push(...groupOperations);
   }
 
   return operations.length > 0 ? { operations } : NO_CHANGES;
+}
+
+function buildManualDeliveryLabelOperations(config, pincodeRecord, deliveryOptions) {
+  if (config.settings?.autoRenameDeliveryOption !== true || !pincodeRecord) {
+    return [];
+  }
+
+  const title = manualDeliveryTitle(config.settings, pincodeRecord);
+  if (!title) {
+    return [];
+  }
+
+  const firstOption = deliveryOptions.find((option) => normalize(option?.handle));
+  if (!firstOption) {
+    return [];
+  }
+
+  const firstHandle = normalize(firstOption.handle);
+  const operations = [
+    {
+      rename: {
+        deliveryOptionHandle: firstHandle,
+        title,
+      },
+    },
+  ];
+
+  if (config.settings.hideOtherDeliveryOptions === true) {
+    for (const option of deliveryOptions) {
+      const handle = normalize(option?.handle);
+      if (handle && handle !== firstHandle) {
+        operations.push({ hide: { deliveryOptionHandle: handle } });
+      }
+    }
+  }
+
+  return operations;
+}
+
+function manualDeliveryTitle(settings, pincodeRecord) {
+  const sameDay = normalize(pincodeRecord.usd) || normalize(pincodeRecord.sd);
+  const nextDay = normalize(pincodeRecord.und) || normalize(pincodeRecord.nd);
+
+  if (settings.deliveryLabelSource === "same_day") {
+    return sameDay;
+  }
+
+  if (settings.deliveryLabelSource === "next_day") {
+    return nextDay;
+  }
+
+  return sameDay || nextDay;
 }
 
 function parsePublishedConfig(input) {

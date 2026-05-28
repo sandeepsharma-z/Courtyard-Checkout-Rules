@@ -158,10 +158,10 @@ const STARTER_ROWS = [
   },
   {
     groupKey: "pincode-import",
-    name: "Pincode CSV import",
+    name: "Pincode delivery rules",
     type: "Data",
-    subtype: "Import",
-    href: "/app/import",
+    subtype: "Manual",
+    href: "/app/pincodes",
   },
   {
     groupKey: "simulator",

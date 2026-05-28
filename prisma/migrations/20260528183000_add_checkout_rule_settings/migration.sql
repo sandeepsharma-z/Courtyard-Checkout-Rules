@@ -1,0 +1,6 @@
+CREATE TABLE "CheckoutRuleSetting" (
+    "key" TEXT NOT NULL PRIMARY KEY,
+    "value" TEXT NOT NULL DEFAULT '',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL
+);

@@ -1,95 +1,379 @@
-import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Link, useLoaderData } from "react-router";
+import type {
+  ActionFunctionArgs,
+  HeadersFunction,
+  LoaderFunctionArgs,
+} from "react-router";
+import { Form, Link, redirect, useActionData, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getActivePincodeSummary } from "../services/pincode-storage.server";
+import {
+  clearActivePincodeRecords,
+  deleteActivePincodeRecord,
+  getActivePincodeSummary,
+  upsertManualPincodeRecords,
+} from "../services/pincode-storage.server";
+import {
+  getCheckoutRuleSettings,
+  saveCheckoutRuleSettings,
+  type CheckoutRuleSettings,
+} from "../services/checkout-settings.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  return getActivePincodeSummary();
+  const [summary, settings] = await Promise.all([
+    getActivePincodeSummary(),
+    getCheckoutRuleSettings(),
+  ]);
+
+  return { settings, ...summary };
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  await authenticate.admin(request);
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+
+  try {
+    if (intent === "manual:add") {
+      await upsertManualPincodeRecords({
+        records: parseManualRows(String(formData.get("bulkRows") ?? ""), {
+          pincode: String(formData.get("pincode") ?? ""),
+          state: String(formData.get("state") ?? ""),
+          district: String(formData.get("district") ?? ""),
+          locationName: String(formData.get("locationName") ?? ""),
+          areaGroup: String(formData.get("areaGroup") ?? ""),
+          deliveryAvailability: String(
+            formData.get("deliveryAvailability") ?? "",
+          ),
+          sameDayDeliveryRule: String(formData.get("sameDayDeliveryRule") ?? ""),
+          nextDayDeliveryRule: String(formData.get("nextDayDeliveryRule") ?? ""),
+          productAvailabilityRule: String(
+            formData.get("productAvailabilityRule") ?? "",
+          ),
+          remarks: String(formData.get("remarks") ?? ""),
+          chargesPricingText: String(formData.get("chargesPricingText") ?? ""),
+          updatedSameDayRule: String(formData.get("updatedSameDayRule") ?? ""),
+          updatedNextDayRule: String(formData.get("updatedNextDayRule") ?? ""),
+        }),
+      });
+      return redirect("/app/pincodes?status=manual-saved");
+    }
+
+    if (intent === "settings:save") {
+      const settings: CheckoutRuleSettings = {
+        blockUnknownPincode: formData.get("blockUnknownPincode") === "on",
+        unknownPincodeMessage: String(
+          formData.get("unknownPincodeMessage") ?? "",
+        ).trim(),
+        autoRenameDeliveryOption:
+          formData.get("autoRenameDeliveryOption") === "on",
+        deliveryLabelSource: parseDeliveryLabelSource(
+          String(formData.get("deliveryLabelSource") ?? ""),
+        ),
+        hideOtherDeliveryOptions:
+          formData.get("hideOtherDeliveryOptions") === "on",
+      };
+      await saveCheckoutRuleSettings(settings);
+      return redirect("/app/pincodes?status=settings-saved");
+    }
+
+    if (intent === "record:delete") {
+      await deleteActivePincodeRecord(String(formData.get("id") ?? ""));
+      return redirect("/app/pincodes?status=record-deleted");
+    }
+
+    if (intent === "records:clear") {
+      await clearActivePincodeRecords();
+      return redirect("/app/pincodes?status=records-cleared");
+    }
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unable to save changes.",
+    };
+  }
+
+  return null;
 };
 
 export default function PincodeGroupsPage() {
-  const { activeCount, approvedBatch, recentRecords } = useLoaderData<typeof loader>();
+  const { activeCount, approvedBatch, recentRecords, settings } =
+    useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
 
   return (
     <div className="bsure-page">
       <div className="bsure-shell">
         <div className="bsure-topbar">
           <div className="bsure-title">
-            <Link className="bsure-back" to="/app">←</Link>
-            <h1>Pincode groups</h1>
+            <Link className="bsure-back" to="/app">
+              ←
+            </Link>
+            <h1>Manual pincode delivery rules</h1>
           </div>
-          <Link className="bsure-more" to="/app/import">Import CSV</Link>
+          <Link className="bsure-more" to="/app/publish">
+            Publish config
+          </Link>
         </div>
+
+        {actionData && "error" in actionData && actionData.error ? (
+          <section className="bsure-card">
+            <p style={{ color: "#d72c0d", margin: 0 }}>{actionData.error}</p>
+          </section>
+        ) : null}
 
         <div className="bsure-flow">
           <section className="bsure-card">
-            <h2>Current local configuration</h2>
-            <div style={{ display: "grid", gap: "10px", marginTop: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "28px", fontWeight: 700, color: "#202223" }}>{activeCount}</span>
-                <span style={{ color: "#5c5f62" }}>active pincode records in local configurable storage</span>
-              </div>
-              {approvedBatch ? (
-                <div className="bsure-rule-item" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: "14px" }}>{approvedBatch.filename}</div>
-                    <div className="bsure-rule-meta">Current approved batch</div>
-                  </div>
-                  <Link className="bsure-button secondary" to="/app/publish">Review publish status</Link>
-                </div>
-              ) : (
-                <div style={{ padding: "14px", background: "#fafafa", border: "1px dashed #d4d4d4", borderRadius: "8px", color: "#5c5f62", fontSize: "14px" }}>
-                  No approved CSV import batch yet. <Link style={{ color: "#008060" }} to="/app/import">Import a CSV</Link> to populate pincode records.
-                </div>
-              )}
-            </div>
+            <h2>Checkout behavior settings</h2>
+            <p>
+              These settings are published into Shopify config. Checkout only
+              changes after you save settings and publish config.
+            </p>
+            <Form method="post" className="bsure-form-grid">
+              <input name="intent" type="hidden" value="settings:save" />
+              <label className="bsure-check">
+                <input
+                  defaultChecked={settings.blockUnknownPincode}
+                  name="blockUnknownPincode"
+                  type="checkbox"
+                />
+                Block pincodes that are not in the active pincode list
+              </label>
+              <Field label="Unknown pincode error message">
+                <input
+                  className="bsure-input"
+                  defaultValue={settings.unknownPincodeMessage}
+                  name="unknownPincodeMessage"
+                  placeholder="Message shown under PIN code when delivery is unavailable"
+                />
+              </Field>
+              <label className="bsure-check">
+                <input
+                  defaultChecked={settings.autoRenameDeliveryOption}
+                  name="autoRenameDeliveryOption"
+                  type="checkbox"
+                />
+                Show pincode delivery text as the shipping method label
+              </label>
+              <Field label="Delivery label source">
+                <select
+                  className="bsure-select"
+                  defaultValue={settings.deliveryLabelSource}
+                  name="deliveryLabelSource"
+                >
+                  <option value="updated_first">Updated text first</option>
+                  <option value="same_day">Same day delivery text</option>
+                  <option value="next_day">Next day delivery text</option>
+                </select>
+              </Field>
+              <label className="bsure-check">
+                <input
+                  defaultChecked={settings.hideOtherDeliveryOptions}
+                  name="hideOtherDeliveryOptions"
+                  type="checkbox"
+                />
+                When delivery text matches, hide other Shopify shipping options
+              </label>
+              <button className="bsure-button" type="submit">
+                Save checkout settings
+              </button>
+            </Form>
           </section>
 
-          {recentRecords.length > 0 && (
-            <section className="bsure-card">
-              <h2>Active record preview</h2>
-              <p style={{ marginTop: "4px", marginBottom: "14px" }}>Showing first {recentRecords.length} records from approved batch.</p>
-              <div style={{ overflowX: "auto", border: "1px solid #e1e3e5", borderRadius: "8px" }}>
-                <table style={{ borderCollapse: "collapse", width: "100%", minWidth: "640px" }}>
-                  <thead>
-                    <tr>
-                      {["Pincode", "State", "District", "Location", "Area group", "Delivery availability"].map((h) => (
-                        <th key={h} style={{ background: "#fafafa", borderBottom: "1px solid #e1e3e5", color: "#303030", fontSize: "13px", fontWeight: 650, padding: "10px 14px", textAlign: "left" }}>
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentRecords.map((record) => (
-                      <tr key={record.id} style={{ transition: "background 140ms" }}>
-                        <Td>{record.pincode}</Td>
-                        <Td>{record.state}</Td>
-                        <Td>{record.district}</Td>
-                        <Td>{record.locationName}</Td>
-                        <Td>{record.areaGroup}</Td>
-                        <Td>{record.deliveryAvailability}</Td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <section className="bsure-card">
+            <h2>Add or update manual pincode</h2>
+            <p>
+              Enter one pincode or paste bulk rows. All values are stored as
+              text and can be changed from admin.
+            </p>
+            <Form method="post" className="bsure-form-grid">
+              <input name="intent" type="hidden" value="manual:add" />
+              <div className="bsure-grid-two">
+                <Field label="Pincode">
+                  <input className="bsure-input" name="pincode" />
+                </Field>
+                <Field label="Area group">
+                  <input className="bsure-input" name="areaGroup" />
+                </Field>
               </div>
-            </section>
-          )}
+              <div className="bsure-grid-two">
+                <Field label="State">
+                  <input className="bsure-input" name="state" />
+                </Field>
+                <Field label="District">
+                  <input className="bsure-input" name="district" />
+                </Field>
+              </div>
+              <Field label="Location / area name">
+                <input className="bsure-input" name="locationName" />
+              </Field>
+              <Field label="Delivery availability text">
+                <input className="bsure-input" name="deliveryAvailability" />
+              </Field>
+              <Field label="Same day delivery">
+                <textarea
+                  className="bsure-textarea"
+                  name="sameDayDeliveryRule"
+                  placeholder="Example structure only: same day delivery text from admin"
+                  rows={3}
+                />
+              </Field>
+              <Field label="Next day delivery">
+                <textarea
+                  className="bsure-textarea"
+                  name="nextDayDeliveryRule"
+                  placeholder="Example structure only: next day delivery text from admin"
+                  rows={2}
+                />
+              </Field>
+              <Field label="Product availability / block note">
+                <input className="bsure-input" name="productAvailabilityRule" />
+              </Field>
+              <Field label="Charges / pricing text">
+                <input className="bsure-input" name="chargesPricingText" />
+              </Field>
+              <Field label="Bulk rows">
+                <textarea
+                  className="bsure-textarea"
+                  name="bulkRows"
+                  placeholder="One row per line: PINCODE | SAME_DAY_TEXT | NEXT_DAY_TEXT | AREA_GROUP | DELIVERY_TEXT"
+                  rows={6}
+                />
+              </Field>
+              <button className="bsure-button" type="submit">
+                Save manual pincode rules
+              </button>
+            </Form>
+          </section>
+
+          <section className="bsure-card">
+            <div
+              style={{
+                alignItems: "center",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div>
+                <h2>Active pincode records</h2>
+                <p>
+                  {activeCount} active records
+                  {approvedBatch ? ` · Source: ${approvedBatch.filename}` : ""}
+                </p>
+              </div>
+              <Form method="post">
+                <input name="intent" type="hidden" value="records:clear" />
+                <button className="bsure-button danger" type="submit">
+                  Clear active records
+                </button>
+              </Form>
+            </div>
+            <div className="bsure-table-wrap">
+              <table className="rules-table">
+                <thead>
+                  <tr>
+                    {[
+                      "Pincode",
+                      "Area group",
+                      "Same day",
+                      "Next day",
+                      "Delivery text",
+                      "Action",
+                    ].map((heading) => (
+                      <th key={heading}>{heading}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRecords.map((record) => (
+                    <tr key={record.id}>
+                      <td>{record.pincode}</td>
+                      <td>{record.areaGroup}</td>
+                      <td>{record.sameDayDeliveryRule}</td>
+                      <td>{record.nextDayDeliveryRule}</td>
+                      <td>{record.deliveryAvailability}</td>
+                      <td>
+                        <Form method="post">
+                          <input name="intent" type="hidden" value="record:delete" />
+                          <input name="id" type="hidden" value={record.id} />
+                          <button className="bsure-link-button" type="submit">
+                            Delete
+                          </button>
+                        </Form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
-function Td({ children }: { children: React.ReactNode }) {
+function Field({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: string;
+}) {
   return (
-    <td style={{ borderTop: "1px solid #e1e3e5", color: "#202223", fontSize: "13px", padding: "10px 14px", verticalAlign: "top" }}>
+    <label className="bsure-field">
+      <span>{label}</span>
       {children}
-    </td>
+    </label>
   );
 }
 
-export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);
+function parseManualRows(
+  bulkRows: string,
+  single: {
+    pincode: string;
+    state: string;
+    district: string;
+    locationName: string;
+    areaGroup: string;
+    deliveryAvailability: string;
+    sameDayDeliveryRule: string;
+    nextDayDeliveryRule: string;
+    productAvailabilityRule: string;
+    remarks: string;
+    chargesPricingText: string;
+    updatedSameDayRule: string;
+    updatedNextDayRule: string;
+  },
+) {
+  const rows = bulkRows
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [pincode, sameDayDeliveryRule, nextDayDeliveryRule, areaGroup, deliveryAvailability] =
+        line.split("|").map((part) => part.trim());
+      return {
+        pincode,
+        areaGroup,
+        deliveryAvailability,
+        sameDayDeliveryRule,
+        nextDayDeliveryRule,
+      };
+    });
+
+  if (rows.length > 0) return rows;
+  return [single];
+}
+
+function parseDeliveryLabelSource(
+  value: string,
+): CheckoutRuleSettings["deliveryLabelSource"] {
+  if (value === "same_day" || value === "next_day" || value === "updated_first") {
+    return value;
+  }
+  return "updated_first";
+}
+
+export const headers: HeadersFunction = (headersArgs) =>
+  boundary.headers(headersArgs);

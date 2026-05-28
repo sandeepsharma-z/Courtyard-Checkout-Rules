@@ -100,6 +100,13 @@ model PublishedConfigSnapshot {
   @@index([sourceBatchId])
 }
 
+model CheckoutRuleSetting {
+  key       String   @id
+  value     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model ProductRestrictionRule {
   id                       String   @id @default(cuid())
   name                     String

@@ -43,6 +43,31 @@ describe("checkout validation function", () => {
     ).toEqual({ operations: [] });
   });
 
+  test("blocks unknown pincodes when admin setting is enabled", () => {
+    const config = {
+      ...baseConfig,
+      settings: {
+        blockUnknownPincode: true,
+        unknownPincodeMessage: "UNKNOWN_PINCODE_MESSAGE_FROM_ADMIN",
+      },
+    };
+
+    expect(run(inputWithConfig(config, "654321"))).toEqual({
+      operations: [
+        {
+          validationAdd: {
+            errors: [
+              {
+                message: "UNKNOWN_PINCODE_MESSAGE_FROM_ADMIN",
+                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
   test("adds a validation operation for a matching pincode rule with configured message", () => {
     const config = {
       ...baseConfig,

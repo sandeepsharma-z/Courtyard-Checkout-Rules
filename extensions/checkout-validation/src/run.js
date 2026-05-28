@@ -22,7 +22,11 @@ export function run(input) {
     ? config.rules.productRestrictions
     : [];
 
-  if (restrictions.length === 0) {
+  const shouldBlockUnknown =
+    config.settings?.blockUnknownPincode === true &&
+    Boolean(trim(config.settings?.unknownPincodeMessage));
+
+  if (restrictions.length === 0 && !shouldBlockUnknown) {
     return NO_OPERATIONS;
   }
 
@@ -38,6 +42,19 @@ export function run(input) {
     if (!pincode) continue;
 
     const pincodeRecord = findPincodeRecord(config, pincode);
+    const unknownPincodeMessage = trim(config.settings?.unknownPincodeMessage);
+
+    if (
+      config.settings?.blockUnknownPincode === true &&
+      !pincodeRecord &&
+      unknownPincodeMessage
+    ) {
+      errors.push({
+        message: unknownPincodeMessage,
+        target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+      });
+      continue;
+    }
 
     for (const rule of sortByPriority(restrictions)) {
       if (

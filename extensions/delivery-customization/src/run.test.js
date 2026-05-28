@@ -23,6 +23,63 @@ describe("delivery customization no-op", () => {
     });
   });
 
+  it("hides all shipping methods when a product restriction matches the pincode", () => {
+    const config = validConfig({
+      productRestrictions: [
+        {
+          id: "product-restriction",
+          name: "Product restriction",
+          priority: 1,
+          productTags: ["TAG_FROM_ADMIN_CONFIG"],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
+          notes: "",
+        },
+      ],
+      shippingHideRules: [],
+    });
+
+    expect(run(inputWithConfig(config))).toEqual({
+      operations: [
+        { hide: { deliveryOptionHandle: "standard-shipping" } },
+      ],
+    });
+  });
+
+  it("does not hide all shipping methods when product tag input is available and does not match", () => {
+    const config = validConfig({
+      productRestrictions: [
+        {
+          id: "product-restriction",
+          name: "Product restriction",
+          priority: 1,
+          productTags: ["TAG_FROM_ADMIN_CONFIG"],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
+          notes: "",
+        },
+      ],
+      shippingHideRules: [],
+    });
+
+    const input = inputWithConfig(config);
+    input.cart.lines = [
+      {
+        merchandise: {
+          product: {
+            tags: ["OTHER_TAG_FROM_ADMIN_CONFIG"],
+          },
+        },
+      },
+    ];
+
+    expect(run(input)).toEqual({ operations: [] });
+  });
+
   it("renames matching shipping methods when no hide rule matches", () => {
     const config = validConfig({
       shippingHideRules: [],
@@ -153,6 +210,7 @@ function validConfig(overrides = {}) {
           notes: "",
         },
       ],
+      productRestrictions: [],
       shippingHideRules: [
         {
           id: "hide-rule",

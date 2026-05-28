@@ -30,6 +30,23 @@ export function run(input) {
     const deliveryOptions = Array.isArray(group?.deliveryOptions)
       ? group.deliveryOptions
       : [];
+    const cartTags = getCartProductTags(input);
+    const productRestriction = findMatchingProductRestriction({
+      rules: config.rules.productRestrictions,
+      pincode,
+      pincodeRecord,
+      cartTags,
+    });
+
+    if (productRestriction) {
+      for (const option of deliveryOptions) {
+        const handle = normalize(option?.handle);
+        if (handle) {
+          operations.push({ hide: { deliveryOptionHandle: handle } });
+        }
+      }
+      continue;
+    }
 
     for (const option of deliveryOptions) {
       const handle = normalize(option?.handle);
@@ -105,6 +122,7 @@ function parsePublishedConfig(input) {
 function isRuleSet(rules) {
   return (
     rules &&
+    Array.isArray(rules.productRestrictions) &&
     Array.isArray(rules.shippingMethodMappings) &&
     Array.isArray(rules.shippingHideRules) &&
     Array.isArray(rules.shippingRenameRules)
@@ -122,6 +140,20 @@ function hasUnsupportedDeliveryRuleConditions(config) {
       normalize(rule.cutoffRuleSettingId) ||
       (Array.isArray(rule.productTags) && rule.productTags.length > 0),
   );
+}
+
+function getCartProductTags(input) {
+  const tags = new Set();
+  const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
+  for (const line of lines) {
+    const productTags = line?.merchandise?.product?.tags;
+    if (Array.isArray(productTags)) {
+      for (const tag of productTags) {
+        tags.add(normalize(tag));
+      }
+    }
+  }
+  return tags;
 }
 
 function findPincodeRecord(config, pincode) {
@@ -154,6 +186,27 @@ function findMatchingRule({
       deliveryAvailabilityMatches(rule, pincodeRecord)
     );
   });
+}
+
+function findMatchingProductRestriction({
+  rules,
+  pincode,
+  pincodeRecord,
+  cartTags,
+}) {
+  if (!Array.isArray(rules)) {
+    return null;
+  }
+
+  return (
+    sortByPriority(rules).find(
+      (rule) =>
+        pincodeMatches(rule, pincode) &&
+        areaGroupMatches(rule, pincodeRecord) &&
+        deliveryAvailabilityMatches(rule, pincodeRecord) &&
+        productTagsMatch(rule, cartTags),
+    ) ?? null
+  );
 }
 
 function mappingMatches(mapping, option) {
@@ -207,6 +260,13 @@ function deliveryAvailabilityMatches(rule, pincodeRecord) {
       ? normalize(pincodeRecord.da) === deliveryAvailabilityText
       : false)
   );
+}
+
+function productTagsMatch(rule, cartTags) {
+  const ruleTags = Array.isArray(rule.productTags) ? rule.productTags : [];
+  if (ruleTags.length === 0) return true;
+  if (cartTags.size === 0) return true;
+  return ruleTags.map(normalize).some((tag) => cartTags.has(tag));
 }
 
 function sortByPriority(items) {

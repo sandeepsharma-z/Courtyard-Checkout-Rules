@@ -15,16 +15,17 @@ const REQUIRED_SCOPES = [
   "read_products",
   "read_metaobjects",
   "write_metaobjects",
-  "read_metafields",
-  "write_metafields",
   "write_delivery_customizations",
   "read_validations",
   "write_validations",
 ];
 
+const INVALID_SCOPES = new Set(["read_metafields", "write_metafields"]);
+
 const configuredScopes =
   process.env.SCOPES?.split(",")
     .map((scope) => scope.trim())
+    .filter((scope) => !INVALID_SCOPES.has(scope))
     .filter(Boolean) ?? [];
 
 const scopes = Array.from(new Set([...configuredScopes, ...REQUIRED_SCOPES]));

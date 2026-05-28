@@ -32,9 +32,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   ]);
 
   const autoRulePreview =
-    batchId && batch && batch.status !== "approved"
-      ? await previewAutoRulesFromBatch(batchId)
-      : [];
+    batchId && batch ? await previewAutoRulesFromBatch(batchId) : [];
 
   return {
     batch,
@@ -59,6 +57,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     await approvePincodeImportBatch(batchId);
+    const rulesCreated = await generateAutoRulesFromBatch(batchId);
+    return redirect(
+      `/app/import?batchId=${batchId}&rulesCreated=${rulesCreated}`,
+    );
+  }
+
+  if (intent === "generateRules") {
+    const batchId = String(formData.get("batchId") ?? "");
+    if (!batchId) {
+      throw new Response("Missing import batch ID.", { status: 400 });
+    }
+
     const rulesCreated = await generateAutoRulesFromBatch(batchId);
     return redirect(
       `/app/import?batchId=${batchId}&rulesCreated=${rulesCreated}`,
@@ -270,6 +280,29 @@ export default function ImportPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {batch.status === "approved" && autoRulePreview.length > 0 && (
+                <div className="bsure-card">
+                  <div className="bsure-card-header">
+                    <h2>Regenerate imported delivery rules</h2>
+                  </div>
+                  <div className="bsure-card-body">
+                    <p className="import-note">
+                      This recreates the auto-generated same-day, next-day, and
+                      product availability draft rules for this import. Existing
+                      auto-generated rules from this same import are replaced;
+                      manually created rules are not touched.
+                    </p>
+                    <Form method="post">
+                      <input type="hidden" name="intent" value="generateRules" />
+                      <input type="hidden" name="batchId" value={batch.id} />
+                      <button className="bsure-button" type="submit">
+                        Generate rules from imported delivery text
+                      </button>
+                    </Form>
                   </div>
                 </div>
               )}

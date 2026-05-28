@@ -795,6 +795,25 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const selectActiveCsvPincodes = () => {
+    const activePincodes = options
+      .map((option) => option.pincode)
+      .filter(Boolean);
+    let added = 0;
+    setSelected((prev) => {
+      const existing = new Set(prev);
+      const newOnes = activePincodes.filter(
+        (pincode) => !existing.has(pincode),
+      );
+      added = newOnes.length;
+      return [...prev, ...newOnes];
+    });
+    setCsvMsg(
+      `${activePincodes.length} active CSV pincodes available, ${added} added`,
+    );
+    setTimeout(() => setCsvMsg(""), 4000);
+  };
+
   return (
     <div className="bsure-tag-wrap">
       <input
@@ -875,7 +894,7 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
         <span className="bsure-tag-actions">
           <button
             className="bsure-link-btn"
-            onClick={() => fileRef.current?.click()}
+            onClick={selectActiveCsvPincodes}
             type="button"
           >
             ↑ Import from CSV

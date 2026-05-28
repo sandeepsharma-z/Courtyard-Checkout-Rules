@@ -48,7 +48,7 @@ export function run(input) {
         if (!message) continue;
         errors.push({
           message,
-          target: "$.cart.deliveryGroups[0].deliveryAddress.postalCode",
+          target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
         });
         break;
       }

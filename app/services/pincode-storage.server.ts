@@ -247,6 +247,18 @@ export async function generateAutoRulesFromBatch(batchId: string) {
   const noteTag = `auto:${batchId}`;
   const mappingId = enabledMappings.length === 1 ? enabledMappings[0].id : "";
 
+  await prisma.$transaction([
+    prisma.shippingHideRule.deleteMany({
+      where: { notes: { contains: noteTag } },
+    }),
+    prisma.shippingRenameRule.deleteMany({
+      where: { notes: { contains: noteTag } },
+    }),
+    prisma.productRestrictionRule.deleteMany({
+      where: { notes: { contains: noteTag } },
+    }),
+  ]);
+
   const base = (rule: AutoRulePreviewEntry) => ({
     name: rule.name,
     enabled: rule.willAutoEnable,

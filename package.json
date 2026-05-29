@@ -2,7 +2,7 @@
   "name": "courtyard-checkout-rules",
   "private": true,
   "scripts": {
-    "build": "node scripts/prisma-with-database-url.mjs generate --require-url && node scripts/prisma-with-database-url.mjs migrate deploy --require-url && react-router build",
+    "build": "node scripts/prisma-with-database-url.mjs generate --require-url && node scripts/migrate-with-retry.mjs && react-router build",
     "dev": "shopify app dev",
     "config:link": "shopify app config link",
     "generate": "shopify app generate",

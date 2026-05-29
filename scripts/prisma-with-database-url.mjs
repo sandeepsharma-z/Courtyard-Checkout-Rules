@@ -33,10 +33,12 @@ if (isMigrationCommand) {
       .replace(/[?&]pgbouncer=true/g, "");
   }
 
-  // Ensure adequate connection timeout
-  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes("connect_timeout")) {
-    const sep = process.env.DATABASE_URL.includes("?") ? "&" : "?";
-    process.env.DATABASE_URL += `${sep}connect_timeout=30`;
+  // Ensure adequate timeouts for Neon serverless cold starts
+  if (process.env.DATABASE_URL) {
+    const url = new URL(process.env.DATABASE_URL);
+    if (!url.searchParams.has("connect_timeout")) url.searchParams.set("connect_timeout", "60");
+    if (!url.searchParams.has("pool_timeout")) url.searchParams.set("pool_timeout", "60");
+    process.env.DATABASE_URL = url.toString();
   }
 }
 

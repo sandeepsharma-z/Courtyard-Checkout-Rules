@@ -9,6 +9,20 @@ const fallbackKeys = [
   "DATABASE_POSTGRES_URL_NON_POOLING",
 ];
 
+const prismaArgs = process.argv
+  .slice(2)
+  .filter((arg) => arg !== "--require-url");
+
+const isMigrationCommand =
+  prismaArgs[0] === "migrate" || prismaArgs.includes("migrate");
+
+if (isMigrationCommand) {
+  const migrationUrlKey = fallbackKeys.find((key) => process.env[key]);
+  if (migrationUrlKey) {
+    process.env.DATABASE_URL = process.env[migrationUrlKey];
+  }
+}
+
 if (!process.env.DATABASE_URL) {
   const fallbackKey = fallbackKeys.find((key) => process.env[key]);
 
@@ -23,10 +37,6 @@ if (!process.env.DATABASE_URL && process.argv.includes("--require-url")) {
   );
   process.exit(1);
 }
-
-const prismaArgs = process.argv
-  .slice(2)
-  .filter((arg) => arg !== "--require-url");
 
 const prismaBinary = path.join(
   process.cwd(),

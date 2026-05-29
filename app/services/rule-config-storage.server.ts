@@ -183,6 +183,10 @@ export async function handleRuleManagerAction(formData: FormData) {
           enabled: formData.get("enabled") === "on",
           priority: getPriority(formData),
           paymentMethodMappingId: getString(formData, "paymentMethodMappingId"),
+          selectedPaymentMethodsJson: getString(
+            formData,
+            "selectedPaymentMethodsJson",
+          ) || "[]",
           cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
           selectedShippingContains: getString(
             formData,
@@ -221,6 +225,10 @@ function shippingRuleBaseData(formData: FormData) {
     enabled: formData.get("enabled") === "on",
     priority: getPriority(formData),
     cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
+    selectedShippingMethodsJson: getString(
+      formData,
+      "selectedShippingMethodsJson",
+    ) || "[]",
     productTagsJson: listJson(formData, "productTags"),
     pincodesJson: listJson(formData, "pincodes"),
     areaGroupsJson: listJson(formData, "areaGroups"),
@@ -436,6 +444,10 @@ async function updateRule(kind: string, id: string, formData: FormData) {
           enabled: formData.get("enabled") === "on",
           priority: getPriority(formData),
           paymentMethodMappingId: getString(formData, "paymentMethodMappingId"),
+          selectedPaymentMethodsJson: getString(
+            formData,
+            "selectedPaymentMethodsJson",
+          ) || "[]",
           cutoffRuleSettingId: getString(formData, "cutoffRuleSettingId"),
           selectedShippingContains: getString(
             formData,

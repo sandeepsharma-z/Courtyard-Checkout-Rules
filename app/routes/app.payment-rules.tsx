@@ -14,7 +14,6 @@ import {
 } from "../services/rule-config-storage.server";
 import { parseJsonList } from "../components/rule-manager-ui";
 
-type Option = { id: string; name: string };
 type PincodeOption = {
   id: string;
   pincode: string;
@@ -30,6 +29,7 @@ type PaymentHideRule = {
   enabled: boolean;
   priority: number;
   paymentMethodMappingId: string;
+  selectedPaymentMethodsJson: string;
   cutoffRuleSettingId: string;
   selectedShippingContains: string;
   productTagsJson: string;
@@ -47,7 +47,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   ]);
   return {
     rules: ruleData.paymentHideRules,
-    mappings: ruleData.paymentMethodMappings,
     cutoffs: ruleData.cutoffRuleSettings,
     pincodeOptions,
   };
@@ -60,7 +59,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PaymentRulesPage() {
-  const { cutoffs, mappings, pincodeOptions, rules } =
+  const { cutoffs, pincodeOptions, rules } =
     useLoaderData<typeof loader>();
 
   return (
@@ -73,8 +72,8 @@ export default function PaymentRulesPage() {
             </Link>
             <h1>Update hide payment methods rule</h1>
           </div>
-          <Link className="bsure-more" to="/app/payment-mappings">
-            Manage mappings
+          <Link className="bsure-more" to="/app/publish">
+            Publish config
           </Link>
         </div>
 
@@ -130,7 +129,6 @@ export default function PaymentRulesPage() {
             deliveryAvailabilityValues={
               pincodeOptions.deliveryAvailabilityValues
             }
-            mappings={mappings}
             pincodeOptions={pincodeOptions.pincodes}
           />
 
@@ -157,9 +155,6 @@ export default function PaymentRulesPage() {
 
           {/* ── Actions ── */}
           <div className="bsure-bottom-bar">
-            <Link className="bsure-button secondary" to="/app/payment-mappings">
-              Manage mappings
-            </Link>
             <Link className="bsure-button secondary" to="/app/pincodes">
               View pincodes
             </Link>
@@ -179,7 +174,7 @@ export default function PaymentRulesPage() {
               </div>
               <div className="bsure-rule-list">
                 {rules.map((item) => (
-                  <RuleItem item={item} key={item.id} mappings={mappings} />
+                  <RuleItem item={item} key={item.id} />
                 ))}
               </div>
             </section>
@@ -190,24 +185,49 @@ export default function PaymentRulesPage() {
   );
 }
 
+type PaymentMethodRow = { id: number; operator: string; value: string };
+
 function WhenThenHide({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
-  mappings,
   pincodeOptions,
 }: {
   areaGroups: string[];
-  cutoffs: Option[];
+  cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
-  mappings: Option[];
   pincodeOptions: PincodeOption[];
 }) {
   const [subCondIds, setSubCondIds] = useState<number[]>([]);
   const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
+  const [paymentMethodRows, setPaymentMethodRows] = useState<PaymentMethodRow[]>(
+    [{ id: 0, operator: "is", value: "" }],
+  );
+
+  const updatePaymentRow = (id: number, field: keyof PaymentMethodRow, val: string) => {
+    setPaymentMethodRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, [field]: val } : r)),
+    );
+  };
+
+  const buildPaymentMethodsJson = () =>
+    JSON.stringify(
+      paymentMethodRows.map((r) => ({ operator: r.operator, value: r.value })),
+    );
+
   return (
-    <Form method="post">
+    <Form
+      method="post"
+      onSubmit={(e) => {
+        const form = e.currentTarget;
+        const hidden = form.querySelector<HTMLInputElement>(
+          'input[name="selectedPaymentMethodsJson"]',
+        );
+        if (hidden) hidden.value = buildPaymentMethodsJson();
+      }}
+    >
       <input name="intent" type="hidden" value="paymentHide:create" />
+      <input name="selectedPaymentMethodsJson" type="hidden" value="[]" />
 
       {/* When card */}
       <div className="bsure-when-card">
@@ -239,35 +259,6 @@ function WhenThenHide({
 
         <div className="bsure-mini-or">And</div>
 
-        {/* Payment method condition */}
-        <div className="bsure-cond-row">
-          <select className="bsure-select" disabled>
-            <option>Payment method</option>
-          </select>
-          <select className="bsure-select" disabled>
-            <option>Matches configured mapping</option>
-          </select>
-          <button className="bsure-cond-del" disabled type="button">
-            🗑
-          </button>
-        </div>
-        <div style={{ marginBottom: "8px" }}>
-          <select
-            className="bsure-select"
-            name="paymentMethodMappingId"
-            style={{ width: "100%" }}
-          >
-            <option value="">Select payment method mapping</option>
-            {mappings.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="bsure-mini-or">And</div>
-
         {/* Shipping method text condition */}
         <div className="bsure-cond-row">
           <select className="bsure-select" disabled>
@@ -277,7 +268,7 @@ function WhenThenHide({
             <option>Contains text</option>
           </select>
           <button className="bsure-cond-del" disabled type="button">
-            🗑
+            Delete
           </button>
         </div>
         <div style={{ marginBottom: "8px" }}>
@@ -384,60 +375,72 @@ function WhenThenHide({
       ))}
 
       {/* Then block */}
-      <div
-        style={{
-          marginTop: "12px",
-          padding: "14px",
-          background: "#fff",
-          border: "1px solid #d4d4d4",
-          borderRadius: "8px",
-        }}
-      >
+      <div className="bsure-then-card">
         <div className="bsure-then-label">Then hide payment methods...</div>
         <table className="bsure-method-table">
           <thead>
             <tr>
-              <th>No.</th>
-              <th>Payment method mapping</th>
-              <th></th>
+              <th style={{ width: "42px" }}>No.</th>
+              <th>Payment method</th>
+              <th style={{ width: "78px" }}></th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style={{ color: "#6d7175", width: "40px" }}>1</td>
-              <td>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "90px 1fr",
-                    gap: "8px",
-                  }}
-                >
-                  <select className="bsure-select" disabled>
-                    <option>Is</option>
-                  </select>
-                  <select
-                    className="bsure-select"
-                    name="paymentMethodMappingId_then"
+            {paymentMethodRows.map((row, index) => (
+              <tr key={row.id}>
+                <td style={{ color: "#6d7175" }}>{index + 1}</td>
+                <td>
+                  <div className="bsure-method-grid">
+                    <select
+                      className="bsure-select"
+                      value={row.operator}
+                      onChange={(e) =>
+                        updatePaymentRow(row.id, "operator", e.target.value)
+                      }
+                    >
+                      <option value="is">Is</option>
+                      <option value="contains">Contains</option>
+                      <option value="starts_with">Starts with</option>
+                      <option value="ends_with">Ends with</option>
+                    </select>
+                    <input
+                      className="bsure-input"
+                      placeholder="Payment method from admin config"
+                      value={row.value}
+                      onChange={(e) =>
+                        updatePaymentRow(row.id, "value", e.target.value)
+                      }
+                    />
+                  </div>
+                </td>
+                <td>
+                  <button
+                    className="bsure-cond-del"
+                    disabled={paymentMethodRows.length === 1}
+                    onClick={() =>
+                      setPaymentMethodRows((rows) =>
+                        rows.filter((r) => r.id !== row.id),
+                      )
+                    }
+                    type="button"
                   >
-                    <option value="">Select mapping</option>
-                    {mappings.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </td>
-              <td style={{ width: "40px" }}>
-                <button className="bsure-cond-del" disabled type="button">
-                  🗑
-                </button>
-              </td>
-            </tr>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
             <tr className="bsure-method-add-row">
               <td colSpan={3}>
-                <button className="bsure-add-link" type="button">
+                <button
+                  className="bsure-add-link"
+                  onClick={() =>
+                    setPaymentMethodRows((rows) => [
+                      ...rows,
+                      { id: Date.now(), operator: "is", value: "" },
+                    ])
+                  }
+                  type="button"
+                >
                   + Add payment method
                 </button>
               </td>
@@ -832,17 +835,22 @@ function Sradio({
   );
 }
 
-function RuleItem({
-  item,
-  mappings,
-}: {
-  item: PaymentHideRule;
-  mappings: Option[];
-}) {
+function RuleItem({ item }: { item: PaymentHideRule }) {
   const [isEditing, setIsEditing] = useState(false);
   const pincodes = parseJsonList(item.pincodesJson);
   const productTags = parseJsonList(item.productTagsJson);
   const areaGroups = parseJsonList(item.areaGroupsJson);
+
+  const selectedPaymentMethods = (() => {
+    try {
+      return JSON.parse(item.selectedPaymentMethodsJson) as Array<{
+        operator: string;
+        value: string;
+      }>;
+    } catch {
+      return [];
+    }
+  })();
 
   return (
     <article className="bsure-rule-item">
@@ -857,9 +865,10 @@ function RuleItem({
             {item.enabled ? "Active" : "Deactivated"}
           </span>
           <div className="bsure-rule-meta" style={{ marginTop: "6px" }}>
-            Priority {item.priority} &nbsp;·&nbsp; Mapping:{" "}
-            {mappings.find((m) => m.id === item.paymentMethodMappingId)?.name ||
-              "Unmapped"}
+            Priority {item.priority}
+            {selectedPaymentMethods.length > 0 && (
+              <> &nbsp;·&nbsp; Methods: {selectedPaymentMethods.map((m) => m.value).filter(Boolean).join(", ")}</>
+            )}
             {item.selectedShippingContains && (
               <> &nbsp;·&nbsp; Shipping: {item.selectedShippingContains}</>
             )}
@@ -926,21 +935,22 @@ function RuleItem({
             />
             <label htmlFor={`enabled-${item.id}`}>Enabled</label>
           </div>
+          <input
+            name="paymentMethodMappingId"
+            type="hidden"
+            value={item.paymentMethodMappingId}
+          />
+          <input
+            name="selectedPaymentMethodsJson"
+            type="hidden"
+            defaultValue={item.selectedPaymentMethodsJson}
+          />
+          <input
+            name="cutoffRuleSettingId"
+            type="hidden"
+            value={item.cutoffRuleSettingId}
+          />
           <div className="bsure-form-row" style={{ marginTop: "10px" }}>
-            <F label="Payment method mapping">
-              <select
-                className="bsure-select"
-                defaultValue={item.paymentMethodMappingId}
-                name="paymentMethodMappingId"
-              >
-                <option value="">No mapping selected</option>
-                {mappings.map((mapping) => (
-                  <option key={mapping.id} value={mapping.id}>
-                    {mapping.name}
-                  </option>
-                ))}
-              </select>
-            </F>
             <F label="Selected shipping contains">
               <input
                 className="bsure-input"
@@ -949,11 +959,6 @@ function RuleItem({
               />
             </F>
           </div>
-          <input
-            name="cutoffRuleSettingId"
-            type="hidden"
-            value={item.cutoffRuleSettingId}
-          />
           <div className="bsure-form-row" style={{ marginTop: "10px" }}>
             <F label="Pincodes">
               <textarea

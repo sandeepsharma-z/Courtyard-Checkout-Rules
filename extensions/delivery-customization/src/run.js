@@ -228,16 +228,61 @@ function findMatchingRule({
       return false;
     }
 
-    const mapping = mappings.find(
-      (item) => normalize(item.id) === normalize(rule.shippingMethodMappingId),
-    );
+    const methodMatched = selectedMethodsMatch(rule.selectedShippingMethods, option)
+      || mappingMatches(
+          mappings.find(
+            (item) => normalize(item.id) === normalize(rule.shippingMethodMappingId),
+          ),
+          option,
+        );
 
     return (
-      mappingMatches(mapping, option) &&
+      methodMatched &&
       pincodeMatches(rule, pincode) &&
       areaGroupMatches(rule, pincodeRecord) &&
       deliveryAvailabilityMatches(rule, pincodeRecord)
     );
+  });
+}
+
+/**
+ * Check if a delivery option matches any entry in selectedShippingMethods.
+ * Each entry has { operator, value } (for hide) or { operator, matchValue } (for rename).
+ *
+ * @param {Array<{operator: string, value?: string, matchValue?: string}>|undefined} selectedMethods
+ * @param {object} option
+ * @returns {boolean}
+ */
+function selectedMethodsMatch(selectedMethods, option) {
+  if (!Array.isArray(selectedMethods) || selectedMethods.length === 0) {
+    return false;
+  }
+
+  const candidates = [
+    normalize(option?.title),
+    normalize(option?.code),
+    normalize(option?.handle),
+  ].filter(Boolean);
+
+  return selectedMethods.some((entry) => {
+    const matchValue = normalize(entry.value ?? entry.matchValue);
+    if (!matchValue) return false;
+
+    const operator = normalize(entry.operator);
+
+    switch (operator) {
+      case "contains":
+        return candidates.some((c) => c.includes(matchValue));
+      case "starts_with":
+      case "startswith":
+        return candidates.some((c) => c.startsWith(matchValue));
+      case "ends_with":
+      case "endswith":
+        return candidates.some((c) => c.endsWith(matchValue));
+      default:
+        // "is" or exact match
+        return candidates.some((c) => c === matchValue);
+    }
   });
 }
 

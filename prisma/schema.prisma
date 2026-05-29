@@ -173,20 +173,21 @@ model CutoffRuleSetting {
 }
 
 model ShippingHideRule {
-  id                       String   @id @default(cuid())
-  name                     String
-  enabled                  Boolean  @default(true)
-  priority                 Int      @default(100)
-  shippingMethodMappingId  String   @default("")
-  cutoffRuleSettingId      String   @default("")
-  productTagsJson          String   @default("[]")
-  pincodesJson             String   @default("[]")
-  areaGroupsJson           String   @default("[]")
-  deliveryAvailabilityText String   @default("")
-  conditionsJson           String   @default("{}")
-  notes                    String   @default("")
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                          String   @id @default(cuid())
+  name                        String
+  enabled                     Boolean  @default(true)
+  priority                    Int      @default(100)
+  shippingMethodMappingId     String   @default("")
+  selectedShippingMethodsJson String   @default("[]")
+  cutoffRuleSettingId         String   @default("")
+  productTagsJson             String   @default("[]")
+  pincodesJson                String   @default("[]")
+  areaGroupsJson              String   @default("[]")
+  deliveryAvailabilityText    String   @default("")
+  conditionsJson              String   @default("{}")
+  notes                       String   @default("")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
   @@index([enabled])
   @@index([priority])
@@ -194,21 +195,22 @@ model ShippingHideRule {
 }
 
 model ShippingRenameRule {
-  id                       String   @id @default(cuid())
-  name                     String
-  enabled                  Boolean  @default(true)
-  priority                 Int      @default(100)
-  shippingMethodMappingId  String   @default("")
-  cutoffRuleSettingId      String   @default("")
-  newLabel                 String   @default("")
-  productTagsJson          String   @default("[]")
-  pincodesJson             String   @default("[]")
-  areaGroupsJson           String   @default("[]")
-  deliveryAvailabilityText String   @default("")
-  conditionsJson           String   @default("{}")
-  notes                    String   @default("")
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                          String   @id @default(cuid())
+  name                        String
+  enabled                     Boolean  @default(true)
+  priority                    Int      @default(100)
+  shippingMethodMappingId     String   @default("")
+  selectedShippingMethodsJson String   @default("[]")
+  cutoffRuleSettingId         String   @default("")
+  newLabel                    String   @default("")
+  productTagsJson             String   @default("[]")
+  pincodesJson                String   @default("[]")
+  areaGroupsJson              String   @default("[]")
+  deliveryAvailabilityText    String   @default("")
+  conditionsJson              String   @default("{}")
+  notes                       String   @default("")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
 
   @@index([enabled])
   @@index([priority])
@@ -216,21 +218,22 @@ model ShippingRenameRule {
 }
 
 model PaymentHideRule {
-  id                       String   @id @default(cuid())
-  name                     String
-  enabled                  Boolean  @default(true)
-  priority                 Int      @default(100)
-  paymentMethodMappingId   String   @default("")
-  cutoffRuleSettingId      String   @default("")
-  selectedShippingContains String   @default("")
-  productTagsJson          String   @default("[]")
-  pincodesJson             String   @default("[]")
-  areaGroupsJson           String   @default("[]")
-  deliveryAvailabilityText String   @default("")
-  conditionsJson           String   @default("{}")
-  notes                    String   @default("")
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  id                         String   @id @default(cuid())
+  name                       String
+  enabled                    Boolean  @default(true)
+  priority                   Int      @default(100)
+  paymentMethodMappingId     String   @default("")
+  selectedPaymentMethodsJson String   @default("[]")
+  cutoffRuleSettingId        String   @default("")
+  selectedShippingContains   String   @default("")
+  productTagsJson            String   @default("[]")
+  pincodesJson               String   @default("[]")
+  areaGroupsJson             String   @default("[]")
+  deliveryAvailabilityText   String   @default("")
+  conditionsJson             String   @default("{}")
+  notes                      String   @default("")
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
   @@index([enabled])
   @@index([priority])

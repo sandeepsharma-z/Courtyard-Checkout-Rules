@@ -14,7 +14,6 @@ import {
 } from "../services/rule-config-storage.server";
 import { parseJsonList } from "../components/rule-manager-ui";
 
-type Option = { id: string; name: string };
 type PincodeOption = {
   id: string;
   pincode: string;
@@ -30,6 +29,7 @@ type ShippingRule = {
   enabled: boolean;
   priority: number;
   shippingMethodMappingId: string;
+  selectedShippingMethodsJson: string;
   cutoffRuleSettingId: string;
   productTagsJson: string;
   pincodesJson: string;
@@ -53,7 +53,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     cutoffs: ruleData.cutoffRuleSettings,
     hideRules: ruleData.shippingHideRules,
-    mappings: ruleData.shippingMethodMappings,
     mode,
     pincodeOptions,
     renameRules: ruleData.shippingRenameRules,
@@ -71,7 +70,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ShippingRulesPage() {
-  const { cutoffs, hideRules, mappings, mode, pincodeOptions, renameRules } =
+  const { cutoffs, hideRules, mode, pincodeOptions, renameRules } =
     useLoaderData<typeof loader>();
   const isRename = mode === "rename";
 
@@ -207,7 +206,6 @@ export default function ShippingRulesPage() {
               pincodeOptions.deliveryAvailabilityValues
             }
             isRename={isRename}
-            mappings={mappings}
             pincodeOptions={pincodeOptions.pincodes}
           />
 
@@ -232,12 +230,6 @@ export default function ShippingRulesPage() {
           </div>
 
           <div className="bsure-bottom-bar">
-            <Link
-              className="bsure-button secondary"
-              to="/app/shipping-mappings"
-            >
-              Manage mappings
-            </Link>
             <Link className="bsure-button secondary" to="/app/pincodes">
               View pincodes
             </Link>
@@ -248,7 +240,6 @@ export default function ShippingRulesPage() {
 
           <ConfiguredRules
             hideRules={hideRules}
-            mappings={mappings}
             renameRules={renameRules}
           />
         </div>
@@ -276,33 +267,65 @@ function ModeTabs({ mode }: { mode: Mode }) {
   );
 }
 
+type MethodRow = { id: number; operator: string; value: string; newLabel: string };
+
 function ShippingRuleForm({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
   isRename,
-  mappings,
   pincodeOptions,
 }: {
   areaGroups: string[];
-  cutoffs: Option[];
+  cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
   isRename: boolean;
-  mappings: Option[];
   pincodeOptions: PincodeOption[];
 }) {
-  const [methodRows, setMethodRows] = useState([0]);
+  const [methodRows, setMethodRows] = useState<MethodRow[]>([
+    { id: 0, operator: "is", value: "", newLabel: "" },
+  ]);
   const [subCondIds, setSubCondIds] = useState<number[]>([]);
   const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
-  const hasMappings = mappings.length > 0;
+
+  const updateMethodRow = (id: number, field: keyof MethodRow, val: string) => {
+    setMethodRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, [field]: val } : r)),
+    );
+  };
+
+  const buildMethodsJson = () => {
+    if (isRename) {
+      return JSON.stringify(
+        methodRows.map((r) => ({
+          operator: r.operator,
+          matchValue: r.value,
+          newLabel: r.newLabel,
+        })),
+      );
+    }
+    return JSON.stringify(
+      methodRows.map((r) => ({ operator: r.operator, value: r.value })),
+    );
+  };
 
   return (
-    <Form method="post">
+    <Form
+      method="post"
+      onSubmit={(e) => {
+        const form = e.currentTarget;
+        const hidden = form.querySelector<HTMLInputElement>(
+          'input[name="selectedShippingMethodsJson"]',
+        );
+        if (hidden) hidden.value = buildMethodsJson();
+      }}
+    >
       <input
         name="intent"
         type="hidden"
         value={isRename ? "shippingRename:create" : "shippingHide:create"}
       />
+      <input name="selectedShippingMethodsJson" type="hidden" value="[]" />
 
       <div className="bsure-area-card">
         <div className="bsure-area-head">
@@ -433,16 +456,8 @@ function ShippingRuleForm({
         <div className="bsure-then-label">
           {isRename
             ? "Then rename shipping methods like this..."
-            : "Then hide shipping methods using..."}
+            : "Then hide shipping methods..."}
         </div>
-
-        {!hasMappings && (
-          <div className="bsure-warning">
-            Create shipping method mappings first so this rule can target
-            Shopify delivery option names.
-            <Link to="/app/shipping-mappings"> Create mapping</Link>
-          </div>
-        )}
 
         {!isRename && (
           <select
@@ -467,36 +482,42 @@ function ShippingRuleForm({
           </thead>
           <tbody>
             {methodRows.map((row, index) => (
-              <tr key={row}>
+              <tr key={row.id}>
                 <td style={{ color: "#6d7175" }}>{index + 1}</td>
                 <td>
                   <div className="bsure-method-grid">
-                    <MethodOperatorSelect defaultValue="is" />
                     <select
                       className="bsure-select"
-                      name="shippingMethodMappingId"
-                      required={hasMappings}
+                      value={row.operator}
+                      onChange={(e) =>
+                        updateMethodRow(row.id, "operator", e.target.value)
+                      }
                     >
-                      <option value="">Select method mapping</option>
-                      {mappings.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
+                      <option value="is">Is</option>
+                      <option value="contains">Contains</option>
+                      <option value="starts_with">Starts with</option>
+                      <option value="ends_with">Ends with</option>
                     </select>
+                    <input
+                      className="bsure-input"
+                      placeholder="Shipping method name from admin config"
+                      value={row.value}
+                      onChange={(e) =>
+                        updateMethodRow(row.id, "value", e.target.value)
+                      }
+                    />
                   </div>
                 </td>
                 {isRename && (
                   <td>
-                    <div className="bsure-method-grid">
-                      <MethodOperatorSelect defaultValue="renameTo" />
-                      <input
-                        className="bsure-input"
-                        name="newLabel"
-                        placeholder="New shipping label"
-                        required={hasMappings}
-                      />
-                    </div>
+                    <input
+                      className="bsure-input"
+                      placeholder="New shipping label"
+                      value={row.newLabel}
+                      onChange={(e) =>
+                        updateMethodRow(row.id, "newLabel", e.target.value)
+                      }
+                    />
                   </td>
                 )}
                 <td>
@@ -505,7 +526,7 @@ function ShippingRuleForm({
                     disabled={methodRows.length === 1}
                     onClick={() =>
                       setMethodRows((rows) =>
-                        rows.filter((item) => item !== row),
+                        rows.filter((item) => item.id !== row.id),
                       )
                     }
                     type="button"
@@ -519,7 +540,12 @@ function ShippingRuleForm({
               <td colSpan={isRename ? 4 : 3}>
                 <button
                   className="bsure-add-link"
-                  onClick={() => setMethodRows((rows) => [...rows, Date.now()])}
+                  onClick={() =>
+                    setMethodRows((rows) => [
+                      ...rows,
+                      { id: Date.now(), operator: "is", value: "", newLabel: "" },
+                    ])
+                  }
                   type="button"
                 >
                   + Add shipping method
@@ -567,11 +593,7 @@ function ShippingRuleForm({
           />
         </F>
         <div className="bsure-actions" style={{ marginTop: "10px" }}>
-          <button
-            className="bsure-button"
-            disabled={!hasMappings}
-            type="submit"
-          >
+          <button className="bsure-button" type="submit">
             {isRename ? "Save rename rule" : "Save hide rule"}
           </button>
           <button className="bsure-button secondary" type="reset">
@@ -654,11 +676,9 @@ function ExtraAreaBlock({
 
 function ConfiguredRules({
   hideRules,
-  mappings,
   renameRules,
 }: {
   hideRules: ShippingRule[];
-  mappings: Option[];
   renameRules: ShippingRenameRule[];
 }) {
   if (!hideRules.length && !renameRules.length) return null;
@@ -678,7 +698,6 @@ function ConfiguredRules({
             item={item}
             key={item.id}
             kind="shippingHide"
-            mappings={mappings}
             type="Hide"
           />
         ))}
@@ -687,7 +706,6 @@ function ConfiguredRules({
             item={item}
             key={item.id}
             kind="shippingRename"
-            mappings={mappings}
             newLabel={item.newLabel}
             type="Rename"
           />
@@ -716,16 +734,6 @@ function ConditionOperatorSelect({ defaultValue }: { defaultValue: string }) {
       <option value="all">Has all of these values</option>
       <option value="none">Does not have these values</option>
       <option value="contains">Contains</option>
-    </select>
-  );
-}
-
-function MethodOperatorSelect({ defaultValue }: { defaultValue: string }) {
-  return (
-    <select className="bsure-select" defaultValue={defaultValue}>
-      <option value="is">Is</option>
-      <option value="contains">Contains</option>
-      <option value="renameTo">Rename to</option>
     </select>
   );
 }
@@ -917,13 +925,11 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
 function RuleItem({
   item,
   kind,
-  mappings,
   newLabel,
   type,
 }: {
   item: ShippingRule;
   kind: string;
-  mappings: Option[];
   newLabel?: string;
   type: string;
 }) {
@@ -931,6 +937,19 @@ function RuleItem({
   const pincodes = parseJsonList(item.pincodesJson);
   const productTags = parseJsonList(item.productTagsJson);
   const areaGroups = parseJsonList(item.areaGroupsJson);
+
+  const selectedMethods = (() => {
+    try {
+      return JSON.parse(item.selectedShippingMethodsJson) as Array<{
+        operator: string;
+        value?: string;
+        matchValue?: string;
+        newLabel?: string;
+      }>;
+    } catch {
+      return [];
+    }
+  })();
 
   return (
     <article className="bsure-rule-item">
@@ -945,9 +964,10 @@ function RuleItem({
             {item.enabled ? "Active" : "Deactivated"}
           </span>
           <div className="bsure-rule-meta" style={{ marginTop: "4px" }}>
-            {type} - Priority {item.priority} - Mapping:{" "}
-            {mappings.find((m) => m.id === item.shippingMethodMappingId)
-              ?.name || "-"}
+            {type} - Priority {item.priority}
+            {selectedMethods.length > 0 && (
+              <> - Methods: {selectedMethods.map((m) => m.value ?? m.matchValue).filter(Boolean).join(", ")}</>
+            )}
             {newLabel ? (
               <>
                 {" "}
@@ -990,6 +1010,16 @@ function RuleItem({
         <Form className="bsure-edit-form" method="post">
           <input name="id" type="hidden" value={item.id} />
           <input name="intent" type="hidden" value={`${kind}:update`} />
+          <input
+            name="selectedShippingMethodsJson"
+            type="hidden"
+            defaultValue={item.selectedShippingMethodsJson}
+          />
+          <input
+            name="shippingMethodMappingId"
+            type="hidden"
+            value={item.shippingMethodMappingId}
+          />
           <div className="bsure-form-row">
             <F label="Rule name">
               <input
@@ -1016,45 +1046,29 @@ function RuleItem({
             />
             <label htmlFor={`enabled-${item.id}`}>Enabled</label>
           </div>
-          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
-            <F label="Shipping method mapping">
-              <select
-                className="bsure-select"
-                defaultValue={item.shippingMethodMappingId}
-                name="shippingMethodMappingId"
-              >
-                <option value="">No mapping selected</option>
-                {mappings.map((mapping) => (
-                  <option key={mapping.id} value={mapping.id}>
-                    {mapping.name}
-                  </option>
-                ))}
-              </select>
-            </F>
-            {kind === "shippingRename" ? (
-              <F label="New shipping label">
+          {kind === "shippingRename" ? (
+            <>
+              <F label="New shipping label" style={{ marginTop: "10px" }}>
                 <input
                   className="bsure-input"
                   defaultValue={newLabel ?? ""}
                   name="newLabel"
                 />
               </F>
-            ) : (
-              <F label="Cutoff setting ID">
-                <input
-                  className="bsure-input"
-                  defaultValue={item.cutoffRuleSettingId}
-                  name="cutoffRuleSettingId"
-                />
-              </F>
-            )}
-          </div>
-          {kind === "shippingRename" && (
-            <input
-              name="cutoffRuleSettingId"
-              type="hidden"
-              value={item.cutoffRuleSettingId}
-            />
+              <input
+                name="cutoffRuleSettingId"
+                type="hidden"
+                value={item.cutoffRuleSettingId}
+              />
+            </>
+          ) : (
+            <F label="Cutoff setting ID" style={{ marginTop: "10px" }}>
+              <input
+                className="bsure-input"
+                defaultValue={item.cutoffRuleSettingId}
+                name="cutoffRuleSettingId"
+              />
+            </F>
           )}
           <div className="bsure-form-row" style={{ marginTop: "10px" }}>
             <F label="Pincodes">

@@ -31,11 +31,28 @@ export type PublishedProductRestrictionRule = {
   notes: string;
 };
 
+export type PublishedSelectedShippingMethod = {
+  operator: string;
+  value: string;
+};
+
+export type PublishedSelectedRenameMethod = {
+  operator: string;
+  matchValue: string;
+  newLabel: string;
+};
+
+export type PublishedSelectedPaymentMethod = {
+  operator: string;
+  value: string;
+};
+
 export type PublishedShippingHideRule = {
   id: string;
   name: string;
   priority: number;
   shippingMethodMappingId: string;
+  selectedShippingMethods: PublishedSelectedShippingMethod[];
   cutoffRuleSettingId: string;
   productTags: string[];
   pincodes: string[];
@@ -44,8 +61,19 @@ export type PublishedShippingHideRule = {
   notes: string;
 };
 
-export type PublishedShippingRenameRule = PublishedShippingHideRule & {
+export type PublishedShippingRenameRule = {
+  id: string;
+  name: string;
+  priority: number;
+  shippingMethodMappingId: string;
+  selectedShippingMethods: PublishedSelectedRenameMethod[];
+  cutoffRuleSettingId: string;
   newLabel: string;
+  productTags: string[];
+  pincodes: string[];
+  areaGroups: string[];
+  deliveryAvailabilityText: string;
+  notes: string;
 };
 
 export type PublishedPaymentHideRule = {
@@ -53,6 +81,7 @@ export type PublishedPaymentHideRule = {
   name: string;
   priority: number;
   paymentMethodMappingId: string;
+  selectedPaymentMethods: PublishedSelectedPaymentMethod[];
   cutoffRuleSettingId: string;
   selectedShippingContains: string;
   productTags: string[];

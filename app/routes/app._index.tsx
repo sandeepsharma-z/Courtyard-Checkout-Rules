@@ -2,8 +2,6 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
-import { getActivePincodeSummary } from "../services/pincode-storage.server";
-import { getPublishHistory } from "../services/published-config.server";
 import { getRuleManagerData } from "../services/rule-config-storage.server";
 
 type RuleRow = {
@@ -19,11 +17,7 @@ type RuleRow = {
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  const [data, pincodeSummary, publishHistory] = await Promise.all([
-    getRuleManagerData(),
-    getActivePincodeSummary(),
-    getPublishHistory(),
-  ]);
+  const data = await getRuleManagerData();
 
   const fmt = (d: Date | string) =>
     new Intl.DateTimeFormat("en-US", {
@@ -33,6 +27,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }).format(new Date(d));
 
   const rows: RuleRow[] = [
+    ...data.productRestrictionRules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
+      type: "Validation",
+      subtype: "Block",
+      href: "/app/product-restrictions",
+      activatedOn: r.enabled ? fmt(r.createdAt) : "",
+      groupKey: "product-validation",
+    })),
     ...data.shippingHideRules.map((r) => ({
       id: r.id,
       name: r.name,
@@ -63,57 +67,22 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       activatedOn: r.enabled ? fmt(r.createdAt) : "",
       groupKey: "payment-hide",
     })),
-    ...data.productRestrictionRules.map((r) => ({
-      id: r.id,
-      name: r.name,
-      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
-      type: "Validation",
-      subtype: "Block",
-      href: "/app/product-restrictions",
-      activatedOn: r.enabled ? fmt(r.createdAt) : "",
-      groupKey: "product-validation",
-    })),
-    ...data.cutoffRuleSettings.map((r) => ({
-      id: r.id,
-      name: r.name,
-      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
-      type: "Shipping",
-      subtype: "Time",
-      href: "/app/cutoff-settings",
-      activatedOn: r.enabled ? fmt(r.createdAt) : "",
-      groupKey: "cutoff-settings",
-    })),
-    ...data.shippingMethodMappings.map((r) => ({
-      id: r.id,
-      name: r.name,
-      status: (r.enabled ? "Active" : "Deactivated") as RuleRow["status"],
-      type: "Shipping",
-      subtype: "Mapping",
-      href: "/app/shipping-mappings",
-      activatedOn: r.enabled ? fmt(r.createdAt) : "",
-      groupKey: "shipping-mappings",
-    })),
   ];
 
-  const latestPublishedSnapshot = publishHistory.find(
-    (snapshot) => snapshot.status === "published",
-  );
-  const dashboardRows = mergeDashboardRows(rows, {
-    importActivatedOn: pincodeSummary.approvedBatch?.approvedAt
-      ? fmt(pincodeSummary.approvedBatch.approvedAt)
-      : "",
-    importIsActive: pincodeSummary.activeCount > 0,
-    publishActivatedOn: latestPublishedSnapshot?.publishedAt
-      ? fmt(latestPublishedSnapshot.publishedAt)
-      : "",
-    publishIsActive: Boolean(latestPublishedSnapshot),
-  });
+  const dashboardRows = mergeDashboardRows(rows);
   const activeCount = dashboardRows.filter((r) => r.status === "Active").length;
 
   return { activeCount, rows: dashboardRows };
 };
 
 const STARTER_ROWS = [
+  {
+    groupKey: "product-validation",
+    name: "All Product Validation",
+    type: "Validation",
+    subtype: "Block",
+    href: "/app/product-restrictions",
+  },
   {
     groupKey: "shipping-hide",
     name: "All Shipping Method Hide",
@@ -135,86 +104,23 @@ const STARTER_ROWS = [
     subtype: "Hide",
     href: "/app/payment-rules",
   },
-  {
-    groupKey: "product-validation",
-    name: "All Product Validation",
-    type: "Validation",
-    subtype: "Block",
-    href: "/app/product-restrictions",
-  },
-  {
-    groupKey: "cutoff-settings",
-    name: "Cutoff time settings",
-    type: "Shipping",
-    subtype: "Time",
-    href: "/app/cutoff-settings",
-  },
-  {
-    groupKey: "shipping-mappings",
-    name: "Shipping method mappings",
-    type: "Shipping",
-    subtype: "Mapping",
-    href: "/app/shipping-mappings",
-  },
-  {
-    groupKey: "pincode-import",
-    name: "Pincode delivery rules",
-    type: "Data",
-    subtype: "Manual",
-    href: "/app/pincodes",
-  },
-  {
-    groupKey: "simulator",
-    name: "Rule simulator",
-    type: "Testing",
-    subtype: "Preview",
-    href: "/app/simulator",
-  },
-  {
-    groupKey: "publish",
-    name: "Publish Shopify config",
-    type: "Config",
-    subtype: "Snapshot",
-    href: "/app/publish",
-  },
 ];
 
-function mergeDashboardRows(
-  rows: RuleRow[],
-  statusOverrides: {
-    importActivatedOn: string;
-    importIsActive: boolean;
-    publishActivatedOn: string;
-    publishIsActive: boolean;
-  },
-) {
+function mergeDashboardRows(rows: RuleRow[]) {
   return STARTER_ROWS.map((starter) => {
     const groupRows = rows.filter((row) => row.groupKey === starter.groupKey);
     const activeRows = groupRows.filter((row) => row.status === "Active");
     const displayRows = activeRows.length ? activeRows : groupRows;
     const firstDisplayRow = displayRows[0];
 
-    const override =
-      starter.groupKey === "pincode-import"
-        ? {
-            active: statusOverrides.importIsActive,
-            activatedOn: statusOverrides.importActivatedOn,
-          }
-        : starter.groupKey === "publish"
-          ? {
-              active: statusOverrides.publishIsActive,
-              activatedOn: statusOverrides.publishActivatedOn,
-            }
-          : null;
-
     return {
       id: starter.groupKey,
       name: starter.name,
-      status: override?.active || activeRows.length ? "Active" : "Deactivated",
+      status: activeRows.length ? "Active" : "Deactivated",
       type: starter.type,
       subtype: starter.subtype,
       href: starter.href,
-      activatedOn: override?.activatedOn || firstDisplayRow?.activatedOn || "",
+      activatedOn: firstDisplayRow?.activatedOn || "",
       groupKey: starter.groupKey,
     } satisfies RuleRow;
   });
@@ -237,10 +143,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="rules-actions">
-            <Link className="bsure-button secondary" to="/app/import">
-              Import
-            </Link>
-            <Link className="bsure-button" to="/app/shipping-rules">
+            <Link className="bsure-button" to="/app/product-restrictions">
               Create rule
             </Link>
           </div>

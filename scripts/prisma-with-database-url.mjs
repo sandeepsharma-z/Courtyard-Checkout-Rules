@@ -21,6 +21,11 @@ if (isMigrationCommand) {
   if (migrationUrlKey) {
     process.env.DATABASE_URL = process.env[migrationUrlKey];
   }
+  // Append connect_timeout if not already present (prevents Neon advisory lock timeout)
+  if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes("connect_timeout")) {
+    const sep = process.env.DATABASE_URL.includes("?") ? "&" : "?";
+    process.env.DATABASE_URL += `${sep}connect_timeout=30`;
+  }
 }
 
 if (!process.env.DATABASE_URL) {

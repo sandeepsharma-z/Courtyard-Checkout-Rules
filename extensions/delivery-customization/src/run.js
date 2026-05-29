@@ -104,7 +104,7 @@ export function run(input) {
         groupOperations.push({
           rename: {
             deliveryOptionHandle: handle,
-            title: renameEntry.newLabel,
+            title: sanitizeTitle(renameEntry.newLabel),
           },
         });
       }
@@ -488,4 +488,21 @@ function sortByPriority(items) {
 
 function normalize(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+/**
+ * Make a rename title safe for the Shopify Functions output.
+ * Non-ASCII characters (e.g. ₹, em dash) can break the WASM JSON output and
+ * cause Shopify to discard ALL operations, so replace them with ASCII.
+ */
+function sanitizeTitle(value) {
+  return normalize(value)
+    .replace(/₹/g, "Rs ")
+    .replace(/[‒-―]/g, "-")
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[^\x20-\x7E]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 100);
 }

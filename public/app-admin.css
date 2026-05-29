@@ -827,6 +827,69 @@ body {
   padding: 16px;
 }
 
+.pincode-flow {
+  gap: 16px;
+}
+
+.pincode-section-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.pincode-section-head p {
+  color: #616161;
+  margin-top: 3px;
+}
+
+.pincode-settings-grid,
+.pincode-entry-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.pincode-settings-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pincode-entry-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pincode-entry-grid .bsure-field:nth-of-type(7),
+.pincode-entry-grid .bsure-field:nth-of-type(8),
+.pincode-entry-grid .bsure-field:nth-of-type(9),
+.pincode-entry-grid .bsure-field:nth-of-type(10),
+.pincode-entry-grid .bsure-field:nth-of-type(13) {
+  grid-column: span 2;
+}
+
+.pincode-entry-grid .bsure-field:nth-of-type(14) {
+  grid-column: 1 / -1;
+}
+
+.pincode-switch {
+  align-items: center;
+  background: #f7f7f7;
+  border: 1px solid #d8ddd2;
+  border-radius: 8px;
+  color: #202223;
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.pincode-switch input {
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+
 .rules-page {
   background: #f1f1f1;
   min-height: 100dvh;
@@ -1036,6 +1099,24 @@ body {
 }
 
 @media (max-width: 760px) {
+  .pincode-settings-grid,
+  .pincode-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pincode-entry-grid .bsure-field:nth-of-type(7),
+  .pincode-entry-grid .bsure-field:nth-of-type(8),
+  .pincode-entry-grid .bsure-field:nth-of-type(9),
+  .pincode-entry-grid .bsure-field:nth-of-type(10),
+  .pincode-entry-grid .bsure-field:nth-of-type(13),
+  .pincode-entry-grid .bsure-field:nth-of-type(14) {
+    grid-column: auto;
+  }
+
+  .pincode-section-head {
+    display: grid;
+  }
+
   .rules-page {
     padding: 18px 12px;
   }

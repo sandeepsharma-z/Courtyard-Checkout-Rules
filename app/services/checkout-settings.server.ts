@@ -6,6 +6,9 @@ export const CHECKOUT_SETTING_KEYS = {
   autoRenameDeliveryOption: "auto_rename_delivery_option",
   deliveryLabelSource: "delivery_label_source",
   hideOtherDeliveryOptions: "hide_other_delivery_options",
+  blockMatchingDeliveryText: "block_matching_delivery_text",
+  deliveryBlockMatchText: "delivery_block_match_text",
+  deliveryBlockMessage: "delivery_block_message",
 } as const;
 
 export type CheckoutRuleSettings = {
@@ -14,6 +17,9 @@ export type CheckoutRuleSettings = {
   autoRenameDeliveryOption: boolean;
   deliveryLabelSource: "same_day" | "next_day" | "updated_first";
   hideOtherDeliveryOptions: boolean;
+  blockMatchingDeliveryText: boolean;
+  deliveryBlockMatchText: string;
+  deliveryBlockMessage: string;
 };
 
 export const DEFAULT_CHECKOUT_RULE_SETTINGS: CheckoutRuleSettings = {
@@ -22,6 +28,9 @@ export const DEFAULT_CHECKOUT_RULE_SETTINGS: CheckoutRuleSettings = {
   autoRenameDeliveryOption: false,
   deliveryLabelSource: "updated_first",
   hideOtherDeliveryOptions: false,
+  blockMatchingDeliveryText: false,
+  deliveryBlockMatchText: "",
+  deliveryBlockMessage: "",
 };
 
 export async function getCheckoutRuleSettings(): Promise<CheckoutRuleSettings> {
@@ -42,6 +51,14 @@ export async function getCheckoutRuleSettings(): Promise<CheckoutRuleSettings> {
       ),
     hideOtherDeliveryOptions:
       values.get(CHECKOUT_SETTING_KEYS.hideOtherDeliveryOptions) === "true",
+    blockMatchingDeliveryText:
+      values.get(CHECKOUT_SETTING_KEYS.blockMatchingDeliveryText) === "true",
+    deliveryBlockMatchText:
+      values.get(CHECKOUT_SETTING_KEYS.deliveryBlockMatchText) ??
+      DEFAULT_CHECKOUT_RULE_SETTINGS.deliveryBlockMatchText,
+    deliveryBlockMessage:
+      values.get(CHECKOUT_SETTING_KEYS.deliveryBlockMessage) ??
+      DEFAULT_CHECKOUT_RULE_SETTINGS.deliveryBlockMessage,
   };
 }
 
@@ -63,6 +80,18 @@ export async function saveCheckoutRuleSettings(input: CheckoutRuleSettings) {
     upsertSetting(
       CHECKOUT_SETTING_KEYS.hideOtherDeliveryOptions,
       String(input.hideOtherDeliveryOptions),
+    ),
+    upsertSetting(
+      CHECKOUT_SETTING_KEYS.blockMatchingDeliveryText,
+      String(input.blockMatchingDeliveryText),
+    ),
+    upsertSetting(
+      CHECKOUT_SETTING_KEYS.deliveryBlockMatchText,
+      input.deliveryBlockMatchText,
+    ),
+    upsertSetting(
+      CHECKOUT_SETTING_KEYS.deliveryBlockMessage,
+      input.deliveryBlockMessage,
     ),
   ]);
 }

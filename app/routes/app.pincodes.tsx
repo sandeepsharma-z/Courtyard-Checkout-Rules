@@ -72,6 +72,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         ),
         hideOtherDeliveryOptions:
           formData.get("hideOtherDeliveryOptions") === "on",
+        blockMatchingDeliveryText:
+          formData.get("blockMatchingDeliveryText") === "on",
+        deliveryBlockMatchText: String(
+          formData.get("deliveryBlockMatchText") ?? "",
+        ).trim(),
+        deliveryBlockMessage: String(
+          formData.get("deliveryBlockMessage") ?? "",
+        ).trim(),
       };
       await saveCheckoutRuleSettings(settings);
       return redirect("/app/pincodes?status=settings-saved");
@@ -121,38 +129,46 @@ export default function PincodeGroupsPage() {
           </section>
         ) : null}
 
-        <div className="bsure-flow">
-          <section className="bsure-card">
-            <h2>Checkout behavior settings</h2>
-            <p>
-              These settings are published into Shopify config. Checkout only
-              changes after you save settings and publish config.
-            </p>
-            <Form method="post" className="bsure-form-grid">
+        <div className="bsure-flow pincode-flow">
+          <section className="bsure-card pincode-settings-card">
+            <div className="pincode-section-head">
+              <div>
+                <h2>Checkout behavior</h2>
+                <p>Save here, then publish config to update checkout.</p>
+              </div>
+              <button className="bsure-button" form="checkout-settings-form" type="submit">
+                Save settings
+              </button>
+            </div>
+            <Form
+              id="checkout-settings-form"
+              method="post"
+              className="pincode-settings-grid"
+            >
               <input name="intent" type="hidden" value="settings:save" />
-              <label className="bsure-check">
+              <label className="pincode-switch">
                 <input
                   defaultChecked={settings.blockUnknownPincode}
                   name="blockUnknownPincode"
                   type="checkbox"
                 />
-                Block pincodes that are not in the active pincode list
+                <span>Block unknown pincode</span>
               </label>
-              <Field label="Unknown pincode error message">
+              <Field label="Unknown pincode message">
                 <input
                   className="bsure-input"
                   defaultValue={settings.unknownPincodeMessage}
                   name="unknownPincodeMessage"
-                  placeholder="Message shown under PIN code when delivery is unavailable"
+                  placeholder="Message shown under PIN code"
                 />
               </Field>
-              <label className="bsure-check">
+              <label className="pincode-switch">
                 <input
                   defaultChecked={settings.autoRenameDeliveryOption}
                   name="autoRenameDeliveryOption"
                   type="checkbox"
                 />
-                Show pincode delivery text as the shipping method label
+                <span>Show delivery text as shipping label</span>
               </label>
               <Field label="Delivery label source">
                 <select
@@ -165,83 +181,124 @@ export default function PincodeGroupsPage() {
                   <option value="next_day">Next day delivery text</option>
                 </select>
               </Field>
-              <label className="bsure-check">
+              <label className="pincode-switch">
                 <input
                   defaultChecked={settings.hideOtherDeliveryOptions}
                   name="hideOtherDeliveryOptions"
                   type="checkbox"
                 />
-                When delivery text matches, hide other Shopify shipping options
+                <span>Hide other Shopify shipping options</span>
               </label>
-              <button className="bsure-button" type="submit">
-                Save checkout settings
-              </button>
+              <label className="pincode-switch">
+                <input
+                  defaultChecked={settings.blockMatchingDeliveryText}
+                  name="blockMatchingDeliveryText"
+                  type="checkbox"
+                />
+                <span>Block when delivery text matches</span>
+              </label>
+              <Field label="Blocked delivery text">
+                <input
+                  className="bsure-input"
+                  defaultValue={settings.deliveryBlockMatchText}
+                  name="deliveryBlockMatchText"
+                  placeholder="Text from delivery fields that means blocked"
+                />
+              </Field>
+              <Field label="Blocked pincode message">
+                <input
+                  className="bsure-input"
+                  defaultValue={settings.deliveryBlockMessage}
+                  name="deliveryBlockMessage"
+                  placeholder="Message shown under PIN code"
+                />
+              </Field>
             </Form>
           </section>
 
-          <section className="bsure-card">
-            <h2>Add or update manual pincode</h2>
-            <p>
-              Enter one pincode or paste bulk rows. All values are stored as
-              text and can be changed from admin.
-            </p>
-            <Form method="post" className="bsure-form-grid">
+          <section className="bsure-card pincode-entry-card">
+            <div className="pincode-section-head">
+              <div>
+                <h2>Add pincode delivery detail</h2>
+                <p>Fill it like one row from the PDF or sheet.</p>
+              </div>
+              <button className="bsure-button" form="manual-pincode-form" type="submit">
+                Save pincode
+              </button>
+            </div>
+            <Form
+              id="manual-pincode-form"
+              method="post"
+              className="pincode-entry-grid"
+            >
               <input name="intent" type="hidden" value="manual:add" />
-              <div className="bsure-grid-two">
-                <Field label="Pincode">
-                  <input className="bsure-input" name="pincode" />
-                </Field>
-                <Field label="Area group">
-                  <input className="bsure-input" name="areaGroup" />
-                </Field>
-              </div>
-              <div className="bsure-grid-two">
-                <Field label="State">
-                  <input className="bsure-input" name="state" />
-                </Field>
-                <Field label="District">
-                  <input className="bsure-input" name="district" />
-                </Field>
-              </div>
-              <Field label="Location / area name">
-                <input className="bsure-input" name="locationName" />
+              <Field label="Pincode">
+                <input className="bsure-input" name="pincode" />
               </Field>
-              <Field label="Delivery availability text">
+              <Field label="State">
+                <input className="bsure-input" name="state" />
+              </Field>
+              <Field label="District">
+                <input className="bsure-input" name="district" />
+              </Field>
+              <Field label="Area group">
+                <input className="bsure-input" name="areaGroup" />
+              </Field>
+              <Field label="Sales / delivery availability">
                 <input className="bsure-input" name="deliveryAvailability" />
               </Field>
-              <Field label="Same day delivery">
+              <Field label="Remarks">
+                <input className="bsure-input" name="remarks" />
+              </Field>
+              <Field label="Location / understanding area">
                 <textarea
                   className="bsure-textarea"
-                  name="sameDayDeliveryRule"
-                  placeholder="Example structure only: same day delivery text from admin"
+                  name="locationName"
                   rows={3}
                 />
               </Field>
-              <Field label="Next day delivery">
+              <Field label="Same day delivery text">
+                <textarea
+                  className="bsure-textarea"
+                  name="sameDayDeliveryRule"
+                  rows={3}
+                />
+              </Field>
+              <Field label="Next day delivery text">
                 <textarea
                   className="bsure-textarea"
                   name="nextDayDeliveryRule"
-                  placeholder="Example structure only: next day delivery text from admin"
+                  rows={3}
+                />
+              </Field>
+              <Field label="Updated same day text">
+                <textarea
+                  className="bsure-textarea"
+                  name="updatedSameDayRule"
                   rows={2}
                 />
               </Field>
-              <Field label="Product availability / block note">
+              <Field label="Updated next day text">
+                <textarea
+                  className="bsure-textarea"
+                  name="updatedNextDayRule"
+                  rows={2}
+                />
+              </Field>
+              <Field label="Product availability / block text">
                 <input className="bsure-input" name="productAvailabilityRule" />
               </Field>
               <Field label="Charges / pricing text">
                 <input className="bsure-input" name="chargesPricingText" />
               </Field>
-              <Field label="Bulk rows">
+              <Field label="Bulk paste rows">
                 <textarea
                   className="bsure-textarea"
                   name="bulkRows"
-                  placeholder="One row per line: PINCODE | SAME_DAY_TEXT | NEXT_DAY_TEXT | AREA_GROUP | DELIVERY_TEXT"
+                  placeholder="One row per line: STATE | DISTRICT | PINCODE | AREA_GROUP | SALES_OR_AVAILABILITY | LOCATION_TEXT | REMARKS | SAME_DAY_TEXT | NEXT_DAY_TEXT"
                   rows={6}
                 />
               </Field>
-              <button className="bsure-button" type="submit">
-                Save manual pincode rules
-              </button>
             </Form>
           </section>
 
@@ -351,8 +408,43 @@ function parseManualRows(
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [pincode, sameDayDeliveryRule, nextDayDeliveryRule, areaGroup, deliveryAvailability] =
+      const parts =
         line.split("|").map((part) => part.trim());
+
+      if (parts.length >= 9) {
+        const [
+          state,
+          district,
+          pincode,
+          areaGroup,
+          deliveryAvailability,
+          locationName,
+          remarks,
+          sameDayDeliveryRule,
+          nextDayDeliveryRule,
+        ] = parts;
+
+        return {
+          areaGroup,
+          deliveryAvailability,
+          district,
+          locationName,
+          nextDayDeliveryRule,
+          pincode,
+          remarks,
+          sameDayDeliveryRule,
+          state,
+        };
+      }
+
+      const [
+        pincode,
+        sameDayDeliveryRule,
+        nextDayDeliveryRule,
+        areaGroup,
+        deliveryAvailability,
+      ] = parts;
+
       return {
         pincode,
         areaGroup,

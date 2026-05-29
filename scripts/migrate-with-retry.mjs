@@ -82,15 +82,12 @@ async function run() {
       process.exit(0);
     }
 
-    const output = result.output?.join("") ?? "";
-    const isLockTimeout = output.includes("P1002") || output.includes("advisory lock");
-
-    if (!isLockTimeout || attempt === MAX_ATTEMPTS) {
-      console.error(`Migration failed after ${attempt} attempt(s).`);
+    if (attempt < MAX_ATTEMPTS) {
+      console.warn(`Migration attempt ${attempt} failed (exit ${result.status}). Retrying — Neon may be cold-starting...`);
+    } else {
+      console.error(`Migration failed after ${MAX_ATTEMPTS} attempts.`);
       process.exit(result.status ?? 1);
     }
-
-    console.warn("Migration timed out (Neon advisory lock). Will retry...");
   }
 }
 

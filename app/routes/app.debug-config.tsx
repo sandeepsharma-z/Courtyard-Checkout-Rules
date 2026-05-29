@@ -37,8 +37,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         }
       }`,
     );
-    const dcJson = await dcRes.json();
-    deliveryCustomizations = dcJson?.data?.deliveryCustomizations?.nodes ?? dcJson?.errors ?? null;
+    const dcJson = (await dcRes.json()) as {
+      data?: { deliveryCustomizations?: { nodes?: unknown } };
+      errors?: unknown;
+    };
+    deliveryCustomizations =
+      dcJson?.data?.deliveryCustomizations?.nodes ?? dcJson?.errors ?? null;
   } catch (e) {
     deliveryCustomizations = { error: String(e) };
   }

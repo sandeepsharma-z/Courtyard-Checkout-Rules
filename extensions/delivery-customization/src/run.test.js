@@ -23,7 +23,7 @@ describe("delivery customization no-op", () => {
     });
   });
 
-  it("hides all shipping methods when a product restriction matches the pincode", () => {
+  it("does not hide shipping methods when a product restriction matches — checkout validation handles blocking", () => {
     const config = validConfig({
       productRestrictions: [
         {
@@ -41,11 +41,7 @@ describe("delivery customization no-op", () => {
       shippingHideRules: [],
     });
 
-    expect(run(inputWithConfig(config))).toEqual({
-      operations: [
-        { hide: { deliveryOptionHandle: "standard-shipping" } },
-      ],
-    });
+    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
   });
 
   it("matches product restriction pincodes from pasted or concatenated pincode text", () => {
@@ -66,14 +62,10 @@ describe("delivery customization no-op", () => {
       shippingHideRules: [],
     });
 
-    expect(run(inputWithConfig(config, "122506"))).toEqual({
-      operations: [
-        { hide: { deliveryOptionHandle: "standard-shipping" } },
-      ],
-    });
+    expect(run(inputWithConfig(config, "122506"))).toEqual({ operations: [] });
   });
 
-  it("still applies product restrictions when a shipping rule has unsupported conditions", () => {
+  it("does not apply product restriction hiding even when a shipping rule has unsupported conditions", () => {
     const config = validConfig({
       productRestrictions: [
         {
@@ -104,11 +96,7 @@ describe("delivery customization no-op", () => {
       ],
     });
 
-    expect(run(inputWithConfig(config))).toEqual({
-      operations: [
-        { hide: { deliveryOptionHandle: "standard-shipping" } },
-      ],
-    });
+    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
   });
 
   it("skips unsupported shipping rules without disabling supported rules", () => {

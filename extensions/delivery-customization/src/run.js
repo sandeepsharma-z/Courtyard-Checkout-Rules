@@ -40,13 +40,9 @@ export function run(input) {
     });
 
     if (productRestriction) {
-      for (const option of deliveryOptions) {
-        const handle = normalize(option?.handle);
-        if (handle) {
-          groupOperations.push({ hide: { deliveryOptionHandle: handle } });
-        }
-      }
-      operations.push(...groupOperations);
+      // Checkout validation function handles blocking with the custom error message.
+      // Do not hide shipping methods here — that would show a generic Shopify error
+      // instead of the configured validation message.
       continue;
     }
 

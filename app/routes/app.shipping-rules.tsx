@@ -742,9 +742,7 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
-  const [csvMsg, setCsvMsg] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const selectedSet = new Set(selected);
 
@@ -785,52 +783,8 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
     }
   };
 
-  const handleCsvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    const matches = text.match(/\b[1-9]\d{5}\b/g) ?? [];
-    const unique = [...new Set(matches)];
-    let added = 0;
-    setSelected((prev) => {
-      const exist = new Set(prev);
-      const newOnes = unique.filter((p) => !exist.has(p));
-      added = newOnes.length;
-      return [...prev, ...newOnes];
-    });
-    setCsvMsg(`${unique.length} pincodes found, ${added} added`);
-    setTimeout(() => setCsvMsg(""), 4000);
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  const selectActiveCsvPincodes = () => {
-    const activePincodes = options
-      .map((option) => option.pincode)
-      .filter(Boolean);
-    let added = 0;
-    setSelected((prev) => {
-      const existing = new Set(prev);
-      const newOnes = activePincodes.filter(
-        (pincode) => !existing.has(pincode),
-      );
-      added = newOnes.length;
-      return [...prev, ...newOnes];
-    });
-    setCsvMsg(
-      `${activePincodes.length} active CSV pincodes available, ${added} added`,
-    );
-    setTimeout(() => setCsvMsg(""), 4000);
-  };
-
   return (
     <div className="bsure-tag-wrap">
-      <input
-        accept=".csv,text/csv,.xlsx,.xls"
-        onChange={handleCsvFile}
-        ref={fileRef}
-        style={{ display: "none" }}
-        type="file"
-      />
 
       {selected.map((pincode) => (
         <input key={pincode} name="pincodes" type="hidden" value={pincode} />
@@ -893,30 +847,16 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
       )}
 
       <div className="bsure-chip-meta">
-        <span>
-          {csvMsg ||
-            (options.length === 0
-              ? "Approve a CSV import first, or type pincodes manually."
-              : `${selected.length} selected · ${options.length} in active CSV`)}
-        </span>
-        <span className="bsure-tag-actions">
+        <span>{selected.length > 0 ? `${selected.length} selected` : "Type a pincode and press Enter to add."}</span>
+        {selected.length > 0 && (
           <button
             className="bsure-link-btn"
-            onClick={selectActiveCsvPincodes}
+            onClick={() => setSelected([])}
             type="button"
           >
-            ↑ Import from CSV
+            Clear all
           </button>
-          {selected.length > 0 && (
-            <button
-              className="bsure-link-btn"
-              onClick={() => setSelected([])}
-              type="button"
-            >
-              Clear all
-            </button>
-          )}
-        </span>
+        )}
       </div>
     </div>
   );

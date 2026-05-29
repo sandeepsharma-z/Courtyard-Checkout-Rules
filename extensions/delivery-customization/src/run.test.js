@@ -2,452 +2,207 @@ import { describe, expect, it } from "vitest";
 
 import { run } from "./run";
 
-describe("delivery customization no-op", () => {
+// Test fixtures only — generic 6-digit values, not real business pincodes.
+const PIN = "100001";
+
+function inputWithConfig(config, zip = PIN, options) {
+  return {
+    shop: { metafield: { value: JSON.stringify(config) } },
+    cart: {
+      deliveryGroups: [
+        {
+          deliveryAddress: { zip },
+          deliveryOptions:
+            options ?? [
+              { handle: "standard-shipping", title: "STANDARD_FROM_ADMIN", code: "" },
+            ],
+        },
+      ],
+    },
+  };
+}
+
+function baseConfig(overrides = {}) {
+  return {
+    v: 2,
+    kind: "courtyard_checkout_rules.pincode_config",
+    pincodeData: { records: [] },
+    rules: {
+      shippingHideRules: [],
+      shippingRenameRules: [],
+      ...overrides,
+    },
+  };
+}
+
+describe("delivery customization", () => {
   it("returns no operations when config is missing", () => {
     expect(run({})).toEqual({ operations: [] });
   });
 
   it("returns no operations when config is unsupported", () => {
     const input = inputWithConfig({ v: 1, kind: "unsupported" });
-
     expect(run(input)).toEqual({ operations: [] });
   });
 
-  it("hides matching shipping methods from published config", () => {
-    const input = inputWithConfig(validConfig());
-
-    expect(run(input)).toEqual({
-      operations: [
-        { hide: { deliveryOptionHandle: "standard-shipping" } },
-      ],
-    });
-  });
-
-  it("does not hide shipping methods when a product restriction matches — checkout validation handles blocking", () => {
-    const config = validConfig({
-      productRestrictions: [
-        {
-          id: "product-restriction",
-          name: "Product restriction",
-          priority: 1,
-          productTags: ["TAG_FROM_ADMIN_CONFIG"],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
-          notes: "",
-        },
-      ],
-      shippingHideRules: [],
-    });
-
-    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
-  });
-
-  it("matches product restriction pincodes from pasted or concatenated pincode text", () => {
-    const config = validConfig({
-      productRestrictions: [
-        {
-          id: "product-restriction",
-          name: "Product restriction",
-          priority: 1,
-          productTags: ["TAG_FROM_ADMIN_CONFIG"],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG122506"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
-          notes: "",
-        },
-      ],
-      shippingHideRules: [],
-    });
-
-    expect(run(inputWithConfig(config, "122506"))).toEqual({ operations: [] });
-  });
-
-  it("does not apply product restriction hiding even when a shipping rule has unsupported conditions", () => {
-    const config = validConfig({
-      productRestrictions: [
-        {
-          id: "product-restriction",
-          name: "Product restriction",
-          priority: 1,
-          productTags: ["TAG_FROM_ADMIN_CONFIG"],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
-          notes: "",
-        },
-      ],
+  it("show mode hides every option not in the allowlist", () => {
+    const config = baseConfig({
       shippingHideRules: [
         {
-          id: "unsupported-hide-rule",
-          name: "Unsupported hide rule",
-          priority: 1,
-          shippingMethodMappingId: "standard-map",
-          cutoffRuleSettingId: "CUTOFF_SETTING_FROM_ADMIN_CONFIG",
-          productTags: [],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          name: "Allowlist",
+          methodMatchMode: "show",
+          selectedShippingMethods: [
+            { operator: "is", value: "KEEP_METHOD_FROM_ADMIN" },
+          ],
+          pincodes: [PIN],
           areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
-        },
-      ],
-    });
-
-    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
-  });
-
-  it("skips unsupported shipping rules without disabling supported rules", () => {
-    const config = validConfig({
-      productRestrictions: [],
-      shippingHideRules: [
-        {
-          id: "unsupported-hide-rule",
-          name: "Unsupported hide rule",
-          priority: 1,
-          shippingMethodMappingId: "standard-mapping",
-          cutoffRuleSettingId: "CUTOFF_SETTING_FROM_ADMIN_CONFIG",
           productTags: [],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
           deliveryAvailabilityText: "",
-          notes: "",
-        },
-        {
-          id: "supported-hide-rule",
-          name: "Supported hide rule",
-          priority: 2,
-          shippingMethodMappingId: "standard-map",
           cutoffRuleSettingId: "",
-          productTags: [],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
         },
       ],
     });
-
-    expect(run(inputWithConfig(config))).toEqual({
-      operations: [
-        { hide: { deliveryOptionHandle: "standard-shipping" } },
-      ],
-    });
-  });
-
-  it("does not hide all shipping methods when product tag input is available and does not match", () => {
-    const config = validConfig({
-      productRestrictions: [
-        {
-          id: "product-restriction",
-          name: "Product restriction",
-          priority: 1,
-          productTags: ["TAG_FROM_ADMIN_CONFIG"],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          validationMessage: "MESSAGE_FROM_ADMIN_CONFIG",
-          notes: "",
-        },
-      ],
-      shippingHideRules: [],
-    });
-
-    const input = inputWithConfig(config);
-    input.cart.lines = [
-      {
-        merchandise: {
-          product: {
-            tags: ["OTHER_TAG_FROM_ADMIN_CONFIG"],
-          },
-        },
-      },
+    const options = [
+      { handle: "keep", title: "KEEP_METHOD_FROM_ADMIN", code: "" },
+      { handle: "drop", title: "OTHER_METHOD_FROM_ADMIN", code: "" },
     ];
-
-    expect(run(input)).toEqual({ operations: [] });
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({
+      operations: [{ hide: { deliveryOptionHandle: "drop" } }],
+    });
   });
 
-  it("renames matching shipping methods when no hide rule matches", () => {
-    const config = validConfig({
-      shippingHideRules: [],
+  it("hide mode hides matching options", () => {
+    const config = baseConfig({
+      shippingHideRules: [
+        {
+          name: "Blocklist",
+          methodMatchMode: "hide",
+          selectedShippingMethods: [
+            { operator: "contains", value: "SLOW_METHOD_FROM_ADMIN" },
+          ],
+          pincodes: [PIN],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          cutoffRuleSettingId: "",
+        },
+      ],
+    });
+    const options = [
+      { handle: "fast", title: "FAST_METHOD_FROM_ADMIN", code: "" },
+      { handle: "slow", title: "SLOW_METHOD_FROM_ADMIN extra", code: "" },
+    ];
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({
+      operations: [{ hide: { deliveryOptionHandle: "slow" } }],
+    });
+  });
+
+  it("renames a matching option with the configured label", () => {
+    const config = baseConfig({
       shippingRenameRules: [
         {
-          id: "rename-rule",
-          name: "Rename rule",
-          priority: 1,
-          shippingMethodMappingId: "standard-map",
-          cutoffRuleSettingId: "",
-          newLabel: "Configured replacement label",
-          productTags: [],
-          pincodes: [],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
-        },
-      ],
-    });
-
-    expect(run(inputWithConfig(config))).toEqual({
-      operations: [
-        {
-          rename: {
-            deliveryOptionHandle: "standard-shipping",
-            title: "Configured replacement label",
-          },
-        },
-      ],
-    });
-  });
-
-  it("shows manual pincode delivery text as the shipping method label", () => {
-    const config = validConfig({
-      settings: {
-        autoRenameDeliveryOption: true,
-        deliveryLabelSource: "updated_first",
-        hideOtherDeliveryOptions: true,
-      },
-      pincodeData: {
-        records: [
-          {
-            pc: "PINCODE_FROM_ADMIN_CONFIG",
-            sd: "SAME_DAY_LABEL_FROM_ADMIN",
-            nd: "NEXT_DAY_LABEL_FROM_ADMIN",
-            usd: "",
-            und: "",
-          },
-        ],
-      },
-      productRestrictions: [],
-      shippingHideRules: [],
-      shippingRenameRules: [],
-    });
-
-    const input = inputWithConfig(config);
-    input.cart.deliveryGroups[0].deliveryOptions.push({
-      handle: "economy-shipping",
-      title: "Another shipping method from admin config",
-      code: "another-shipping-method-code",
-    });
-
-    expect(run(input)).toEqual({
-      operations: [
-        {
-          rename: {
-            deliveryOptionHandle: "standard-shipping",
-            title: "SAME_DAY_LABEL_FROM_ADMIN",
-          },
-        },
-        { hide: { deliveryOptionHandle: "economy-shipping" } },
-      ],
-    });
-  });
-
-  it("does not auto-rename when the pincode is not configured", () => {
-    const config = validConfig({
-      settings: {
-        autoRenameDeliveryOption: true,
-        deliveryLabelSource: "updated_first",
-        hideOtherDeliveryOptions: true,
-      },
-      productRestrictions: [],
-      shippingHideRules: [],
-      shippingRenameRules: [],
-    });
-
-    expect(run(inputWithConfig(config, "654321"))).toEqual({
-      operations: [],
-    });
-  });
-
-  it("gives hide rules priority over rename rules", () => {
-    const config = validConfig({
-      shippingRenameRules: [
-        {
-          id: "rename-rule",
-          name: "Rename rule",
-          priority: 1,
-          shippingMethodMappingId: "standard-map",
-          cutoffRuleSettingId: "",
-          newLabel: "Configured replacement label",
-          productTags: [],
-          pincodes: [],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
-        },
-      ],
-    });
-
-    expect(run(inputWithConfig(config))).toEqual({
-      operations: [
-        { hide: { deliveryOptionHandle: "standard-shipping" } },
-      ],
-    });
-  });
-
-  it("allowlist mode hides options that are not in the allowed list", () => {
-    const config = validConfig({
-      shippingHideRules: [
-        {
-          id: "show-rule",
-          name: "Only show rule",
-          priority: 1,
-          shippingMethodMappingId: "",
-          methodMatchMode: "show",
+          name: "Rename",
           selectedShippingMethods: [
-            { operator: "is", value: "Shipping method from admin config" },
-          ],
-          cutoffRuleSettingId: "",
-          productTags: [],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
-        },
-      ],
-    });
-
-    const input = inputWithConfig(config);
-    input.cart.deliveryGroups[0].deliveryOptions.push({
-      handle: "economy-shipping",
-      title: "Another shipping method from admin config",
-      code: "another-shipping-method-code",
-    });
-
-    // Option A (in allowlist) shown; option B (not in allowlist) hidden.
-    expect(run(input)).toEqual({
-      operations: [{ hide: { deliveryOptionHandle: "economy-shipping" } }],
-    });
-  });
-
-  it("allowlist mode does not hide an option that matches the allowed list", () => {
-    const config = validConfig({
-      shippingHideRules: [
-        {
-          id: "show-rule",
-          name: "Only show rule",
-          priority: 1,
-          shippingMethodMappingId: "",
-          methodMatchMode: "show",
-          selectedShippingMethods: [
-            { operator: "contains", value: "Shipping method from admin config" },
-          ],
-          cutoffRuleSettingId: "",
-          productTags: [],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
-        },
-      ],
-    });
-
-    // The only option matches the allowlist, so nothing is hidden.
-    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
-  });
-
-  it("fails safe when an active delivery rule contains unsupported product tag conditions", () => {
-    const config = validConfig({
-      shippingHideRules: [
-        {
-          id: "hide-rule",
-          name: "Hide rule",
-          priority: 1,
-          shippingMethodMappingId: "standard-map",
-          cutoffRuleSettingId: "",
-          productTags: ["TAG_FROM_ADMIN_CONFIG"],
-          pincodes: [],
-          areaGroups: [],
-          deliveryAvailabilityText: "",
-          notes: "",
-        },
-      ],
-    });
-
-    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
-  });
-});
-
-function inputWithConfig(config, zip = "PINCODE_FROM_ADMIN_CONFIG") {
-  return {
-    cart: {
-      deliveryGroups: [
-        {
-          deliveryAddress: {
-            zip,
-          },
-          deliveryOptions: [
             {
-              handle: "standard-shipping",
-              title: "Shipping method from admin config",
-              code: "shipping-method-code",
+              operator: "contains",
+              matchValue: "STANDARD",
+              newLabel: "LABEL_FROM_ADMIN",
             },
           ],
+          pincodes: [PIN],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          cutoffRuleSettingId: "",
         },
       ],
-    },
-    shop: {
-      metafield: {
-        value: JSON.stringify(config),
-      },
-    },
-  };
-}
+    });
+    expect(run(inputWithConfig(config))).toEqual({
+      operations: [
+        {
+          rename: {
+            deliveryOptionHandle: "standard-shipping",
+            title: "LABEL_FROM_ADMIN",
+          },
+        },
+      ],
+    });
+  });
 
-function validConfig(overrides = {}) {
-  const config = {
-    v: 2,
-    kind: "courtyard_checkout_rules.pincode_config",
-    pincodeData: {
-      records: [
+  it("sanitizes non-ASCII characters in rename titles", () => {
+    const config = baseConfig({
+      shippingRenameRules: [
         {
-          pc: "PINCODE_FROM_ADMIN_CONFIG",
-          ag: "AREA_GROUP_FROM_ADMIN_CONFIG",
-          da: "DELIVERY_STATUS_FROM_ADMIN_CONFIG",
+          name: "Rename",
+          selectedShippingMethods: [
+            {
+              operator: "contains",
+              matchValue: "STANDARD",
+              newLabel: "Same Day — ₹69 below ₹700",
+            },
+          ],
+          pincodes: [PIN],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          cutoffRuleSettingId: "",
         },
       ],
-    },
-    rules: {
-      shippingMethodMappings: [
+    });
+    expect(run(inputWithConfig(config))).toEqual({
+      operations: [
         {
-          id: "standard-map",
-          name: "Configured shipping mapping",
-          priority: 1,
-          matchType: "exact",
-          matchValue: "Shipping method from admin config",
-          notes: "",
+          rename: {
+            deliveryOptionHandle: "standard-shipping",
+            title: "Same Day - Rs 69 below Rs 700",
+          },
         },
       ],
-      productRestrictions: [],
+    });
+  });
+
+  it("skips rules that carry an unsupported cutoff condition", () => {
+    const config = baseConfig({
       shippingHideRules: [
         {
-          id: "hide-rule",
-          name: "Hide rule",
-          priority: 1,
-          shippingMethodMappingId: "standard-map",
-          cutoffRuleSettingId: "",
+          name: "Cutoff rule",
+          methodMatchMode: "show",
+          selectedShippingMethods: [
+            { operator: "is", value: "KEEP_METHOD_FROM_ADMIN" },
+          ],
+          pincodes: [PIN],
+          areaGroups: [],
           productTags: [],
-          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
-          areaGroups: ["AREA_GROUP_FROM_ADMIN_CONFIG"],
-          deliveryAvailabilityText: "DELIVERY_STATUS_FROM_ADMIN_CONFIG",
-          notes: "",
+          deliveryAvailabilityText: "",
+          cutoffRuleSettingId: "CUTOFF_FROM_ADMIN",
         },
       ],
-      shippingRenameRules: [],
-    },
-  };
+    });
+    const options = [
+      { handle: "keep", title: "KEEP_METHOD_FROM_ADMIN", code: "" },
+      { handle: "other", title: "OTHER_METHOD_FROM_ADMIN", code: "" },
+    ];
+    // Cutoff rule is skipped → no allowlist → nothing hidden.
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({ operations: [] });
+  });
 
-  const { pincodeData, settings, rules, ...ruleOverrides } = overrides;
-
-  return {
-    ...config,
-    ...(pincodeData ? { pincodeData } : {}),
-    ...(settings ? { settings } : {}),
-    rules: {
-      ...config.rules,
-      ...(rules ?? ruleOverrides),
-    },
-  };
-}
+  it("does not act on a pincode outside the rule", () => {
+    const config = baseConfig({
+      shippingHideRules: [
+        {
+          name: "Allowlist",
+          methodMatchMode: "show",
+          selectedShippingMethods: [
+            { operator: "is", value: "KEEP_METHOD_FROM_ADMIN" },
+          ],
+          pincodes: [PIN],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          cutoffRuleSettingId: "",
+        },
+      ],
+    });
+    expect(run(inputWithConfig(config, "999999"))).toEqual({ operations: [] });
+  });
+});

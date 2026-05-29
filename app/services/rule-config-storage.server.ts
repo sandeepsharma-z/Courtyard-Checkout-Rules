@@ -178,6 +178,8 @@ export async function handleRuleManagerAction(formData: FormData) {
       return createShippingHideRulesMulti(formData);
     case "shippingRename:create":
       return createShippingRenameRules(formData);
+    case "shippingRename:createMulti":
+      return createShippingRenameRulesMulti(formData);
     case "paymentHide:create":
       return prisma.paymentHideRule.create({
         data: {
@@ -289,6 +291,49 @@ async function createShippingHideRulesMulti(formData: FormData) {
         shippingMethodMappingId: "",
         selectedShippingMethodsJson,
         methodMatchMode: getString(formData, `hideAction_${i}`) || "hide",
+        cutoffRuleSettingId: getString(formData, `cutoffRuleSettingId_${i}`),
+        productTagsJson: listJson(formData, `productTags_${i}`),
+        pincodesJson: pincodes,
+        areaGroupsJson: listJson(formData, `areaGroups_${i}`),
+        deliveryAvailabilityText: getString(
+          formData,
+          `deliveryAvailabilityText_${i}`,
+        ),
+        notes: baseNotes,
+      },
+    });
+  }).filter(Boolean);
+
+  return Promise.all(creates);
+}
+
+async function createShippingRenameRulesMulti(formData: FormData) {
+  const blockCount = Math.min(Number(getString(formData, "blockCount")) || 1, 20);
+  const baseName = getString(formData, "name");
+  const basePriority = getPriority(formData);
+  const baseEnabled = formData.get("enabled") === "on";
+  const baseNotes = getString(formData, "notes");
+
+  const creates = Array.from({ length: blockCount }, (_, i) => {
+    const pincodes = listJson(formData, `pincodes_${i}`);
+    const selectedShippingMethodsJson =
+      getString(formData, `selectedShippingMethodsJson_${i}`) || "[]";
+
+    if (
+      pincodes === "[]" &&
+      (selectedShippingMethodsJson === "[]" || !selectedShippingMethodsJson)
+    ) {
+      return null;
+    }
+
+    return prisma.shippingRenameRule.create({
+      data: {
+        name: getString(formData, `name_${i}`) || baseName || `Rule ${i + 1}`,
+        enabled: baseEnabled,
+        priority: basePriority + i,
+        shippingMethodMappingId: "",
+        newLabel: "",
+        selectedShippingMethodsJson,
         cutoffRuleSettingId: getString(formData, `cutoffRuleSettingId_${i}`),
         productTagsJson: listJson(formData, `productTags_${i}`),
         pincodesJson: pincodes,

@@ -200,13 +200,12 @@ export default function ShippingRulesPage() {
           <div className="bsure-connector">And</div>
 
           {isRename ? (
-            <ShippingRuleForm
+            <ShippingRenameMultiForm
               areaGroups={pincodeOptions.areaGroups}
               cutoffs={cutoffs}
               deliveryAvailabilityValues={
                 pincodeOptions.deliveryAvailabilityValues
               }
-              isRename={isRename}
               pincodeOptions={pincodeOptions.pincodes}
             />
           ) : (
@@ -280,24 +279,123 @@ function ModeTabs({ mode }: { mode: Mode }) {
 
 type MethodRow = { id: number; operator: string; value: string; newLabel: string };
 
-function ShippingRuleForm({
+
+function ShippingRenameMultiForm({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
-  isRename,
   pincodeOptions,
 }: {
   areaGroups: string[];
   cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
-  isRename: boolean;
   pincodeOptions: PincodeOption[];
+}) {
+  const [blockIds, setBlockIds] = useState<number[]>([0]);
+  const nextId = useRef(1);
+
+  const addBlock = () => setBlockIds((p) => [...p, nextId.current++]);
+  const removeBlock = (id: number) =>
+    setBlockIds((p) => p.filter((x) => x !== id));
+
+  return (
+    <Form method="post">
+      <input name="intent" type="hidden" value="shippingRename:createMulti" />
+      <input name="blockCount" type="hidden" value={blockIds.length} />
+
+      {blockIds.map((id, idx) => (
+        <div key={id}>
+          {idx > 0 && <div className="bsure-connector">Then</div>}
+          <RenameBlock
+            areaGroups={areaGroups}
+            cutoffs={cutoffs}
+            deliveryAvailabilityValues={deliveryAvailabilityValues}
+            idx={idx}
+            onRemove={() => removeBlock(id)}
+            pincodeOptions={pincodeOptions}
+            showRemove={blockIds.length > 1}
+          />
+        </div>
+      ))}
+
+      <div className="bsure-add-block-row">
+        <button className="bsure-add-link" onClick={addBlock} type="button">
+          + Add another condition
+        </button>
+      </div>
+
+      <div className="bsure-card" style={{ marginTop: "12px" }}>
+        <div className="bsure-grid-2">
+          <F label="Rule name">
+            <input
+              className="bsure-input"
+              name="name"
+              placeholder="Rename rule label"
+              required
+            />
+          </F>
+          <F label="Priority">
+            <input
+              className="bsure-input"
+              defaultValue="100"
+              name="priority"
+              type="number"
+            />
+          </F>
+        </div>
+        <div className="bsure-radio" style={{ marginTop: "10px" }}>
+          <input
+            defaultChecked
+            id="shipping-rename-enabled"
+            name="enabled"
+            type="checkbox"
+          />
+          <label htmlFor="shipping-rename-enabled">
+            <strong>Enabled</strong>{" "}
+            <span className="bsure-help">Include in next published config</span>
+          </label>
+        </div>
+        <F label="Notes" style={{ marginTop: "8px" }}>
+          <textarea
+            className="bsure-textarea"
+            name="notes"
+            placeholder="Internal note"
+            rows={2}
+          />
+        </F>
+        <div className="bsure-actions" style={{ marginTop: "10px" }}>
+          <button className="bsure-button" type="submit">
+            Save rename rules
+          </button>
+          <button className="bsure-button secondary" type="reset">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Form>
+  );
+}
+
+function RenameBlock({
+  areaGroups,
+  cutoffs,
+  deliveryAvailabilityValues,
+  idx,
+  onRemove,
+  pincodeOptions,
+  showRemove,
+}: {
+  areaGroups: string[];
+  cutoffs: { id: string; name: string }[];
+  deliveryAvailabilityValues: string[];
+  idx: number;
+  onRemove: () => void;
+  pincodeOptions: PincodeOption[];
+  showRemove: boolean;
 }) {
   const [methodRows, setMethodRows] = useState<MethodRow[]>([
     { id: 0, operator: "is", value: "", newLabel: "" },
   ]);
-  const [subCondIds, setSubCondIds] = useState<number[]>([]);
-  const [extraAreaIds, setExtraAreaIds] = useState<number[]>([]);
 
   const updateMethodRow = (id: number, field: keyof MethodRow, val: string) => {
     setMethodRows((rows) =>
@@ -305,48 +403,39 @@ function ShippingRuleForm({
     );
   };
 
-  const buildMethodsJson = () => {
-    if (isRename) {
-      return JSON.stringify(
-        methodRows.map((r) => ({
-          operator: r.operator,
-          matchValue: r.value,
-          newLabel: r.newLabel,
-        })),
-      );
-    }
-    return JSON.stringify(
-      methodRows.map((r) => ({ operator: r.operator, value: r.value })),
-    );
-  };
+  const methodsJson = JSON.stringify(
+    methodRows.map((r) => ({
+      operator: r.operator,
+      matchValue: r.value,
+      newLabel: r.newLabel,
+    })),
+  );
 
   return (
-    <Form
-      method="post"
-      onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
-        const form = e.currentTarget;
-        const hidden = form.querySelector(
-          'input[name="selectedShippingMethodsJson"]',
-        ) as HTMLInputElement | null;
-        if (hidden) hidden.value = buildMethodsJson();
-      }}
-    >
+    <div>
       <input
-        name="intent"
+        name={`selectedShippingMethodsJson_${idx}`}
+        readOnly
         type="hidden"
-        value={isRename ? "shippingRename:create" : "shippingHide:create"}
+        value={methodsJson}
       />
-      <input name="selectedShippingMethodsJson" type="hidden" value="[]" />
 
       <div className="bsure-area-card">
         <div className="bsure-area-head">
           <div>
-            <strong>Area 1</strong>
+            <strong>When (Area {idx + 1})</strong>
             <span>Select when this rule should run.</span>
           </div>
-          <button className="bsure-when-close" title="Collapse" type="button">
-            ⌃
-          </button>
+          {showRemove && (
+            <button
+              className="bsure-when-close"
+              onClick={onRemove}
+              title="Remove"
+              type="button"
+            >
+              ×
+            </button>
+          )}
         </div>
 
         <div className="bsure-cond-row">
@@ -356,7 +445,7 @@ function ShippingRuleForm({
             Delete
           </button>
         </div>
-        <PincodeChips options={pincodeOptions} />
+        <PincodeChips fieldName={`pincodes_${idx}`} options={pincodeOptions} />
 
         <div className="bsure-mini-or">And</div>
 
@@ -369,14 +458,14 @@ function ShippingRuleForm({
         </div>
         <input
           className="bsure-input"
-          name="productTags"
+          name={`productTags_${idx}`}
           placeholder="Comma-separated product tags from admin config"
         />
 
         <div className="bsure-mini-or">And</div>
 
         <div className="bsure-grid-2">
-          <select className="bsure-select" name="areaGroups">
+          <select className="bsure-select" name={`areaGroups_${idx}`}>
             <option value="">Any area group</option>
             {areaGroups.map((item) => (
               <option key={item} value={item}>
@@ -384,7 +473,10 @@ function ShippingRuleForm({
               </option>
             ))}
           </select>
-          <select className="bsure-select" name="deliveryAvailabilityText">
+          <select
+            className="bsure-select"
+            name={`deliveryAvailabilityText_${idx}`}
+          >
             <option value="">Any delivery text</option>
             {deliveryAvailabilityValues.map((item) => (
               <option key={item} value={item}>
@@ -395,7 +487,7 @@ function ShippingRuleForm({
         </div>
 
         <div className="bsure-grid-2" style={{ marginTop: "8px" }}>
-          <select className="bsure-select" name="cutoffRuleSettingId">
+          <select className="bsure-select" name={`cutoffRuleSettingId_${idx}`}>
             <option value="">No cutoff condition</option>
             {cutoffs.map((item) => (
               <option key={item.id} value={item.id}>
@@ -403,91 +495,20 @@ function ShippingRuleForm({
               </option>
             ))}
           </select>
-          <input
-            className="bsure-input"
-            name="priority"
-            defaultValue="100"
-            type="number"
-          />
-        </div>
-
-        {subCondIds.map((id) => (
-          <div key={id}>
-            <div className="bsure-mini-or">And</div>
-            <div className="bsure-cond-row">
-              <ConditionFieldSelect defaultValue="postalCode" />
-              <ConditionOperatorSelect defaultValue="any" />
-              <input
-                className="bsure-input"
-                name="subCondValue"
-                placeholder="Enter value…"
-                style={{ flex: 1 }}
-              />
-              <button
-                className="bsure-cond-del"
-                onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))}
-                type="button"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-        <div className="bsure-condition-actions">
-          <button
-            className="bsure-add-link"
-            onClick={() => setSubCondIds((p) => [...p, Date.now()])}
-            type="button"
-          >
-            + Add sub-condition
-          </button>
-          <span>Or</span>
-          <button
-            className="bsure-add-link"
-            onClick={() => setExtraAreaIds((p) => [...p, Date.now()])}
-            type="button"
-          >
-            + Add another condition
-          </button>
         </div>
       </div>
 
-      {extraAreaIds.map((id, idx) => (
-        <div key={id}>
-          <div className="bsure-or-divider">Or</div>
-          <ExtraAreaBlock
-            areaNum={idx + 2}
-            onRemove={() => setExtraAreaIds((p) => p.filter((x) => x !== id))}
-            pincodeOptions={pincodeOptions}
-          />
-        </div>
-      ))}
-
       <div className="bsure-then-card">
         <div className="bsure-then-label">
-          {isRename
-            ? "Then rename shipping methods like this..."
-            : "Then hide shipping methods..."}
+          Then rename shipping methods like this...
         </div>
-
-        {!isRename && (
-          <select
-            className="bsure-select"
-            defaultValue="hide"
-            name="hideAction"
-            style={{ marginBottom: "10px", maxWidth: "260px" }}
-          >
-            <option value="hide">Hide these shipping methods</option>
-            <option value="show">Only show these shipping methods</option>
-          </select>
-        )}
 
         <table className="bsure-method-table">
           <thead>
             <tr>
               <th style={{ width: "42px" }}>No.</th>
               <th>Shipping method</th>
-              {isRename && <th>New name</th>}
+              <th>New name</th>
               <th style={{ width: "78px" }}></th>
             </tr>
           </thead>
@@ -499,10 +520,10 @@ function ShippingRuleForm({
                   <div className="bsure-method-grid">
                     <select
                       className="bsure-select"
-                      value={row.operator}
                       onChange={(e) =>
                         updateMethodRow(row.id, "operator", e.target.value)
                       }
+                      value={row.operator}
                     >
                       <option value="is">Is</option>
                       <option value="contains">Contains</option>
@@ -511,26 +532,24 @@ function ShippingRuleForm({
                     </select>
                     <input
                       className="bsure-input"
-                      placeholder="Shipping method name from admin config"
-                      value={row.value}
                       onChange={(e) =>
                         updateMethodRow(row.id, "value", e.target.value)
                       }
+                      placeholder="Shipping method name from admin config"
+                      value={row.value}
                     />
                   </div>
                 </td>
-                {isRename && (
-                  <td>
-                    <input
-                      className="bsure-input"
-                      placeholder="New shipping label"
-                      value={row.newLabel}
-                      onChange={(e) =>
-                        updateMethodRow(row.id, "newLabel", e.target.value)
-                      }
-                    />
-                  </td>
-                )}
+                <td>
+                  <input
+                    className="bsure-input"
+                    onChange={(e) =>
+                      updateMethodRow(row.id, "newLabel", e.target.value)
+                    }
+                    placeholder="New shipping label"
+                    value={row.newLabel}
+                  />
+                </td>
                 <td>
                   <button
                     className="bsure-cond-del"
@@ -548,7 +567,7 @@ function ShippingRuleForm({
               </tr>
             ))}
             <tr className="bsure-method-add-row">
-              <td colSpan={isRename ? 4 : 3}>
+              <td colSpan={4}>
                 <button
                   className="bsure-add-link"
                   onClick={() =>
@@ -566,53 +585,7 @@ function ShippingRuleForm({
           </tbody>
         </table>
       </div>
-
-      <div className="bsure-card" style={{ marginTop: "12px" }}>
-        <div className="bsure-grid-2">
-          <F label="Rule name">
-            <input
-              className="bsure-input"
-              name="name"
-              placeholder={isRename ? "Rename rule label" : "Hide rule label"}
-              required
-            />
-          </F>
-          <div
-            className="bsure-radio"
-            style={{ alignItems: "center", marginTop: "22px" }}
-          >
-            <input
-              defaultChecked
-              id="shipping-rule-enabled"
-              name="enabled"
-              type="checkbox"
-            />
-            <label htmlFor="shipping-rule-enabled">
-              <strong>Enabled</strong>{" "}
-              <span className="bsure-help">
-                Include in next published config
-              </span>
-            </label>
-          </div>
-        </div>
-        <F label="Notes" style={{ marginTop: "8px" }}>
-          <textarea
-            className="bsure-textarea"
-            name="notes"
-            placeholder="Internal note"
-            rows={2}
-          />
-        </F>
-        <div className="bsure-actions" style={{ marginTop: "10px" }}>
-          <button className="bsure-button" type="submit">
-            {isRename ? "Save rename rule" : "Save hide rule"}
-          </button>
-          <button className="bsure-button secondary" type="reset">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </Form>
+    </div>
   );
 }
 
@@ -923,74 +896,6 @@ function HideBlock({
   );
 }
 
-function ExtraAreaBlock({
-  areaNum,
-  onRemove,
-  pincodeOptions,
-}: {
-  areaNum: number;
-  onRemove: () => void;
-  pincodeOptions: PincodeOption[];
-}) {
-  const [subCondIds, setSubCondIds] = useState<number[]>([]);
-  return (
-    <div className="bsure-area-card">
-      <div className="bsure-area-head">
-        <div>
-          <strong>Area {areaNum}</strong>
-          <span>Or — match any of these conditions</span>
-        </div>
-        <button
-          className="bsure-when-close"
-          onClick={onRemove}
-          title="Remove area"
-          type="button"
-        >
-          ×
-        </button>
-      </div>
-      <div className="bsure-cond-row">
-        <ConditionFieldSelect defaultValue="postalCode" />
-        <ConditionOperatorSelect defaultValue="any" />
-        <button className="bsure-cond-del" disabled type="button">
-          Delete
-        </button>
-      </div>
-      <PincodeChips options={pincodeOptions} />
-      {subCondIds.map((id) => (
-        <div key={id}>
-          <div className="bsure-mini-or">And</div>
-          <div className="bsure-cond-row">
-            <ConditionFieldSelect defaultValue="postalCode" />
-            <ConditionOperatorSelect defaultValue="any" />
-            <input
-              className="bsure-input"
-              name="subCondValue"
-              placeholder="Enter value…"
-              style={{ flex: 1 }}
-            />
-            <button
-              className="bsure-cond-del"
-              onClick={() => setSubCondIds((p) => p.filter((x) => x !== id))}
-              type="button"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
-      <div className="bsure-condition-actions">
-        <button
-          className="bsure-add-link"
-          onClick={() => setSubCondIds((p) => [...p, Date.now()])}
-          type="button"
-        >
-          + Add sub-condition
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function ConfiguredRules({
   hideRules,

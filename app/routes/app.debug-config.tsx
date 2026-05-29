@@ -21,6 +21,28 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const value: string | null = json?.data?.shop?.metafield?.value ?? null;
   const updatedAt: string | null = json?.data?.shop?.metafield?.updatedAt ?? null;
 
+  // Inspect the registered delivery customizations on this store.
+  let deliveryCustomizations: unknown = null;
+  try {
+    const dcRes = await admin.graphql(
+      `#graphql
+      query DebugDeliveryCustomizations {
+        deliveryCustomizations(first: 20) {
+          nodes {
+            id
+            title
+            enabled
+            functionId
+          }
+        }
+      }`,
+    );
+    const dcJson = await dcRes.json();
+    deliveryCustomizations = dcJson?.data?.deliveryCustomizations?.nodes ?? dcJson?.errors ?? null;
+  } catch (e) {
+    deliveryCustomizations = { error: String(e) };
+  }
+
   let summary: Record<string, unknown> = { present: false };
   if (value) {
     try {
@@ -55,15 +77,21 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
-  return { summary, updatedAt };
+  return { summary, updatedAt, deliveryCustomizations };
 };
 
 export default function DebugConfigPage() {
-  const { summary, updatedAt } = useLoaderData<typeof loader>();
+  const { summary, updatedAt, deliveryCustomizations } =
+    useLoaderData<typeof loader>();
   return (
     <div style={{ padding: 24, fontFamily: "monospace" }}>
       <h1>Published config (live metafield)</h1>
       <p>metafield updatedAt: {updatedAt ?? "—"}</p>
+      <h2>Delivery customizations registered on store</h2>
+      <pre style={{ whiteSpace: "pre-wrap", background: "#eef", padding: 16, borderRadius: 8 }}>
+        {JSON.stringify(deliveryCustomizations, null, 2)}
+      </pre>
+      <h2>Config summary</h2>
       <pre style={{ whiteSpace: "pre-wrap", background: "#f5f5f5", padding: 16, borderRadius: 8 }}>
         {JSON.stringify(summary, null, 2)}
       </pre>

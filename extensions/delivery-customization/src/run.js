@@ -33,10 +33,6 @@ export function run(input) {
     const hideRules = Array.isArray(config.rules?.shippingHideRules)
       ? config.rules.shippingHideRules
       : [];
-    const renameRules = Array.isArray(config.rules?.shippingRenameRules)
-      ? config.rules.shippingRenameRules
-      : [];
-
     // Build the allowlist (show) and blocklist (hide) matchers for this pincode.
     const showMatchers = [];
     const hideMatchers = [];
@@ -68,14 +64,6 @@ export function run(input) {
       if (hideMatchers.length > 0 && methodMatches(hideMatchers, option)) {
         operations.push({ hide: { deliveryOptionHandle: handle } });
         continue;
-      }
-
-      // Rename: apply the first matching rename label.
-      const newLabel = findRenameLabel(renameRules, option, pincode, pincodeRecord);
-      if (newLabel) {
-        operations.push({
-          rename: { deliveryOptionHandle: handle, title: sanitizeTitle(newLabel) },
-        });
       }
     }
   }
@@ -135,24 +123,6 @@ function ruleMatchesContext(rule, pincode, pincodeRecord) {
   if (!areaGroupMatches(rule, pincodeRecord)) return false;
   if (!deliveryAvailabilityMatches(rule, pincodeRecord)) return false;
   return true;
-}
-
-function findRenameLabel(renameRules, option, pincode, pincodeRecord) {
-  for (const rule of renameRules) {
-    if (!ruleMatchesContext(rule, pincode, pincodeRecord)) continue;
-    const methods = Array.isArray(rule.selectedShippingMethods)
-      ? rule.selectedShippingMethods
-      : [];
-    for (const entry of methods) {
-      if (entryMatchesOption(entry, option) && normalize(entry.newLabel)) {
-        return normalize(entry.newLabel);
-      }
-    }
-    if (normalize(rule.newLabel) && methods.length === 0) {
-      return normalize(rule.newLabel);
-    }
-  }
-  return null;
 }
 
 /** True when any matcher entry matches the delivery option. */
@@ -217,21 +187,4 @@ function deliveryAvailabilityMatches(rule, pincodeRecord) {
 
 function normalize(value) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-/**
- * Make a rename title safe for the Shopify Functions output.
- * Non-ASCII characters can break the WASM JSON output and cause Shopify to
- * discard all operations, so replace them with ASCII equivalents.
- */
-function sanitizeTitle(value) {
-  return normalize(value)
-    .replace(/₹/g, "Rs ")
-    .replace(/[‒–—―]/g, "-")
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[^\x20-\x7E]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 100);
 }

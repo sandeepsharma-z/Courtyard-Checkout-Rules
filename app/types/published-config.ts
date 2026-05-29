@@ -44,9 +44,6 @@ export type PublishedConfigSnapshotPayload = {
     autoRenameDeliveryOption: boolean;
     deliveryLabelSource: "same_day" | "next_day" | "updated_first";
     hideOtherDeliveryOptions: boolean;
-    blockMatchingDeliveryText?: boolean;
-    deliveryBlockMatchText?: string;
-    deliveryBlockMessage?: string;
   };
   rules?: PublishedRuleConfig;
 };

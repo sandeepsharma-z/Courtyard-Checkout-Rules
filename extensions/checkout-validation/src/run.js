@@ -25,12 +25,8 @@ export function run(input) {
   const shouldBlockUnknown =
     config.settings?.blockUnknownPincode === true &&
     Boolean(trim(config.settings?.unknownPincodeMessage));
-  const shouldBlockDeliveryText =
-    config.settings?.blockMatchingDeliveryText === true &&
-    Boolean(trim(config.settings?.deliveryBlockMatchText)) &&
-    Boolean(trim(config.settings?.deliveryBlockMessage));
 
-  if (restrictions.length === 0 && !shouldBlockUnknown && !shouldBlockDeliveryText) {
+  if (restrictions.length === 0 && !shouldBlockUnknown) {
     return NO_OPERATIONS;
   }
 
@@ -60,15 +56,6 @@ export function run(input) {
       continue;
     }
 
-    const deliveryBlockError = deliveryTextBlockError(config, pincodeRecord);
-    if (deliveryBlockError) {
-      errors.push({
-        message: deliveryBlockError,
-        target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
-      });
-      continue;
-    }
-
     for (const rule of sortByPriority(restrictions)) {
       if (
         pincodeMatchesRule(rule, pincode, pincodeRecord) &&
@@ -88,32 +75,6 @@ export function run(input) {
   return errors.length > 0
     ? { operations: [{ validationAdd: { errors } }] }
     : NO_OPERATIONS;
-}
-
-function deliveryTextBlockError(config, pincodeRecord) {
-  if (!pincodeRecord || config.settings?.blockMatchingDeliveryText !== true) {
-    return "";
-  }
-
-  const matchText = trim(config.settings?.deliveryBlockMatchText).toLowerCase();
-  const message = trim(config.settings?.deliveryBlockMessage);
-
-  if (!matchText || !message) {
-    return "";
-  }
-
-  const values = [
-    pincodeRecord.da,
-    pincodeRecord.sd,
-    pincodeRecord.nd,
-    pincodeRecord.pa,
-    pincodeRecord.usd,
-    pincodeRecord.und,
-  ]
-    .map((value) => trim(value).toLowerCase())
-    .filter(Boolean);
-
-  return values.some((value) => value.includes(matchText)) ? message : "";
 }
 
 // Helpers

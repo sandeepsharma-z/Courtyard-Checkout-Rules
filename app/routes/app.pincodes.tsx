@@ -12,20 +12,10 @@ import {
   getActivePincodeSummary,
   upsertManualPincodeRecords,
 } from "../services/pincode-storage.server";
-import {
-  getCheckoutRuleSettings,
-  saveCheckoutRuleSettings,
-  type CheckoutRuleSettings,
-} from "../services/checkout-settings.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
-  const [summary, settings] = await Promise.all([
-    getActivePincodeSummary(),
-    getCheckoutRuleSettings(),
-  ]);
-
-  return { settings, ...summary };
+  return getActivePincodeSummary();
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -59,32 +49,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return redirect("/app/pincodes?status=manual-saved");
     }
 
-    if (intent === "settings:save") {
-      const settings: CheckoutRuleSettings = {
-        blockUnknownPincode: formData.get("blockUnknownPincode") === "on",
-        unknownPincodeMessage: String(
-          formData.get("unknownPincodeMessage") ?? "",
-        ).trim(),
-        autoRenameDeliveryOption:
-          formData.get("autoRenameDeliveryOption") === "on",
-        deliveryLabelSource: parseDeliveryLabelSource(
-          String(formData.get("deliveryLabelSource") ?? ""),
-        ),
-        hideOtherDeliveryOptions:
-          formData.get("hideOtherDeliveryOptions") === "on",
-        blockMatchingDeliveryText:
-          formData.get("blockMatchingDeliveryText") === "on",
-        deliveryBlockMatchText: String(
-          formData.get("deliveryBlockMatchText") ?? "",
-        ).trim(),
-        deliveryBlockMessage: String(
-          formData.get("deliveryBlockMessage") ?? "",
-        ).trim(),
-      };
-      await saveCheckoutRuleSettings(settings);
-      return redirect("/app/pincodes?status=settings-saved");
-    }
-
     if (intent === "record:delete") {
       await deleteActivePincodeRecord(String(formData.get("id") ?? ""));
       return redirect("/app/pincodes?status=record-deleted");
@@ -104,7 +68,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function PincodeGroupsPage() {
-  const { activeCount, approvedBatch, recentRecords, settings } =
+  const { activeCount, approvedBatch, recentRecords } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
@@ -130,97 +94,14 @@ export default function PincodeGroupsPage() {
         ) : null}
 
         <div className="bsure-flow pincode-flow">
-          <section className="bsure-card pincode-settings-card">
-            <div className="pincode-section-head">
-              <div>
-                <h2>Checkout behavior</h2>
-                <p>Save here, then publish config to update checkout.</p>
-              </div>
-              <button className="bsure-button" form="checkout-settings-form" type="submit">
-                Save settings
-              </button>
-            </div>
-            <Form
-              id="checkout-settings-form"
-              method="post"
-              className="pincode-settings-grid"
-            >
-              <input name="intent" type="hidden" value="settings:save" />
-              <label className="pincode-switch">
-                <input
-                  defaultChecked={settings.blockUnknownPincode}
-                  name="blockUnknownPincode"
-                  type="checkbox"
-                />
-                <span>Block unknown pincode</span>
-              </label>
-              <Field label="Unknown pincode message">
-                <input
-                  className="bsure-input"
-                  defaultValue={settings.unknownPincodeMessage}
-                  name="unknownPincodeMessage"
-                  placeholder="Message shown under PIN code"
-                />
-              </Field>
-              <label className="pincode-switch">
-                <input
-                  defaultChecked={settings.autoRenameDeliveryOption}
-                  name="autoRenameDeliveryOption"
-                  type="checkbox"
-                />
-                <span>Show delivery text as shipping label</span>
-              </label>
-              <Field label="Delivery label source">
-                <select
-                  className="bsure-select"
-                  defaultValue={settings.deliveryLabelSource}
-                  name="deliveryLabelSource"
-                >
-                  <option value="updated_first">Updated text first</option>
-                  <option value="same_day">Same day delivery text</option>
-                  <option value="next_day">Next day delivery text</option>
-                </select>
-              </Field>
-              <label className="pincode-switch">
-                <input
-                  defaultChecked={settings.hideOtherDeliveryOptions}
-                  name="hideOtherDeliveryOptions"
-                  type="checkbox"
-                />
-                <span>Hide other Shopify shipping options</span>
-              </label>
-              <label className="pincode-switch">
-                <input
-                  defaultChecked={settings.blockMatchingDeliveryText}
-                  name="blockMatchingDeliveryText"
-                  type="checkbox"
-                />
-                <span>Block when delivery text matches</span>
-              </label>
-              <Field label="Blocked delivery text">
-                <input
-                  className="bsure-input"
-                  defaultValue={settings.deliveryBlockMatchText}
-                  name="deliveryBlockMatchText"
-                  placeholder="Text from delivery fields that means blocked"
-                />
-              </Field>
-              <Field label="Blocked pincode message">
-                <input
-                  className="bsure-input"
-                  defaultValue={settings.deliveryBlockMessage}
-                  name="deliveryBlockMessage"
-                  placeholder="Message shown under PIN code"
-                />
-              </Field>
-            </Form>
-          </section>
-
           <section className="bsure-card pincode-entry-card">
             <div className="pincode-section-head">
               <div>
-                <h2>Add pincode delivery detail</h2>
-                <p>Fill it like one row from the PDF or sheet.</p>
+                <h2>Add pincode delivery data</h2>
+                <p>
+                  Only store delivery data here. Blocking, shipping labels, and
+                  method rules are configured from the dashboard rule screens.
+                </p>
               </div>
               <button className="bsure-button" form="manual-pincode-form" type="submit">
                 Save pincode
@@ -456,15 +337,6 @@ function parseManualRows(
 
   if (rows.length > 0) return rows;
   return [single];
-}
-
-function parseDeliveryLabelSource(
-  value: string,
-): CheckoutRuleSettings["deliveryLabelSource"] {
-  if (value === "same_day" || value === "next_day" || value === "updated_first") {
-    return value;
-  }
-  return "updated_first";
 }
 
 export const headers: HeadersFunction = (headersArgs) =>

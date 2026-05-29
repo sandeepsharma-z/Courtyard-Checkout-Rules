@@ -98,40 +98,6 @@ describe("checkout validation function", () => {
     });
   });
 
-  test("blocks pincode when admin-configured delivery text matches", () => {
-    const config = {
-      ...baseConfig,
-      pincodeData: {
-        records: [
-          {
-            pc: "PINCODE_PLACEHOLDER",
-            sd: "DELIVERY_STATUS_TEXT_FROM_ADMIN",
-          },
-        ],
-      },
-      settings: {
-        blockMatchingDeliveryText: true,
-        deliveryBlockMatchText: "DELIVERY_STATUS_TEXT",
-        deliveryBlockMessage: "DELIVERY_BLOCK_MESSAGE_FROM_ADMIN",
-      },
-    };
-
-    expect(run(inputWithConfig(config))).toEqual({
-      operations: [
-        {
-          validationAdd: {
-            errors: [
-              {
-                message: "DELIVERY_BLOCK_MESSAGE_FROM_ADMIN",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
-              },
-            ],
-          },
-        },
-      ],
-    });
-  });
-
   test("adds a validation operation for product-tag rules when tag input is unavailable", () => {
     const config = {
       ...baseConfig,

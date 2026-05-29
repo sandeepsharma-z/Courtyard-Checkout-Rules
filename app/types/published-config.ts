@@ -53,7 +53,7 @@ export type BuiltPublishedConfigSnapshot = {
   payloadJson: string;
   payloadSizeBytes: number;
   recordCount: number;
-  sourceBatchId: string;
+  sourceBatchId: string | null;
   sourceFilename: string;
   maxBytes: number;
   isTooLarge: boolean;

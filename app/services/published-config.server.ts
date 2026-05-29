@@ -41,21 +41,12 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
     orderBy: { approvedAt: "desc" },
   });
 
-  if (!approvedBatch) {
-    return null;
-  }
-
-  const records = await prisma.pincodeRecord.findMany({
-    where: {
-      isActive: true,
-      rowStatus: "valid",
-    },
-    orderBy: [{ pincode: "asc" }, { id: "asc" }],
-  });
-
-  if (records.length === 0) {
-    return null;
-  }
+  const records = approvedBatch
+    ? await prisma.pincodeRecord.findMany({
+        where: { isActive: true, rowStatus: "valid" },
+        orderBy: [{ pincode: "asc" }, { id: "asc" }],
+      })
+    : [];
 
   const [
     productRestrictionRules,
@@ -103,9 +94,9 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
     kind: "courtyard_checkout_rules.pincode_config",
     publishedAt: new Date().toISOString(),
     source: {
-      type: "local_import_batch",
-      batchId: approvedBatch.id,
-      filename: approvedBatch.filename,
+      type: approvedBatch ? "local_import_batch" : "manual_pincode_rules",
+      batchId: approvedBatch?.id ?? "",
+      filename: approvedBatch?.filename ?? "manual",
     },
     counts: {
       records: records.length,
@@ -218,8 +209,8 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
     payloadJson,
     payloadSizeBytes,
     recordCount: records.length,
-    sourceBatchId: approvedBatch.id,
-    sourceFilename: approvedBatch.filename,
+    sourceBatchId: approvedBatch?.id ?? null,
+    sourceFilename: approvedBatch?.filename ?? "manual",
     maxBytes,
     isTooLarge: payloadSizeBytes > maxBytes,
   };

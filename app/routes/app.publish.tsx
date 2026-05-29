@@ -155,7 +155,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (!snapshot) {
       return {
         status: "error",
-        message: "No approved active pincode configuration is available.",
+        message: "Could not build configuration snapshot. Check that rules are configured.",
       } satisfies ActionResult;
     }
 
@@ -364,7 +364,7 @@ export default function PublishPage() {
       <s-section heading="Current snapshot preview">
         {!snapshot ? (
           <s-paragraph>
-            No approved active pincode records are available to publish.
+            No snapshot preview available. Add rules or pincode data and publish.
           </s-paragraph>
         ) : (
           <div style={{ display: "grid", gap: "1rem" }}>

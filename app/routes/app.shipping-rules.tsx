@@ -30,6 +30,7 @@ type ShippingRule = {
   priority: number;
   shippingMethodMappingId: string;
   selectedShippingMethodsJson: string;
+  methodMatchMode?: string;
   cutoffRuleSettingId: string;
   productTagsJson: string;
   pincodesJson: string;
@@ -1134,6 +1135,36 @@ function RuleItem({
     }
   })();
 
+  const isRename = kind === "shippingRename";
+  const [editMethods, setEditMethods] = useState<MethodRow[]>(() =>
+    selectedMethods.length > 0
+      ? selectedMethods.map((m, i) => ({
+          id: i,
+          operator: m.operator || "is",
+          value: (m.value ?? m.matchValue) || "",
+          newLabel: m.newLabel || "",
+        }))
+      : [{ id: 0, operator: "is", value: "", newLabel: "" }],
+  );
+  const [editMatchMode, setEditMatchMode] = useState(
+    item.methodMatchMode || "hide",
+  );
+
+  const updateEditMethod = (id: number, field: keyof MethodRow, val: string) =>
+    setEditMethods((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, [field]: val } : r)),
+    );
+
+  const editMethodsJson = JSON.stringify(
+    editMethods
+      .filter((r) => r.value.trim())
+      .map((r) =>
+        isRename
+          ? { operator: r.operator, matchValue: r.value, newLabel: r.newLabel }
+          : { operator: r.operator, value: r.value },
+      ),
+  );
+
   return (
     <article className="bsure-rule-item">
       <div className="bsure-rule-item-top">
@@ -1196,13 +1227,17 @@ function RuleItem({
           <input
             name="selectedShippingMethodsJson"
             type="hidden"
-            defaultValue={item.selectedShippingMethodsJson}
+            value={editMethodsJson}
+            readOnly
           />
           <input
             name="shippingMethodMappingId"
             type="hidden"
             value={item.shippingMethodMappingId}
           />
+          {!isRename && (
+            <input name="hideAction" type="hidden" value={editMatchMode} readOnly />
+          )}
           <div className="bsure-form-row">
             <F label="Rule name">
               <input
@@ -1229,15 +1264,9 @@ function RuleItem({
             />
             <label htmlFor={`enabled-${item.id}`}>Enabled</label>
           </div>
-          {kind === "shippingRename" ? (
+          {isRename ? (
             <>
-              <F label="New shipping label" style={{ marginTop: "10px" }}>
-                <input
-                  className="bsure-input"
-                  defaultValue={newLabel ?? ""}
-                  name="newLabel"
-                />
-              </F>
+              <input name="newLabel" type="hidden" value={newLabel ?? ""} />
               <input
                 name="cutoffRuleSettingId"
                 type="hidden"
@@ -1245,14 +1274,120 @@ function RuleItem({
               />
             </>
           ) : (
-            <F label="Cutoff setting ID" style={{ marginTop: "10px" }}>
-              <input
-                className="bsure-input"
-                defaultValue={item.cutoffRuleSettingId}
-                name="cutoffRuleSettingId"
-              />
-            </F>
+            <input
+              name="cutoffRuleSettingId"
+              type="hidden"
+              value={item.cutoffRuleSettingId}
+            />
           )}
+
+          {/* Editable shipping methods */}
+          <div className="bsure-then-card" style={{ marginTop: "10px" }}>
+            <div className="bsure-then-label">
+              {isRename
+                ? "Rename shipping methods"
+                : "Shipping methods for this rule"}
+            </div>
+            {!isRename && (
+              <select
+                className="bsure-select"
+                onChange={(e) => setEditMatchMode(e.target.value)}
+                style={{ marginBottom: "10px", maxWidth: "260px" }}
+                value={editMatchMode}
+              >
+                <option value="hide">Hide these shipping methods</option>
+                <option value="show">Only show these shipping methods</option>
+              </select>
+            )}
+            <table className="bsure-method-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "42px" }}>No.</th>
+                  <th>Shipping method</th>
+                  {isRename && <th>New name</th>}
+                  <th style={{ width: "78px" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {editMethods.map((row, index) => (
+                  <tr key={row.id}>
+                    <td style={{ color: "#6d7175" }}>{index + 1}</td>
+                    <td>
+                      <div className="bsure-method-grid">
+                        <select
+                          className="bsure-select"
+                          onChange={(e) =>
+                            updateEditMethod(row.id, "operator", e.target.value)
+                          }
+                          value={row.operator}
+                        >
+                          <option value="is">Is</option>
+                          <option value="contains">Contains</option>
+                          <option value="starts_with">Starts with</option>
+                          <option value="ends_with">Ends with</option>
+                        </select>
+                        <input
+                          className="bsure-input"
+                          onChange={(e) =>
+                            updateEditMethod(row.id, "value", e.target.value)
+                          }
+                          placeholder="Shipping method name from admin config"
+                          value={row.value}
+                        />
+                      </div>
+                    </td>
+                    {isRename && (
+                      <td>
+                        <input
+                          className="bsure-input"
+                          onChange={(e) =>
+                            updateEditMethod(row.id, "newLabel", e.target.value)
+                          }
+                          placeholder="New shipping label"
+                          value={row.newLabel}
+                        />
+                      </td>
+                    )}
+                    <td>
+                      <button
+                        className="bsure-cond-del"
+                        disabled={editMethods.length === 1}
+                        onClick={() =>
+                          setEditMethods((rows) =>
+                            rows.filter((r) => r.id !== row.id),
+                          )
+                        }
+                        type="button"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bsure-method-add-row">
+                  <td colSpan={isRename ? 4 : 3}>
+                    <button
+                      className="bsure-add-link"
+                      onClick={() =>
+                        setEditMethods((rows) => [
+                          ...rows,
+                          {
+                            id: Date.now(),
+                            operator: "is",
+                            value: "",
+                            newLabel: "",
+                          },
+                        ])
+                      }
+                      type="button"
+                    >
+                      + Add shipping method
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <div className="bsure-form-row" style={{ marginTop: "10px" }}>
             <F label="Pincodes">
               <textarea

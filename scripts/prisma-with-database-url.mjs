@@ -17,11 +17,23 @@ const isMigrationCommand =
   prismaArgs[0] === "migrate" || prismaArgs.includes("migrate");
 
 if (isMigrationCommand) {
+  // Prefer an explicit unpooled/direct URL env var if available
   const migrationUrlKey = fallbackKeys.find((key) => process.env[key]);
   if (migrationUrlKey) {
     process.env.DATABASE_URL = process.env[migrationUrlKey];
   }
-  // Append connect_timeout if not already present (prevents Neon advisory lock timeout)
+
+  // If still using a Neon pooled URL, auto-convert to direct connection.
+  // Neon pooled: ep-xxx-pooler.region.aws.neon.tech
+  // Neon direct: ep-xxx.region.aws.neon.tech
+  // Advisory locks require a direct (non-PgBouncer) connection.
+  if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes("-pooler.")) {
+    process.env.DATABASE_URL = process.env.DATABASE_URL
+      .replace(/-pooler\./g, ".")
+      .replace(/[?&]pgbouncer=true/g, "");
+  }
+
+  // Ensure adequate connection timeout
   if (process.env.DATABASE_URL && !process.env.DATABASE_URL.includes("connect_timeout")) {
     const sep = process.env.DATABASE_URL.includes("?") ? "&" : "?";
     process.env.DATABASE_URL += `${sep}connect_timeout=30`;

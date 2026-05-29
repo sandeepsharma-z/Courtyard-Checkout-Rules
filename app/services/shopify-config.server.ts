@@ -394,25 +394,27 @@ export async function getDeliveryCustomizationStatus(admin: ShopifyAdminClient) 
 }
 
 export async function enableDeliveryCustomization(admin: ShopifyAdminClient) {
-  const status = await getDeliveryCustomizationStatus(admin);
-
-  if (status.deliveryCustomization) {
-    const result = await updateDeliveryCustomization(
-      admin,
-      status.deliveryCustomization.id,
-    );
-    return {
-      action: "updated",
-      deliveryCustomization: result,
-    };
-  }
-
-  const shopifyFunction = await findDeliveryCustomizationFunction(admin);
+  const [status, shopifyFunction] = await Promise.all([
+    getDeliveryCustomizationStatus(admin),
+    findDeliveryCustomizationFunction(admin),
+  ]);
 
   if (!shopifyFunction) {
     throw new Error(
       "Delivery customization Function was not found on this shop. Deploy the delivery-customization extension first, then try again.",
     );
+  }
+
+  if (status.deliveryCustomization) {
+    const result = await updateDeliveryCustomization(
+      admin,
+      status.deliveryCustomization.id,
+      shopifyFunction.id,
+    );
+    return {
+      action: "updated",
+      deliveryCustomization: result,
+    };
   }
 
   const result = await createDeliveryCustomizationWithFunctionId(
@@ -598,6 +600,7 @@ async function findCheckoutValidationFunction(admin: ShopifyAdminClient) {
 async function updateDeliveryCustomization(
   admin: ShopifyAdminClient,
   deliveryCustomizationId: string,
+  functionId: string,
 ) {
   const response = await admin.graphql(
     `#graphql
@@ -626,6 +629,7 @@ async function updateDeliveryCustomization(
         id: deliveryCustomizationId,
         deliveryCustomization: {
           title: DELIVERY_CUSTOMIZATION_TITLE,
+          functionId,
           enabled: true,
         },
       },

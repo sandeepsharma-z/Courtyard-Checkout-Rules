@@ -33,6 +33,24 @@ export function run(input) {
     const hideRules = Array.isArray(config.rules?.shippingHideRules)
       ? config.rules.shippingHideRules
       : [];
+    const renameRules = Array.isArray(config.rules?.shippingRenameRules)
+      ? config.rules.shippingRenameRules
+      : [];
+
+    const matchingRenameRules = renameRules.filter((rule) =>
+      ruleMatchesContext(rule, pincode, pincodeRecord),
+    );
+    const renameTargetsByHandle = new Map();
+    const renameTargetTitles = new Set();
+    for (const option of options) {
+      const handle = normalize(option?.handle);
+      const title = findRenameTitle(matchingRenameRules, option);
+      if (handle && title) {
+        renameTargetsByHandle.set(handle, title);
+        renameTargetTitles.add(title);
+      }
+    }
+
     // Build the allowlist (show) and blocklist (hide) matchers for this pincode.
     const showMatchers = [];
     const hideMatchers = [];
@@ -50,20 +68,60 @@ export function run(input) {
       }
     }
 
+    const hiddenHandles = new Set();
+
     for (const option of options) {
       const handle = normalize(option?.handle);
       if (!handle) continue;
+      const renameTitle = renameTargetsByHandle.get(handle);
+
+      // If Shopify already has a method with the admin-configured renamed label,
+      // hide the source/default method instead of showing both.
+      if (renameTitle && optionTitleExists(options, renameTitle, handle)) {
+        hiddenHandles.add(handle);
+        continue;
+      }
+
+      // When a pincode-specific rename rule matches, keep only the admin
+      // configured delivery labels for that pincode. This removes the original
+      // Shopify default rates that would otherwise appear beside local labels.
+      if (
+        renameTargetTitles.size > 0 &&
+        !isRenameAllowedOption(option, handle, renameTargetsByHandle, renameTargetTitles)
+      ) {
+        hiddenHandles.add(handle);
+        continue;
+      }
 
       // Allowlist: hide anything that is not explicitly allowed.
-      if (hasAllowlist && !methodMatches(showMatchers, option)) {
-        operations.push({ hide: { deliveryOptionHandle: handle } });
+      if (hasAllowlist && !allowlistMatches(showMatchers, option, renameTitle)) {
+        hiddenHandles.add(handle);
         continue;
       }
 
       // Blocklist: hide explicitly blocked methods.
       if (hideMatchers.length > 0 && methodMatches(hideMatchers, option)) {
-        operations.push({ hide: { deliveryOptionHandle: handle } });
+        hiddenHandles.add(handle);
         continue;
+      }
+    }
+
+    for (const handle of hiddenHandles) {
+      operations.push({ hide: { deliveryOptionHandle: handle } });
+    }
+
+    for (const option of options) {
+      const handle = normalize(option?.handle);
+      if (!handle || hiddenHandles.has(handle)) continue;
+
+      const title = renameTargetsByHandle.get(handle);
+      if (title && normalize(option?.title) !== title) {
+        operations.push({
+          rename: {
+            deliveryOptionHandle: handle,
+            title,
+          },
+        });
       }
     }
   }
@@ -131,6 +189,16 @@ function methodMatches(matchers, option) {
   return matchers.some((entry) => entryMatchesOption(entry, option));
 }
 
+function allowlistMatches(matchers, option, renameTitle) {
+  if (methodMatches(matchers, option)) return true;
+  if (!renameTitle) return false;
+  return methodMatches(matchers, {
+    ...option,
+    title: renameTitle,
+    code: renameTitle,
+  });
+}
+
 function entryMatchesOption(entry, option) {
   const value = normalize(entry?.value ?? entry?.matchValue);
   if (!value) return false;
@@ -150,8 +218,51 @@ function entryMatchesOption(entry, option) {
     case "endswith":
       return candidates.some((c) => c.endsWith(value));
     default:
-      return candidates.some((c) => c === value);
+      // Admin-entered Shopify shipping labels are often copied partially from
+      // the checkout UI. Treat "is" as exact-or-contained so a configured
+      // value like "Same Day Delivery" can still match the full Shopify title.
+      return candidates.some((c) => c === value || c.includes(value));
   }
+}
+
+function findRenameTitle(renameRules, option) {
+  for (const rule of renameRules) {
+    const methods = Array.isArray(rule.selectedShippingMethods)
+      ? rule.selectedShippingMethods
+      : [];
+    for (const method of methods) {
+      if (!entryMatchesOption(method, option)) continue;
+      const title = normalize(method?.newLabel) || normalize(rule?.newLabel);
+      if (title) return title;
+    }
+  }
+  return "";
+}
+
+function isRenameAllowedOption(option, handle, renameTargetsByHandle, renameTargetTitles) {
+  if (renameTargetsByHandle.has(handle)) return true;
+  return [...renameTargetTitles].some((title) =>
+    optionMatchesTitle(option, title),
+  );
+}
+
+function optionTitleExists(options, title, exceptHandle) {
+  const target = normalize(title);
+  if (!target) return false;
+  return options.some((option) => {
+    const handle = normalize(option?.handle);
+    if (!handle || handle === exceptHandle) return false;
+    return optionMatchesTitle(option, target);
+  });
+}
+
+function optionMatchesTitle(option, title) {
+  const target = normalize(title);
+  return (
+    normalize(option?.title) === target ||
+    normalize(option?.code) === target ||
+    normalize(option?.handle) === target
+  );
 }
 
 function pincodeMatches(rule, pincode) {

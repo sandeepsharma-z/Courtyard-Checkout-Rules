@@ -66,7 +66,7 @@ export function run(input) {
         continue;
       }
 
-      const renameRule = findMatchingRule({
+      const renameEntry = findRenameEntry({
         rules: config.rules.shippingRenameRules,
         mappings: config.rules.shippingMethodMappings,
         option,
@@ -74,11 +74,11 @@ export function run(input) {
         pincodeRecord,
       });
 
-      if (renameRule && normalize(renameRule.newLabel)) {
+      if (renameEntry) {
         groupOperations.push({
           rename: {
             deliveryOptionHandle: handle,
-            title: normalize(renameRule.newLabel),
+            title: renameEntry.newLabel,
           },
         });
       }
@@ -239,6 +239,55 @@ function findMatchingRule({
       deliveryAvailabilityMatches(rule, pincodeRecord)
     );
   });
+}
+
+/**
+ * For rename rules: find the specific selectedShippingMethods entry that matches
+ * this option, so we can use its per-row newLabel.
+ * Falls back to rule.newLabel for legacy rules.
+ */
+function findRenameEntry({ rules, mappings, option, pincode, pincodeRecord }) {
+  for (const rule of sortByPriority(rules)) {
+    if (hasUnsupportedShippingRuleConditions(rule)) continue;
+    if (!pincodeMatches(rule, pincode)) continue;
+    if (!areaGroupMatches(rule, pincodeRecord)) continue;
+    if (!deliveryAvailabilityMatches(rule, pincodeRecord)) continue;
+
+    // New-style: per-row matchValue + newLabel in selectedShippingMethods
+    if (Array.isArray(rule.selectedShippingMethods) && rule.selectedShippingMethods.length > 0) {
+      const entry = rule.selectedShippingMethods.find((e) => {
+        const matchValue = normalize(e.matchValue ?? e.value);
+        if (!matchValue) return false;
+        const candidates = [
+          normalize(option?.title),
+          normalize(option?.code),
+          normalize(option?.handle),
+        ].filter(Boolean);
+        const op = normalize(e.operator);
+        switch (op) {
+          case "contains": return candidates.some((c) => c.includes(matchValue));
+          case "starts_with":
+          case "startswith": return candidates.some((c) => c.startsWith(matchValue));
+          case "ends_with":
+          case "endswith": return candidates.some((c) => c.endsWith(matchValue));
+          default: return candidates.some((c) => c === matchValue);
+        }
+      });
+      if (entry && normalize(entry.newLabel)) {
+        return { newLabel: normalize(entry.newLabel) };
+      }
+    }
+
+    // Legacy: rule.newLabel + mappingId matching
+    const legacyMatch = mappingMatches(
+      mappings.find((m) => normalize(m.id) === normalize(rule.shippingMethodMappingId)),
+      option,
+    );
+    if (legacyMatch && normalize(rule.newLabel)) {
+      return { newLabel: normalize(rule.newLabel) };
+    }
+  }
+  return null;
 }
 
 /**

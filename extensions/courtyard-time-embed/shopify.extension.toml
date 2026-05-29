@@ -1,0 +1,6 @@
+api_version = "2025-10"
+
+[[extensions]]
+name = "Courtyard Checkout Time"
+handle = "courtyard-time-embed"
+type = "theme"

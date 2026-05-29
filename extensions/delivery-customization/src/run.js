@@ -22,6 +22,8 @@ export function run(input) {
   const deliveryGroups = Array.isArray(input?.cart?.deliveryGroups)
     ? input.cart.deliveryGroups
     : [];
+  // Shop-local time ("HH:MM") written by the Courtyard time embed block.
+  const cartTime = normalize(input?.cart?.attribute?.value);
 
   for (const group of deliveryGroups) {
     const pincode = normalize(group?.deliveryAddress?.zip);
@@ -38,7 +40,8 @@ export function run(input) {
     const hideMatchers = [];
     let hasAllowlist = false;
     for (const rule of hideRules) {
-      if (!ruleMatchesContext(rule, pincode, pincodeRecord)) continue;
+      if (!ruleMatchesContext(rule, pincode, pincodeRecord, config, cartTime))
+        continue;
       const methods = Array.isArray(rule.selectedShippingMethods)
         ? rule.selectedShippingMethods
         : [];
@@ -112,17 +115,78 @@ function findPincodeRecord(config, pincode) {
 }
 
 /**
- * True when a rule's pincode / area / delivery-text conditions match this group.
- * Rules with unsupported conditions (cutoff time, product tags) are skipped,
- * since the delivery function cannot evaluate them reliably.
+ * True when a rule's pincode / area / delivery-text / cutoff conditions match
+ * this group. Rules with product-tag conditions are still skipped, since the
+ * delivery function cannot evaluate them reliably.
  */
-function ruleMatchesContext(rule, pincode, pincodeRecord) {
-  if (normalize(rule.cutoffRuleSettingId)) return false;
+function ruleMatchesContext(rule, pincode, pincodeRecord, config, cartTime) {
+  if (!cutoffAllows(rule, config, cartTime)) return false;
   if (Array.isArray(rule.productTags) && rule.productTags.length > 0) return false;
   if (!pincodeMatches(rule, pincode)) return false;
   if (!areaGroupMatches(rule, pincodeRecord)) return false;
   if (!deliveryAvailabilityMatches(rule, pincodeRecord)) return false;
   return true;
+}
+
+/**
+ * Evaluates a rule's time-of-day (cutoff) condition.
+ *
+ * Rules without a cutoff always pass (unchanged behavior). Rules with a cutoff
+ * fail safe: if the setting is missing or the cart time is absent/invalid, the
+ * rule is treated as NOT applying (returns false), so we never hide/show based
+ * on an unknown time.
+ */
+function cutoffAllows(rule, config, cartTime) {
+  const cutoffId = normalize(rule?.cutoffRuleSettingId);
+  if (!cutoffId) return true;
+
+  const settings = Array.isArray(config?.rules?.cutoffSettings)
+    ? config.rules.cutoffSettings
+    : [];
+  const setting = settings.find((entry) => normalize(entry?.id) === cutoffId);
+  if (!setting) return false;
+
+  const cartMinutes = parseTimeToMinutes(cartTime);
+  if (cartMinutes === null) return false;
+
+  const cutoffMinutes = parseTimeToMinutes(setting.timeValue);
+  if (cutoffMinutes === null) return false;
+
+  if (normalize(setting.matchMode) === "after") {
+    return cartMinutes >= cutoffMinutes;
+  }
+  // Default (and explicit "before"): rule applies before the cutoff time.
+  return cartMinutes < cutoffMinutes;
+}
+
+/**
+ * Parses "HH:MM" (24h) or "hh:MM AM/PM" into minutes-since-midnight.
+ * Returns null when the value is missing or unparseable.
+ */
+function parseTimeToMinutes(value) {
+  const text = normalize(value);
+  if (!text) return null;
+
+  const meridiem = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/.exec(text);
+  if (meridiem) {
+    let hours = Number(meridiem[1]);
+    const minutes = Number(meridiem[2]);
+    const isPm = meridiem[3].toLowerCase() === "pm";
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null;
+    if (hours === 12) hours = 0;
+    if (isPm) hours += 12;
+    return hours * 60 + minutes;
+  }
+
+  const twentyFour = /^(\d{1,2}):(\d{2})$/.exec(text);
+  if (twentyFour) {
+    const hours = Number(twentyFour[1]);
+    const minutes = Number(twentyFour[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  return null;
 }
 
 /** True when any matcher entry matches the delivery option. */

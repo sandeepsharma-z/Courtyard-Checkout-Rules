@@ -1,0 +1,10 @@
+<script src="{{ 'courtyard-time.js' | asset_url }}" data-timezone="{{ block.settings.timezone }}" defer></script>
+{% schema %}
+{
+  "name": "Courtyard Checkout Time",
+  "target": "body",
+  "settings": [
+    { "type": "text", "id": "timezone", "label": "Timezone (IANA)", "default": "Asia/Kolkata" }
+  ]
+}
+{% endschema %}

@@ -35,6 +35,8 @@ export function run(input) {
     : [];
 
   const cartTags = getCartProductTags(input);
+  // Shop-local time ("HH:MM") written by the Courtyard time embed block.
+  const cartTime = trim(input?.cart?.attribute?.value);
   const errors = [];
 
   for (const group of deliveryGroups) {
@@ -58,6 +60,7 @@ export function run(input) {
 
     for (const rule of sortByPriority(restrictions)) {
       if (
+        cutoffAllows(rule, config, cartTime) &&
         pincodeMatchesRule(rule, pincode, pincodeRecord) &&
         productTagsMatchRule(rule, cartTags)
       ) {
@@ -170,6 +173,67 @@ function productTagsMatchRule(rule, cartTags) {
   if (ruleTags.length === 0) return true;
   if (cartTags.size === 0) return true;
   return ruleTags.map(trim).some((tag) => cartTags.has(tag));
+}
+
+/**
+ * Evaluates a rule's time-of-day (cutoff) condition.
+ *
+ * Rules without a cutoff always pass (unchanged behavior). Rules with a cutoff
+ * fail safe: if the setting is missing or the cart time is absent/invalid, the
+ * rule is treated as NOT applying (returns false), so checkout is never blocked
+ * based on an unknown time.
+ */
+function cutoffAllows(rule, config, cartTime) {
+  const cutoffId = trim(rule?.cutoffRuleSettingId);
+  if (!cutoffId) return true;
+
+  const settings = Array.isArray(config?.rules?.cutoffSettings)
+    ? config.rules.cutoffSettings
+    : [];
+  const setting = settings.find((entry) => trim(entry?.id) === cutoffId);
+  if (!setting) return false;
+
+  const cartMinutes = parseTimeToMinutes(cartTime);
+  if (cartMinutes === null) return false;
+
+  const cutoffMinutes = parseTimeToMinutes(setting.timeValue);
+  if (cutoffMinutes === null) return false;
+
+  if (trim(setting.matchMode) === "after") {
+    return cartMinutes >= cutoffMinutes;
+  }
+  // Default (and explicit "before"): rule applies before the cutoff time.
+  return cartMinutes < cutoffMinutes;
+}
+
+/**
+ * Parses "HH:MM" (24h) or "hh:MM AM/PM" into minutes-since-midnight.
+ * Returns null when the value is missing or unparseable.
+ */
+function parseTimeToMinutes(value) {
+  const text = trim(value);
+  if (!text) return null;
+
+  const meridiem = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/.exec(text);
+  if (meridiem) {
+    let hours = Number(meridiem[1]);
+    const minutes = Number(meridiem[2]);
+    const isPm = meridiem[3].toLowerCase() === "pm";
+    if (hours < 1 || hours > 12 || minutes < 0 || minutes > 59) return null;
+    if (hours === 12) hours = 0;
+    if (isPm) hours += 12;
+    return hours * 60 + minutes;
+  }
+
+  const twentyFour = /^(\d{1,2}):(\d{2})$/.exec(text);
+  if (twentyFour) {
+    const hours = Number(twentyFour[1]);
+    const minutes = Number(twentyFour[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  return null;
 }
 
 function sortByPriority(items) {

@@ -1,5 +1,8 @@
 query CartValidationsGenerateRunInput {
   cart {
+    attribute(key: "_courtyard_time") {
+      value
+    }
     lines {
       merchandise {
         ... on ProductVariant {

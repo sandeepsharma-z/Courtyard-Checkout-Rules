@@ -7,20 +7,29 @@ import { requireAdminAuth } from "../../services/admin-auth.server";
 import styles from "./styles.module.css";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await requireAdminAuth(request);
-
   const url = new URL(request.url);
 
-  if (
-    url.searchParams.get("shop") ||
-    url.searchParams.get("host") ||
-    url.searchParams.get("embedded")
-  ) {
+  if (isShopifyAdminRequest(request, url)) {
     throw redirect(`/app?${url.searchParams.toString()}`);
   }
 
+  await requireAdminAuth(request);
+
   return { showForm: Boolean(login) };
 };
+
+function isShopifyAdminRequest(request: Request, url: URL) {
+  const referrer = request.headers.get("referer") ?? "";
+  const fetchDest = request.headers.get("sec-fetch-dest") ?? "";
+
+  return Boolean(
+    url.searchParams.get("shop") ||
+      url.searchParams.get("host") ||
+      url.searchParams.get("embedded") ||
+      fetchDest === "iframe" ||
+      referrer.includes("admin.shopify.com"),
+  );
+}
 
 export default function App() {
   const { showForm } = useLoaderData<typeof loader>();

@@ -191,26 +191,33 @@ function parsePublishedConfig(input) {
     if (
       parsed?.v !== SUPPORTED_SCHEMA_VERSION ||
       parsed?.kind !== SUPPORTED_CONFIG_KIND ||
-      !Array.isArray(parsed?.pincodeData?.records) ||
-      !isRuleSet(parsed?.rules)
+      !Array.isArray(parsed?.pincodeData?.records)
     ) {
       return null;
     }
+
+    // Normalize rule arrays so a missing key never disables the whole config.
+    const rules = parsed.rules ?? {};
+    parsed.rules = {
+      ...rules,
+      productRestrictions: Array.isArray(rules.productRestrictions)
+        ? rules.productRestrictions
+        : [],
+      shippingMethodMappings: Array.isArray(rules.shippingMethodMappings)
+        ? rules.shippingMethodMappings
+        : [],
+      shippingHideRules: Array.isArray(rules.shippingHideRules)
+        ? rules.shippingHideRules
+        : [],
+      shippingRenameRules: Array.isArray(rules.shippingRenameRules)
+        ? rules.shippingRenameRules
+        : [],
+    };
 
     return parsed;
   } catch {
     return null;
   }
-}
-
-function isRuleSet(rules) {
-  return (
-    rules &&
-    Array.isArray(rules.productRestrictions) &&
-    Array.isArray(rules.shippingMethodMappings) &&
-    Array.isArray(rules.shippingHideRules) &&
-    Array.isArray(rules.shippingRenameRules)
-  );
 }
 
 function getCartProductTags(input) {

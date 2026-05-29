@@ -570,13 +570,19 @@ function PincodeChips({
           .slice(0, 25)
       : [];
 
-  const add = (pincode: string) => {
-    const val = pincode.trim();
-    if (val && !selectedSet.has(val)) setSelected((p) => [...p, val]);
+  const addBulk = (raw: string) => {
+    const vals = raw.split(/[,\n\r\s]+/).map((v) => v.trim()).filter(Boolean);
+    if (!vals.length) return;
+    setSelected((prev) => {
+      const exist = new Set(prev);
+      return [...prev, ...vals.filter((v) => !exist.has(v))];
+    });
     setInputValue("");
     setOpen(false);
     inputRef.current?.focus();
   };
+
+  const add = (pincode: string) => addBulk(pincode);
 
   const remove = (pincode: string) =>
     setSelected((p) => p.filter((x) => x !== pincode));
@@ -584,11 +590,19 @@ function PincodeChips({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.key === "Enter" || e.key === ",") && inputValue.trim()) {
       e.preventDefault();
-      add(inputValue);
+      addBulk(inputValue);
     } else if (e.key === "Backspace" && !inputValue && selected.length > 0) {
       setSelected((p) => p.slice(0, -1));
     } else if (e.key === "Escape") {
       setOpen(false);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData("text");
+    if (text.includes(",") || text.includes("\n")) {
+      e.preventDefault();
+      addBulk(text);
     }
   };
 
@@ -623,8 +637,9 @@ function PincodeChips({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           placeholder={
-            selected.length === 0 ? "Type a pincode and press Enter…" : ""
+            selected.length === 0 ? "Type or paste pincodes, separate with comma or Enter…" : ""
           }
           ref={inputRef}
           type="text"

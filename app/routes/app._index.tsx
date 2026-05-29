@@ -17,13 +17,6 @@ type RuleRow = {
   groupKey: string;
 };
 
-type DeliveryCustomizationRow = {
-  id: string;
-  name: string;
-  status: "Active" | "Inactive";
-  href: string;
-};
-
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);
   const [data, pincodeSummary, publishHistory] = await Promise.all([
@@ -116,9 +109,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     publishIsActive: Boolean(latestPublishedSnapshot),
   });
   const activeCount = dashboardRows.filter((r) => r.status === "Active").length;
-  const deliveryCustomizations = buildDeliveryCustomizationRows(data);
 
-  return { activeCount, deliveryCustomizations, rows: dashboardRows };
+  return { activeCount, rows: dashboardRows };
 };
 
 const STARTER_ROWS = [
@@ -228,77 +220,12 @@ function mergeDashboardRows(
   });
 }
 
-function buildDeliveryCustomizationRows(
-  data: Awaited<ReturnType<typeof getRuleManagerData>>,
-): DeliveryCustomizationRow[] {
-  const rows: DeliveryCustomizationRow[] = [
-    ...data.shippingRenameRules.map((rule) => ({
-      id: `shipping-rename-${rule.id}`,
-      name: rule.name,
-      status: (rule.enabled ? "Active" : "Inactive") as DeliveryCustomizationRow["status"],
-      href: "/app/shipping-rules?mode=rename",
-    })),
-    ...data.shippingHideRules.map((rule) => ({
-      id: `shipping-hide-${rule.id}`,
-      name: rule.name,
-      status: (rule.enabled ? "Active" : "Inactive") as DeliveryCustomizationRow["status"],
-      href: "/app/shipping-rules?mode=hide",
-    })),
-  ];
-
-  if (rows.length > 0) return rows;
-
-  return [
-    {
-      id: "starter-shipping-rename",
-      name: "All Shipping Method Rename",
-      status: "Inactive",
-      href: "/app/shipping-rules?mode=rename",
-    },
-    {
-      id: "starter-shipping-hide",
-      name: "All Shipping Method Hide",
-      status: "Inactive",
-      href: "/app/shipping-rules?mode=hide",
-    },
-    {
-      id: "starter-shipping-setting",
-      name: "Shipping Setting",
-      status: "Inactive",
-      href: "/app/pincodes",
-    },
-  ];
-}
-
 export default function Dashboard() {
-  const { activeCount, deliveryCustomizations, rows } =
-    useLoaderData<typeof loader>();
+  const { activeCount, rows } = useLoaderData<typeof loader>();
 
   return (
     <div className="rules-page">
       <div className="rules-shell">
-        <section className="delivery-customizations-card">
-          <div className="delivery-customizations-copy">
-            <h2>Delivery customizations</h2>
-            <p>
-              Customizations control how delivery options appear to buyers at
-              checkout. You can hide and rename delivery options.
-            </p>
-          </div>
-          <div className="delivery-customizations-list">
-            {deliveryCustomizations.map((row) => (
-              <DeliveryCustomizationItem key={row.id} row={row} />
-            ))}
-            <Link
-              className="delivery-customizations-add"
-              to="/app/shipping-rules"
-            >
-              <span>+</span>
-              Add delivery customization
-            </Link>
-          </div>
-        </section>
-
         <div className="rules-header">
           <div>
             <div className="rules-heading">
@@ -339,34 +266,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
-  );
-}
-
-function DeliveryCustomizationItem({
-  row,
-}: {
-  row: DeliveryCustomizationRow;
-}) {
-  return (
-    <Link className="delivery-customization-item" to={row.href}>
-      <span className="delivery-customization-icon" aria-hidden="true">
-        <span>C</span>
-      </span>
-      <span className="delivery-customization-main">
-        <strong>{row.name}</strong>
-        <span>by Courtyard Checkout Rules</span>
-      </span>
-      <span
-        className={`delivery-customization-status ${
-          row.status === "Active" ? "active" : "inactive"
-        }`}
-      >
-        {row.status}
-      </span>
-      <span className="delivery-customization-menu" aria-hidden="true">
-        ...
-      </span>
-    </Link>
   );
 }
 

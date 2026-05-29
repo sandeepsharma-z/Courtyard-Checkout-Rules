@@ -174,6 +174,8 @@ export async function handleRuleManagerAction(formData: FormData) {
       });
     case "shippingHide:create":
       return createShippingHideRules(formData);
+    case "shippingHide:createMulti":
+      return createShippingHideRulesMulti(formData);
     case "shippingRename:create":
       return createShippingRenameRules(formData);
     case "paymentHide:create":
@@ -241,10 +243,13 @@ async function createShippingHideRules(formData: FormData) {
   const mappings = getListValues(formData, "shippingMethodMappingId");
   const base = shippingRuleBaseData(formData);
 
+  const methodMatchMode = getString(formData, "hideAction") || "hide";
+
   if (mappings.length <= 1) {
     return prisma.shippingHideRule.create({
       data: {
         ...base,
+        methodMatchMode,
         shippingMethodMappingId: mappings[0] ?? "",
       },
     });
@@ -253,10 +258,51 @@ async function createShippingHideRules(formData: FormData) {
   return prisma.shippingHideRule.createMany({
     data: mappings.map((mappingId, index) => ({
       ...base,
+      methodMatchMode,
       name: `${base.name} ${index + 1}`,
       shippingMethodMappingId: mappingId,
     })),
   });
+}
+
+async function createShippingHideRulesMulti(formData: FormData) {
+  const blockCount = Math.min(Number(getString(formData, "blockCount")) || 1, 20);
+  const baseName = getString(formData, "name");
+  const basePriority = getPriority(formData);
+  const baseEnabled = formData.get("enabled") === "on";
+  const baseNotes = getString(formData, "notes");
+
+  const creates = Array.from({ length: blockCount }, (_, i) => {
+    const pincodes = listJson(formData, `pincodes_${i}`);
+    const selectedShippingMethodsJson =
+      getString(formData, `selectedShippingMethodsJson_${i}`) || "[]";
+
+    if (pincodes === "[]" && (selectedShippingMethodsJson === "[]" || !selectedShippingMethodsJson)) {
+      return null;
+    }
+
+    return prisma.shippingHideRule.create({
+      data: {
+        name: getString(formData, `name_${i}`) || baseName || `Rule ${i + 1}`,
+        enabled: baseEnabled,
+        priority: basePriority + i,
+        shippingMethodMappingId: "",
+        selectedShippingMethodsJson,
+        methodMatchMode: getString(formData, `hideAction_${i}`) || "hide",
+        cutoffRuleSettingId: getString(formData, `cutoffRuleSettingId_${i}`),
+        productTagsJson: listJson(formData, `productTags_${i}`),
+        pincodesJson: pincodes,
+        areaGroupsJson: listJson(formData, `areaGroups_${i}`),
+        deliveryAvailabilityText: getString(
+          formData,
+          `deliveryAvailabilityText_${i}`,
+        ),
+        notes: baseNotes,
+      },
+    });
+  }).filter(Boolean);
+
+  return Promise.all(creates);
 }
 
 async function createShippingRenameRules(formData: FormData) {
@@ -418,6 +464,7 @@ async function updateRule(kind: string, id: string, formData: FormData) {
         where: { id },
         data: {
           ...shippingRuleBaseData(formData),
+          methodMatchMode: getString(formData, "hideAction") || "hide",
           shippingMethodMappingId: getString(
             formData,
             "shippingMethodMappingId",

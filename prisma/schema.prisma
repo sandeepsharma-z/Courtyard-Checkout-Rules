@@ -179,6 +179,7 @@ model ShippingHideRule {
   priority                    Int      @default(100)
   shippingMethodMappingId     String   @default("")
   selectedShippingMethodsJson String   @default("[]")
+  methodMatchMode             String   @default("hide")
   cutoffRuleSettingId         String   @default("")
   productTagsJson             String   @default("[]")
   pincodesJson                String   @default("[]")

@@ -287,6 +287,67 @@ describe("delivery customization no-op", () => {
     });
   });
 
+  it("allowlist mode hides options that are not in the allowed list", () => {
+    const config = validConfig({
+      shippingHideRules: [
+        {
+          id: "show-rule",
+          name: "Only show rule",
+          priority: 1,
+          shippingMethodMappingId: "",
+          methodMatchMode: "show",
+          selectedShippingMethods: [
+            { operator: "is", value: "Shipping method from admin config" },
+          ],
+          cutoffRuleSettingId: "",
+          productTags: [],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          notes: "",
+        },
+      ],
+    });
+
+    const input = inputWithConfig(config);
+    input.cart.deliveryGroups[0].deliveryOptions.push({
+      handle: "economy-shipping",
+      title: "Another shipping method from admin config",
+      code: "another-shipping-method-code",
+    });
+
+    // Option A (in allowlist) shown; option B (not in allowlist) hidden.
+    expect(run(input)).toEqual({
+      operations: [{ hide: { deliveryOptionHandle: "economy-shipping" } }],
+    });
+  });
+
+  it("allowlist mode does not hide an option that matches the allowed list", () => {
+    const config = validConfig({
+      shippingHideRules: [
+        {
+          id: "show-rule",
+          name: "Only show rule",
+          priority: 1,
+          shippingMethodMappingId: "",
+          methodMatchMode: "show",
+          selectedShippingMethods: [
+            { operator: "contains", value: "Shipping method from admin config" },
+          ],
+          cutoffRuleSettingId: "",
+          productTags: [],
+          pincodes: ["PINCODE_FROM_ADMIN_CONFIG"],
+          areaGroups: [],
+          deliveryAvailabilityText: "",
+          notes: "",
+        },
+      ],
+    });
+
+    // The only option matches the allowlist, so nothing is hidden.
+    expect(run(inputWithConfig(config))).toEqual({ operations: [] });
+  });
+
   it("fails safe when an active delivery rule contains unsupported product tag conditions", () => {
     const config = validConfig({
       shippingHideRules: [

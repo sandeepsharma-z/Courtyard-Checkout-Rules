@@ -53,6 +53,7 @@ export type PublishedShippingHideRule = {
   priority: number;
   shippingMethodMappingId: string;
   selectedShippingMethods: PublishedSelectedShippingMethod[];
+  methodMatchMode: string;
   cutoffRuleSettingId: string;
   productTags: string[];
   pincodes: string[];

@@ -199,15 +199,26 @@ export default function ShippingRulesPage() {
 
           <div className="bsure-connector">And</div>
 
-          <ShippingRuleForm
-            areaGroups={pincodeOptions.areaGroups}
-            cutoffs={cutoffs}
-            deliveryAvailabilityValues={
-              pincodeOptions.deliveryAvailabilityValues
-            }
-            isRename={isRename}
-            pincodeOptions={pincodeOptions.pincodes}
-          />
+          {isRename ? (
+            <ShippingRuleForm
+              areaGroups={pincodeOptions.areaGroups}
+              cutoffs={cutoffs}
+              deliveryAvailabilityValues={
+                pincodeOptions.deliveryAvailabilityValues
+              }
+              isRename={isRename}
+              pincodeOptions={pincodeOptions.pincodes}
+            />
+          ) : (
+            <ShippingHideMultiForm
+              areaGroups={pincodeOptions.areaGroups}
+              cutoffs={cutoffs}
+              deliveryAvailabilityValues={
+                pincodeOptions.deliveryAvailabilityValues
+              }
+              pincodeOptions={pincodeOptions.pincodes}
+            />
+          )}
 
           <div className="bsure-lastly" style={{ marginTop: "12px" }}>
             <p>
@@ -605,6 +616,313 @@ function ShippingRuleForm({
   );
 }
 
+function ShippingHideMultiForm({
+  areaGroups,
+  cutoffs,
+  deliveryAvailabilityValues,
+  pincodeOptions,
+}: {
+  areaGroups: string[];
+  cutoffs: { id: string; name: string }[];
+  deliveryAvailabilityValues: string[];
+  pincodeOptions: PincodeOption[];
+}) {
+  const [blockIds, setBlockIds] = useState<number[]>([0]);
+  const nextId = useRef(1);
+
+  const addBlock = () => setBlockIds((p) => [...p, nextId.current++]);
+  const removeBlock = (id: number) =>
+    setBlockIds((p) => p.filter((x) => x !== id));
+
+  return (
+    <Form method="post">
+      <input name="intent" type="hidden" value="shippingHide:createMulti" />
+      <input name="blockCount" type="hidden" value={blockIds.length} />
+
+      {blockIds.map((id, idx) => (
+        <div key={id}>
+          {idx > 0 && <div className="bsure-connector">Then</div>}
+          <HideBlock
+            areaGroups={areaGroups}
+            cutoffs={cutoffs}
+            deliveryAvailabilityValues={deliveryAvailabilityValues}
+            idx={idx}
+            onRemove={() => removeBlock(id)}
+            pincodeOptions={pincodeOptions}
+            showRemove={blockIds.length > 1}
+          />
+        </div>
+      ))}
+
+      <div className="bsure-add-block-row">
+        <button className="bsure-add-link" onClick={addBlock} type="button">
+          + Add another condition
+        </button>
+      </div>
+
+      <div className="bsure-card" style={{ marginTop: "12px" }}>
+        <div className="bsure-grid-2">
+          <F label="Rule name">
+            <input
+              className="bsure-input"
+              name="name"
+              placeholder="Hide rule label"
+              required
+            />
+          </F>
+          <F label="Priority">
+            <input
+              className="bsure-input"
+              defaultValue="100"
+              name="priority"
+              type="number"
+            />
+          </F>
+        </div>
+        <div className="bsure-radio" style={{ marginTop: "10px" }}>
+          <input
+            defaultChecked
+            id="shipping-hide-enabled"
+            name="enabled"
+            type="checkbox"
+          />
+          <label htmlFor="shipping-hide-enabled">
+            <strong>Enabled</strong>{" "}
+            <span className="bsure-help">Include in next published config</span>
+          </label>
+        </div>
+        <F label="Notes" style={{ marginTop: "8px" }}>
+          <textarea
+            className="bsure-textarea"
+            name="notes"
+            placeholder="Internal note"
+            rows={2}
+          />
+        </F>
+        <div className="bsure-actions" style={{ marginTop: "10px" }}>
+          <button className="bsure-button" type="submit">
+            Save hide rules
+          </button>
+          <button className="bsure-button secondary" type="reset">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Form>
+  );
+}
+
+function HideBlock({
+  areaGroups,
+  cutoffs,
+  deliveryAvailabilityValues,
+  idx,
+  onRemove,
+  pincodeOptions,
+  showRemove,
+}: {
+  areaGroups: string[];
+  cutoffs: { id: string; name: string }[];
+  deliveryAvailabilityValues: string[];
+  idx: number;
+  onRemove: () => void;
+  pincodeOptions: PincodeOption[];
+  showRemove: boolean;
+}) {
+  const [methodRows, setMethodRows] = useState<MethodRow[]>([
+    { id: 0, operator: "is", value: "", newLabel: "" },
+  ]);
+
+  const updateMethodRow = (id: number, field: keyof MethodRow, val: string) => {
+    setMethodRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, [field]: val } : r)),
+    );
+  };
+
+  const methodsJson = JSON.stringify(
+    methodRows.map((r) => ({ operator: r.operator, value: r.value })),
+  );
+
+  return (
+    <div>
+      <input
+        name={`selectedShippingMethodsJson_${idx}`}
+        readOnly
+        type="hidden"
+        value={methodsJson}
+      />
+
+      <div className="bsure-area-card">
+        <div className="bsure-area-head">
+          <div>
+            <strong>When (Area {idx + 1})</strong>
+            <span>Select when this rule should run.</span>
+          </div>
+          {showRemove && (
+            <button
+              className="bsure-when-close"
+              onClick={onRemove}
+              title="Remove"
+              type="button"
+            >
+              ×
+            </button>
+          )}
+        </div>
+
+        <div className="bsure-cond-row">
+          <ConditionFieldSelect defaultValue="postalCode" />
+          <ConditionOperatorSelect defaultValue="any" />
+          <button className="bsure-cond-del" disabled type="button">
+            Delete
+          </button>
+        </div>
+        <PincodeChips fieldName={`pincodes_${idx}`} options={pincodeOptions} />
+
+        <div className="bsure-mini-or">And</div>
+
+        <div className="bsure-cond-row">
+          <ConditionFieldSelect defaultValue="productTags" />
+          <ConditionOperatorSelect defaultValue="any" />
+          <button className="bsure-cond-del" disabled type="button">
+            Delete
+          </button>
+        </div>
+        <input
+          className="bsure-input"
+          name={`productTags_${idx}`}
+          placeholder="Comma-separated product tags from admin config"
+        />
+
+        <div className="bsure-mini-or">And</div>
+
+        <div className="bsure-grid-2">
+          <select className="bsure-select" name={`areaGroups_${idx}`}>
+            <option value="">Any area group</option>
+            {areaGroups.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+          <select
+            className="bsure-select"
+            name={`deliveryAvailabilityText_${idx}`}
+          >
+            <option value="">Any delivery text</option>
+            {deliveryAvailabilityValues.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="bsure-grid-2" style={{ marginTop: "8px" }}>
+          <select className="bsure-select" name={`cutoffRuleSettingId_${idx}`}>
+            <option value="">No cutoff condition</option>
+            {cutoffs.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="bsure-then-card">
+        <div className="bsure-then-label">Then hide shipping methods...</div>
+
+        <select
+          className="bsure-select"
+          defaultValue="hide"
+          name={`hideAction_${idx}`}
+          style={{ marginBottom: "10px", maxWidth: "260px" }}
+        >
+          <option value="hide">Hide these shipping methods</option>
+          <option value="show">Only show these shipping methods</option>
+        </select>
+
+        <table className="bsure-method-table">
+          <thead>
+            <tr>
+              <th style={{ width: "42px" }}>No.</th>
+              <th>Shipping method</th>
+              <th style={{ width: "78px" }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {methodRows.map((row, index) => (
+              <tr key={row.id}>
+                <td style={{ color: "#6d7175" }}>{index + 1}</td>
+                <td>
+                  <div className="bsure-method-grid">
+                    <select
+                      className="bsure-select"
+                      onChange={(e) =>
+                        updateMethodRow(row.id, "operator", e.target.value)
+                      }
+                      value={row.operator}
+                    >
+                      <option value="is">Is</option>
+                      <option value="contains">Contains</option>
+                      <option value="starts_with">Starts with</option>
+                      <option value="ends_with">Ends with</option>
+                    </select>
+                    <input
+                      className="bsure-input"
+                      onChange={(e) =>
+                        updateMethodRow(row.id, "value", e.target.value)
+                      }
+                      placeholder="Shipping method name from admin config"
+                      value={row.value}
+                    />
+                  </div>
+                </td>
+                <td>
+                  <button
+                    className="bsure-cond-del"
+                    disabled={methodRows.length === 1}
+                    onClick={() =>
+                      setMethodRows((rows) =>
+                        rows.filter((item) => item.id !== row.id),
+                      )
+                    }
+                    type="button"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            <tr className="bsure-method-add-row">
+              <td colSpan={3}>
+                <button
+                  className="bsure-add-link"
+                  onClick={() =>
+                    setMethodRows((rows) => [
+                      ...rows,
+                      {
+                        id: Date.now(),
+                        operator: "is",
+                        value: "",
+                        newLabel: "",
+                      },
+                    ])
+                  }
+                  type="button"
+                >
+                  + Add shipping method
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ExtraAreaBlock({
   areaNum,
   onRemove,
@@ -738,7 +1056,13 @@ function ConditionOperatorSelect({ defaultValue }: { defaultValue: string }) {
   );
 }
 
-function PincodeChips({ options }: { options: PincodeOption[] }) {
+function PincodeChips({
+  fieldName = "pincodes",
+  options,
+}: {
+  fieldName?: string;
+  options: PincodeOption[];
+}) {
   const [selected, setSelected] = useState<string[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [open, setOpen] = useState(false);
@@ -800,7 +1124,7 @@ function PincodeChips({ options }: { options: PincodeOption[] }) {
   return (
     <div className="bsure-tag-wrap">
       {selected.map((pincode) => (
-        <input key={pincode} name="pincodes" type="hidden" value={pincode} />
+        <input key={pincode} name={fieldName} type="hidden" value={pincode} />
       ))}
 
       <label className="bsure-tag-box">

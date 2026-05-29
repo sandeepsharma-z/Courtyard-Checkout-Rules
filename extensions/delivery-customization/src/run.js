@@ -46,6 +46,26 @@ export function run(input) {
       continue;
     }
 
+    // Collect allowlist ("show") rules that match this group's context.
+    // When present, any option not matching the allowlist is hidden.
+    const allHideRules = Array.isArray(config.rules.shippingHideRules)
+      ? config.rules.shippingHideRules
+      : [];
+    const showRules = sortByPriority(allHideRules).filter(
+      (rule) =>
+        normalize(rule.methodMatchMode) === "show" &&
+        ruleMatchesContext(rule, pincode, pincodeRecord),
+    );
+    const hasAllowlist = showRules.length > 0;
+    const allowMatchers = showRules.flatMap((rule) =>
+      Array.isArray(rule.selectedShippingMethods)
+        ? rule.selectedShippingMethods
+        : [],
+    );
+    const hideModeRules = allHideRules.filter(
+      (rule) => normalize(rule.methodMatchMode) !== "show",
+    );
+
     for (const option of deliveryOptions) {
       const handle = normalize(option?.handle);
 
@@ -53,8 +73,14 @@ export function run(input) {
         continue;
       }
 
+      // 1. Allowlist mode: hide any option that is NOT in the allowlist.
+      if (hasAllowlist && !selectedMethodsMatch(allowMatchers, option)) {
+        groupOperations.push({ hide: { deliveryOptionHandle: handle } });
+        continue;
+      }
+
       const hideRule = findMatchingRule({
-        rules: config.rules.shippingHideRules,
+        rules: hideModeRules,
         mappings: config.rules.shippingMethodMappings,
         option,
         pincode,
@@ -329,6 +355,20 @@ function selectedMethodsMatch(selectedMethods, option) {
         return candidates.some((c) => c === matchValue);
     }
   });
+}
+
+/**
+ * Whether a shipping hide rule matches the group context (pincode / area / delivery
+ * text / supported conditions) — independent of any specific delivery option.
+ * Used for allowlist ("show") rules which gate the whole group.
+ */
+function ruleMatchesContext(rule, pincode, pincodeRecord) {
+  return (
+    !hasUnsupportedShippingRuleConditions(rule) &&
+    pincodeMatches(rule, pincode) &&
+    areaGroupMatches(rule, pincodeRecord) &&
+    deliveryAvailabilityMatches(rule, pincodeRecord)
+  );
 }
 
 function hasUnsupportedShippingRuleConditions(rule) {

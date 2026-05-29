@@ -153,6 +153,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         priority: rule.priority,
         shippingMethodMappingId: rule.shippingMethodMappingId,
         selectedShippingMethods: parseList(rule.selectedShippingMethodsJson) as unknown as import("../types/rule-config").PublishedSelectedShippingMethod[],
+        methodMatchMode: rule.methodMatchMode,
         cutoffRuleSettingId: rule.cutoffRuleSettingId,
         productTags: parseList(rule.productTagsJson),
         pincodes: parsePincodeList(rule.pincodesJson),

@@ -1,4 +1,5 @@
 api_version = "2025-10"
+uid = "f7c60125-c98c-5d1e-3eec-b98252c7bedf59454e86"
 
 [[extensions]]
 name = "Courtyard Checkout Time"

@@ -16,8 +16,10 @@ import {
 import {
   enableDeliveryCustomization,
   enableCheckoutValidation,
+  enablePaymentCustomization,
   getCheckoutValidationStatus,
   getDeliveryCustomizationStatus,
+  getPaymentCustomizationStatus,
   getShopIdentity,
   publishConfigMetafield,
 } from "../services/shopify-config.server";
@@ -36,8 +38,13 @@ const formatBytes = (bytes: number) =>
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
 
-  const [snapshot, history, validationStatus, deliveryCustomizationStatus] =
-    await Promise.all([
+  const [
+    snapshot,
+    history,
+    validationStatus,
+    deliveryCustomizationStatus,
+    paymentCustomizationStatus,
+  ] = await Promise.all([
     buildPublishedConfigSnapshot(),
     getPublishHistory(),
     getCheckoutValidationStatus(admin).catch((error) => ({
@@ -60,6 +67,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
           ? error.message
           : "Unable to read delivery customization status.",
     })),
+    getPaymentCustomizationStatus(admin).catch((error) => ({
+      title: "Courtyard Payment Customization",
+      handle: "courtyard-payment-customization",
+      paymentCustomization: null,
+      isActive: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Unable to read payment customization status.",
+    })),
   ]);
 
   return {
@@ -67,6 +84,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     history,
     validationStatus,
     deliveryCustomizationStatus,
+    paymentCustomizationStatus,
   };
 };
 
@@ -110,6 +128,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return {
         status: "success",
         message: `Delivery customization was ${result.action} and enabled for this Shopify app installation.`,
+      } satisfies ActionResult;
+    }
+
+    if (intent === "enablePaymentCustomization") {
+      const result = await enablePaymentCustomization(admin);
+
+      return {
+        status: "success",
+        message: `Payment customization was ${result.action} and enabled for this Shopify app installation.`,
       } satisfies ActionResult;
     }
 
@@ -221,6 +248,7 @@ export default function PublishPage() {
     history,
     validationStatus,
     deliveryCustomizationStatus,
+    paymentCustomizationStatus,
   } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionResult | undefined;
@@ -303,6 +331,64 @@ export default function PublishPage() {
                 value="enableDeliveryCustomization"
               />
               <button type="submit">Enable delivery customization</button>
+            </Form>
+          )}
+        </div>
+      </s-section>
+
+      <s-section heading="Payment customization activation">
+        <div style={{ display: "grid", gap: "1rem" }}>
+          <p>
+            Payment method hide behavior only works after the payment
+            customization Function is deployed and enabled for this store. This
+            is separate from checkout validation and delivery customization.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gap: "0.75rem",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            }}
+          >
+            <SummaryBox
+              label="Status"
+              value={paymentCustomizationStatus.isActive ? "Active" : "Inactive"}
+            />
+            <SummaryBox
+              label="Function"
+              value={
+                paymentCustomizationStatus.paymentCustomization
+                  ?.shopifyFunction.title ?? "n/a"
+              }
+            />
+            <SummaryBox
+              label="Checkout effect"
+              value={paymentCustomizationStatus.isActive ? "Enabled" : "No"}
+            />
+          </div>
+          {"error" in paymentCustomizationStatus &&
+            paymentCustomizationStatus.error && (
+              <p>
+                <strong>Status error:</strong>{" "}
+                {paymentCustomizationStatus.error}
+              </p>
+            )}
+          {paymentCustomizationStatus.paymentCustomization && (
+            <p>
+              Payment customization ID:{" "}
+              <strong>
+                {paymentCustomizationStatus.paymentCustomization.id}
+              </strong>
+            </p>
+          )}
+          {!paymentCustomizationStatus.isActive && (
+            <Form method="post">
+              <input
+                type="hidden"
+                name="intent"
+                value="enablePaymentCustomization"
+              />
+              <button type="submit">Enable payment customization</button>
             </Form>
           )}
         </div>

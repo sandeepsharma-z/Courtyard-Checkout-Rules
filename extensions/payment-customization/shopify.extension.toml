@@ -1,0 +1,21 @@
+api_version = "2025-10"
+uid = "9d0e2f62-c91b-4f22-a74f-7d18b333f804"
+
+[[extensions]]
+name = "Courtyard Payment Customization"
+handle = "courtyard-payment-customization"
+type = "function"
+description = "Hides payment methods at checkout based on published Courtyard Checkout Rules."
+
+  [[extensions.targeting]]
+  target = "purchase.payment-customization.run"
+  input_query = "src/run.graphql"
+  export = "run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"
+
+  [extensions.ui.paths]
+  create = "/"
+  details = "/"

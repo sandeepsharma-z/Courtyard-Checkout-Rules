@@ -89,6 +89,28 @@ type ShopifyDeliveryCustomizationMutationResult = {
   userErrors?: Array<{ field?: string[]; message: string; code?: string }>;
 };
 
+type ShopifyPaymentCustomizationsResponse = {
+  data?: {
+    paymentCustomizations?: {
+      nodes?: Array<ShopifyPaymentCustomization>;
+    };
+  };
+  errors?: ShopifyGraphqlError[];
+};
+
+type ShopifyPaymentCustomizationMutationResponse = {
+  data?: {
+    paymentCustomizationCreate?: ShopifyPaymentCustomizationMutationResult;
+    paymentCustomizationUpdate?: ShopifyPaymentCustomizationMutationResult;
+  };
+  errors?: ShopifyGraphqlError[];
+};
+
+type ShopifyPaymentCustomizationMutationResult = {
+  paymentCustomization?: ShopifyPaymentCustomization | null;
+  userErrors?: Array<{ field?: string[]; message: string; code?: string }>;
+};
+
 type ShopifyValidationMutationResponse = {
   data?: {
     validationCreate?: ShopifyValidationMutationResult;
@@ -125,10 +147,23 @@ export type ShopifyDeliveryCustomization = {
   };
 };
 
+export type ShopifyPaymentCustomization = {
+  id: string;
+  title: string;
+  enabled: boolean;
+  shopifyFunction: {
+    id: string;
+    title: string;
+    apiType: string;
+  };
+};
+
 const CHECKOUT_VALIDATION_TITLE = "Courtyard Checkout Validation";
 const CHECKOUT_VALIDATION_HANDLE = "courtyard-checkout-validation";
 const DELIVERY_CUSTOMIZATION_TITLE = "Courtyard Delivery Customization";
 const DELIVERY_CUSTOMIZATION_HANDLE = "courtyard-delivery-customization";
+const PAYMENT_CUSTOMIZATION_TITLE = "Courtyard Payment Customization";
+const PAYMENT_CUSTOMIZATION_HANDLE = "courtyard-payment-customization";
 
 function throwGraphqlErrors(errors: ShopifyGraphqlError[] | undefined) {
   if (errors?.length) {
@@ -678,6 +713,198 @@ async function findDeliveryCustomizationFunction(admin: ShopifyAdminClient) {
   return (
     json.data?.shopifyFunctions?.nodes?.find(
       (node) => node.title === DELIVERY_CUSTOMIZATION_TITLE,
+    ) ?? null
+  );
+}
+
+export async function getPaymentCustomizationStatus(admin: ShopifyAdminClient) {
+  const response = await admin.graphql(`#graphql
+    query CourtyardCheckoutRulesPaymentCustomizationStatus {
+      paymentCustomizations(first: 50) {
+        nodes {
+          id
+          title
+          enabled
+          shopifyFunction {
+            id
+            title
+            apiType
+          }
+        }
+      }
+    }
+  `);
+  const json = (await response.json()) as ShopifyPaymentCustomizationsResponse;
+  throwGraphqlErrors(json.errors);
+
+  const paymentCustomization =
+    json.data?.paymentCustomizations?.nodes?.find(
+      (node) =>
+        node.title === PAYMENT_CUSTOMIZATION_TITLE ||
+        node.shopifyFunction.title === PAYMENT_CUSTOMIZATION_TITLE,
+    ) ?? null;
+
+  return {
+    title: PAYMENT_CUSTOMIZATION_TITLE,
+    handle: PAYMENT_CUSTOMIZATION_HANDLE,
+    paymentCustomization,
+    isActive: Boolean(paymentCustomization?.enabled),
+  };
+}
+
+export async function enablePaymentCustomization(admin: ShopifyAdminClient) {
+  const status = await getPaymentCustomizationStatus(admin);
+
+  if (status.paymentCustomization) {
+    const result = await updatePaymentCustomization(
+      admin,
+      status.paymentCustomization.id,
+    );
+    return {
+      action: "updated",
+      paymentCustomization: result,
+    };
+  }
+
+  const shopifyFunction = await findPaymentCustomizationFunction(admin);
+
+  if (!shopifyFunction) {
+    throw new Error(
+      "Payment customization Function was not found on this shop. Deploy the payment-customization extension first, then try again.",
+    );
+  }
+
+  const result = await createPaymentCustomizationWithFunctionId(
+    admin,
+    shopifyFunction.id,
+  );
+
+  return {
+    action: "created",
+    paymentCustomization: result,
+  };
+}
+
+async function updatePaymentCustomization(
+  admin: ShopifyAdminClient,
+  paymentCustomizationId: string,
+) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation CourtyardCheckoutRulesUpdatePaymentCustomization($id: ID!, $paymentCustomization: PaymentCustomizationInput!) {
+        paymentCustomizationUpdate(id: $id, paymentCustomization: $paymentCustomization) {
+          userErrors {
+            field
+            message
+            code
+          }
+          paymentCustomization {
+            id
+            title
+            enabled
+            shopifyFunction {
+              id
+              title
+              apiType
+            }
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        id: paymentCustomizationId,
+        paymentCustomization: {
+          title: PAYMENT_CUSTOMIZATION_TITLE,
+          enabled: true,
+        },
+      },
+    },
+  );
+  const json =
+    (await response.json()) as ShopifyPaymentCustomizationMutationResponse;
+  throwGraphqlErrors(json.errors);
+  throwUserErrors(json.data?.paymentCustomizationUpdate?.userErrors);
+
+  const paymentCustomization =
+    json.data?.paymentCustomizationUpdate?.paymentCustomization;
+  if (!paymentCustomization) {
+    throw new Error("Shopify did not return an updated payment customization.");
+  }
+
+  return paymentCustomization;
+}
+
+async function createPaymentCustomizationWithFunctionId(
+  admin: ShopifyAdminClient,
+  functionId: string,
+) {
+  const response = await admin.graphql(
+    `#graphql
+      mutation CourtyardCheckoutRulesCreatePaymentCustomization($paymentCustomization: PaymentCustomizationInput!) {
+        paymentCustomizationCreate(paymentCustomization: $paymentCustomization) {
+          userErrors {
+            field
+            message
+            code
+          }
+          paymentCustomization {
+            id
+            title
+            enabled
+            shopifyFunction {
+              id
+              title
+              apiType
+            }
+          }
+        }
+      }
+    `,
+    {
+      variables: {
+        paymentCustomization: {
+          title: PAYMENT_CUSTOMIZATION_TITLE,
+          functionId,
+          enabled: true,
+        },
+      },
+    },
+  );
+  const json =
+    (await response.json()) as ShopifyPaymentCustomizationMutationResponse;
+  throwGraphqlErrors(json.errors);
+  throwUserErrors(json.data?.paymentCustomizationCreate?.userErrors);
+
+  const paymentCustomization =
+    json.data?.paymentCustomizationCreate?.paymentCustomization;
+  if (!paymentCustomization) {
+    throw new Error("Shopify did not return a created payment customization.");
+  }
+
+  return paymentCustomization;
+}
+
+async function findPaymentCustomizationFunction(admin: ShopifyAdminClient) {
+  const response = await admin.graphql(`#graphql
+    query CourtyardCheckoutRulesPaymentFunctions {
+      shopifyFunctions(first: 50) {
+        nodes {
+          id
+          title
+          apiType
+        }
+      }
+    }
+  `);
+  const json = (await response.json()) as ShopifyFunctionsResponse;
+  throwGraphqlErrors(json.errors);
+
+  return (
+    json.data?.shopifyFunctions?.nodes?.find(
+      (node) =>
+        node.apiType === "payment_customization" ||
+        node.title === PAYMENT_CUSTOMIZATION_TITLE,
     ) ?? null
   );
 }

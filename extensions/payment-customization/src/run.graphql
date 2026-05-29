@@ -1,0 +1,18 @@
+query RunInput {
+  paymentMethods {
+    id
+    name
+  }
+  cart {
+    deliveryGroups {
+      deliveryAddress {
+        zip
+      }
+    }
+  }
+  shop {
+    metafield(namespace: "courtyard_checkout_rules", key: "published_config") {
+      value
+    }
+  }
+}

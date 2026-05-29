@@ -47,6 +47,31 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     deliveryCustomizations = { error: String(e) };
   }
 
+  // List the app's deployed Shopify Functions so we can compare IDs.
+  let shopifyFunctions: unknown = null;
+  try {
+    const fnRes = await admin.graphql(
+      `#graphql
+      query DebugShopifyFunctions {
+        shopifyFunctions(first: 25) {
+          nodes {
+            id
+            title
+            apiType
+          }
+        }
+      }`,
+    );
+    const fnJson = (await fnRes.json()) as {
+      data?: { shopifyFunctions?: { nodes?: unknown } };
+      errors?: unknown;
+    };
+    shopifyFunctions =
+      fnJson?.data?.shopifyFunctions?.nodes ?? fnJson?.errors ?? null;
+  } catch (e) {
+    shopifyFunctions = { error: String(e) };
+  }
+
   let summary: Record<string, unknown> = { present: false };
   if (value) {
     try {
@@ -81,16 +106,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
-  return { summary, updatedAt, deliveryCustomizations };
+  return { summary, updatedAt, deliveryCustomizations, shopifyFunctions };
 };
 
 export default function DebugConfigPage() {
-  const { summary, updatedAt, deliveryCustomizations } =
+  const { summary, updatedAt, deliveryCustomizations, shopifyFunctions } =
     useLoaderData<typeof loader>();
   return (
     <div style={{ padding: 24, fontFamily: "monospace" }}>
       <h1>Published config (live metafield)</h1>
       <p>metafield updatedAt: {updatedAt ?? "—"}</p>
+      <h2>Deployed Shopify Functions</h2>
+      <pre style={{ whiteSpace: "pre-wrap", background: "#efe", padding: 16, borderRadius: 8 }}>
+        {JSON.stringify(shopifyFunctions, null, 2)}
+      </pre>
       <h2>Delivery customizations registered on store</h2>
       <pre style={{ whiteSpace: "pre-wrap", background: "#eef", padding: 16, borderRadius: 8 }}>
         {JSON.stringify(deliveryCustomizations, null, 2)}

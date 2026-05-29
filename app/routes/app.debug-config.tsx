@@ -78,6 +78,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       const p = JSON.parse(value);
       const hides = p?.rules?.shippingHideRules ?? [];
       const renames = p?.rules?.shippingRenameRules ?? [];
+      const cutoffs = p?.rules?.cutoffSettings ?? [];
       summary = {
         present: true,
         bytes: value.length,
@@ -85,6 +86,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         kind: p?.kind,
         hasPincodeDataRecords: Array.isArray(p?.pincodeData?.records),
         ruleKeys: Object.keys(p?.rules ?? {}),
+        cutoffSettings: cutoffs,
+        hideRulesWithCutoff: hides
+          .filter((h: Record<string, unknown>) => h.cutoffRuleSettingId)
+          .map((h: Record<string, unknown>) => ({
+            name: h.name,
+            cutoffRuleSettingId: h.cutoffRuleSettingId,
+            methodMatchMode: h.methodMatchMode,
+            methods: h.selectedShippingMethods,
+            has110005: (Array.isArray(h.pincodes) ? h.pincodes : []).includes("110005"),
+          })),
         hideCount: hides.length,
         renameCount: renames.length,
         hideRules: hides.slice(0, 12).map((h: Record<string, unknown>) => ({
@@ -116,6 +127,10 @@ export default function DebugConfigPage() {
     <div style={{ padding: 24, fontFamily: "monospace" }}>
       <h1>Published config (live metafield)</h1>
       <p>metafield updatedAt: {updatedAt ?? "—"}</p>
+      <p style={{ background: "#ffe", padding: 8 }}>
+        Check below: <b>cutoffSettings</b> (should list "After 3:30 PM") and{" "}
+        <b>hideRulesWithCutoff</b> (should list a rule with has110005:true).
+      </p>
       <h2>Deployed Shopify Functions</h2>
       <pre style={{ whiteSpace: "pre-wrap", background: "#efe", padding: 16, borderRadius: 8 }}>
         {JSON.stringify(shopifyFunctions, null, 2)}

@@ -350,6 +350,57 @@ describe("delivery customization", () => {
     expect(run(inputWithConfig(config, PIN, options))).toEqual({ operations: [] });
   });
 
+  it("shows only the default shipping method for an unconfigured pincode", () => {
+    const config = {
+      ...baseConfig(),
+      settings: { defaultShippingMethod: "5-8 Days" },
+    };
+    const options = [
+      { handle: "slow", title: "5-8 Days Delivery", code: "" },
+      { handle: "fast", title: "Same Day Delivery", code: "" },
+    ];
+    // No rule matches "999999" → only the default ("5-8 Days") shows.
+    expect(run(inputWithConfig(config, "999999", options))).toEqual({
+      operations: [{ hide: { deliveryOptionHandle: "fast" } }],
+    });
+  });
+
+  it("ignores the default shipping method when a rule covers the pincode", () => {
+    const config = baseConfig({
+      shippingHideRules: [
+        {
+          name: "Blocklist",
+          methodMatchMode: "hide",
+          selectedShippingMethods: [
+            { operator: "contains", value: "NOTHING_MATCHES" },
+          ],
+          pincodes: [PIN],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          cutoffRuleSettingId: "",
+        },
+      ],
+    });
+    config.settings = { defaultShippingMethod: "5-8 Days" };
+    const options = [
+      { handle: "slow", title: "5-8 Days Delivery", code: "" },
+      { handle: "fast", title: "Same Day Delivery", code: "" },
+    ];
+    // PIN is covered by a rule → default ignored → nothing hidden.
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({ operations: [] });
+  });
+
+  it("shows all options for an unconfigured pincode when no default is set", () => {
+    const options = [
+      { handle: "a", title: "Method A", code: "" },
+      { handle: "b", title: "Method B", code: "" },
+    ];
+    expect(run(inputWithConfig(baseConfig(), "999999", options))).toEqual({
+      operations: [],
+    });
+  });
+
   it("does not act on a pincode outside the rule", () => {
     const config = baseConfig({
       shippingHideRules: [

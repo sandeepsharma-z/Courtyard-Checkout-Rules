@@ -60,6 +60,17 @@ export default function SettingsPage() {
           </section>
 
           <section className="bsure-card">
+            <h2>Checkout behaviour</h2>
+            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
+              Default shipping method for unconfigured pincodes, and unknown
+              pincode blocking.
+            </p>
+            <Link className="bsure-button secondary" to="/app/checkout-settings">
+              Manage checkout behaviour
+            </Link>
+          </section>
+
+          <section className="bsure-card">
             <h2>CSV import</h2>
             <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
               Import pincode data from a CSV file.

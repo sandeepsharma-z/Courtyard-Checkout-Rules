@@ -54,9 +54,11 @@ export function run(input) {
     const showMatchers = [];
     const hideMatchers = [];
     let hasAllowlist = false;
+    let ruleMatched = false;
     for (const rule of hideRules) {
       if (!ruleMatchesContext(rule, pincode, pincodeRecord, config, cartTime))
         continue;
+      ruleMatched = true;
       const methods = Array.isArray(rule.selectedShippingMethods)
         ? rule.selectedShippingMethods
         : [];
@@ -66,6 +68,21 @@ export function run(input) {
       } else {
         for (const m of methods) hideMatchers.push(m);
       }
+    }
+
+    // No rule covers this pincode: if an admin default shipping method is set,
+    // show only the option(s) matching it and hide the rest. Empty default =
+    // no change (every option shows).
+    const defaultMethod = normalize(config?.settings?.defaultShippingMethod);
+    if (!ruleMatched && defaultMethod) {
+      for (const option of options) {
+        const handle = normalize(option?.handle);
+        if (!handle) continue;
+        if (!optionMatchesText(option, defaultMethod)) {
+          operations.push({ hide: { deliveryOptionHandle: handle } });
+        }
+      }
+      continue;
     }
 
     for (const option of options) {
@@ -291,6 +308,18 @@ function entryMatchesOption(entry, option) {
     default:
       return candidates.some((c) => c === value);
   }
+}
+
+/** True when any of the option's identifiers contains the given text (ci). */
+function optionMatchesText(option, text) {
+  const needle = text.toLowerCase();
+  if (!needle) return false;
+  const candidates = [
+    normalize(option?.title),
+    normalize(option?.code),
+    normalize(option?.handle),
+  ];
+  return candidates.some((candidate) => candidate.toLowerCase().includes(needle));
 }
 
 function pincodeMatches(rule, pincode) {

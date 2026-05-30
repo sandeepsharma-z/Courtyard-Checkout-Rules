@@ -49,6 +49,7 @@ export type PublishedConfigSnapshotPayload = {
     autoRenameDeliveryOption: boolean;
     deliveryLabelSource: "same_day" | "next_day" | "updated_first";
     hideOtherDeliveryOptions: boolean;
+    defaultShippingMethod: string;
   };
   rules?: PublishedRuleConfig;
 };

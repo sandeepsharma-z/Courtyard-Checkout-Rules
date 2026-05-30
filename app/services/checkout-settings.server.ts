@@ -6,6 +6,7 @@ export const CHECKOUT_SETTING_KEYS = {
   autoRenameDeliveryOption: "auto_rename_delivery_option",
   deliveryLabelSource: "delivery_label_source",
   hideOtherDeliveryOptions: "hide_other_delivery_options",
+  defaultShippingMethod: "default_shipping_method",
 } as const;
 
 export type CheckoutRuleSettings = {
@@ -14,6 +15,10 @@ export type CheckoutRuleSettings = {
   autoRenameDeliveryOption: boolean;
   deliveryLabelSource: "same_day" | "next_day" | "updated_first";
   hideOtherDeliveryOptions: boolean;
+  // For pincodes not matched by any shipping rule, show ONLY the delivery
+  // option(s) whose name contains this text (e.g. "5-8 Days Delivery"). Empty
+  // means no change (all options show).
+  defaultShippingMethod: string;
 };
 
 export const DEFAULT_CHECKOUT_RULE_SETTINGS: CheckoutRuleSettings = {
@@ -22,6 +27,7 @@ export const DEFAULT_CHECKOUT_RULE_SETTINGS: CheckoutRuleSettings = {
   autoRenameDeliveryOption: false,
   deliveryLabelSource: "updated_first",
   hideOtherDeliveryOptions: false,
+  defaultShippingMethod: "",
 };
 
 export async function getCheckoutRuleSettings(): Promise<CheckoutRuleSettings> {
@@ -42,6 +48,9 @@ export async function getCheckoutRuleSettings(): Promise<CheckoutRuleSettings> {
     ),
     hideOtherDeliveryOptions:
       values.get(CHECKOUT_SETTING_KEYS.hideOtherDeliveryOptions) === "true",
+    defaultShippingMethod:
+      values.get(CHECKOUT_SETTING_KEYS.defaultShippingMethod) ??
+      DEFAULT_CHECKOUT_RULE_SETTINGS.defaultShippingMethod,
   };
 }
 
@@ -63,6 +72,10 @@ export async function saveCheckoutRuleSettings(input: CheckoutRuleSettings) {
     upsertSetting(
       CHECKOUT_SETTING_KEYS.hideOtherDeliveryOptions,
       String(input.hideOtherDeliveryOptions),
+    ),
+    upsertSetting(
+      CHECKOUT_SETTING_KEYS.defaultShippingMethod,
+      input.defaultShippingMethod,
     ),
   ]);
 }

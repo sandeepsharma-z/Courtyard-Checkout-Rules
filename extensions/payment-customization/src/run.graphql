@@ -8,6 +8,9 @@ query RunInput {
       deliveryAddress {
         zip
       }
+      selectedDeliveryOption {
+        title
+      }
     }
   }
   shop {

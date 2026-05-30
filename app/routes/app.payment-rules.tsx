@@ -36,6 +36,7 @@ type PaymentHideRule = {
   pincodesJson: string;
   areaGroupsJson: string;
   deliveryAvailabilityText: string;
+  conditionsJson: string;
   notes: string;
 };
 
@@ -248,14 +249,19 @@ function WhenThenHide({
           <select className="bsure-select" disabled>
             <option>Zip code / Postal code</option>
           </select>
-          <select className="bsure-select" disabled>
-            <option>Has any of these values</option>
+          <select className="bsure-select" name="pincodeMode">
+            <option value="has">Has any of these values</option>
+            <option value="not_has">Does not have any of these values</option>
           </select>
           <button className="bsure-cond-del" disabled type="button">
             🗑
           </button>
         </div>
         <PincodeChips options={pincodeOptions} />
+        <div style={{ fontSize: "12px", color: "#6d7175", marginTop: "4px" }}>
+          Wildcards allowed: <code>11*</code> matches any zip starting with 11,{" "}
+          <code>?</code> matches one character.
+        </div>
 
         <div className="bsure-mini-or">And</div>
 
@@ -813,6 +819,16 @@ function RuleItem({ item }: { item: PaymentHideRule }) {
   const pincodes = parseJsonList(item.pincodesJson);
   const productTags = parseJsonList(item.productTagsJson);
   const areaGroups = parseJsonList(item.areaGroupsJson);
+  const pincodeMode = (() => {
+    try {
+      return (JSON.parse(item.conditionsJson || "{}") as { pincodeMatchMode?: string })
+        .pincodeMatchMode === "not_has"
+        ? "not_has"
+        : "has";
+    } catch {
+      return "has";
+    }
+  })();
 
   const selectedPaymentMethods = (() => {
     try {
@@ -933,7 +949,19 @@ function RuleItem({ item }: { item: PaymentHideRule }) {
             </F>
           </div>
           <div className="bsure-form-row" style={{ marginTop: "10px" }}>
-            <F label="Pincodes">
+            <F label="Pincode match">
+              <select
+                className="bsure-select"
+                defaultValue={pincodeMode}
+                name="pincodeMode"
+              >
+                <option value="has">Has any of these values</option>
+                <option value="not_has">Does not have any of these values</option>
+              </select>
+            </F>
+          </div>
+          <div className="bsure-form-row" style={{ marginTop: "10px" }}>
+            <F label="Pincodes (wildcards: 11*, ?)">
               <textarea
                 className="bsure-textarea"
                 defaultValue={pincodes.join(", ")}

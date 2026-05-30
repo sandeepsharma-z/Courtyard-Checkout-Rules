@@ -31,19 +31,22 @@ export function run(input) {
     ? input.cart.deliveryGroups
     : [];
   let pincode = "";
+  const selectedShippingTitles = [];
   for (const group of deliveryGroups) {
     const zip = normalize(group?.deliveryAddress?.zip);
-    if (zip) {
+    if (zip && !pincode) {
       pincode = zip;
-      break;
     }
+    const title = normalize(group?.selectedDeliveryOption?.title);
+    if (title) selectedShippingTitles.push(title);
   }
   const pincodeRecord = findPincodeRecord(config, pincode);
 
   // Collect payment-method matchers from every rule that matches this context.
   const matchers = [];
   for (const rule of paymentHideRules) {
-    if (!ruleMatchesContext(rule, pincode, pincodeRecord)) continue;
+    if (!ruleMatchesContext(rule, pincode, pincodeRecord, selectedShippingTitles))
+      continue;
     const methods = Array.isArray(rule.selectedPaymentMethods)
       ? rule.selectedPaymentMethods
       : [];
@@ -107,22 +110,34 @@ function findPincodeRecord(config, pincode) {
 }
 
 /**
- * True when a rule's pincode / area / delivery-text conditions match.
- * Rules with unsupported conditions (cutoff time, product tags) are skipped,
- * since the payment function cannot evaluate them reliably.
+ * True when a rule's conditions match this checkout context. Rules with cutoff
+ * time or product-tag conditions are skipped, since the payment function cannot
+ * evaluate them reliably.
  *
- * NOTE: `selectedShippingContains` is intentionally IGNORED here. The payment
- * customization input does not expose the buyer's selected shipping method, so
- * we treat such rules as always-applicable rather than letting the condition
- * block matching.
+ * Supports:
+ *   - selectedShippingContains: rule applies only when a selected delivery
+ *     option title contains the configured text (e.g., "Same Day Delivery").
+ *   - pincode matching with "*"/"?" wildcards and an optional "not_has" mode
+ *     (hide when the zip is NOT in the listed patterns).
  */
-function ruleMatchesContext(rule, pincode, pincodeRecord) {
+function ruleMatchesContext(rule, pincode, pincodeRecord, selectedShippingTitles) {
   if (normalize(rule.cutoffRuleSettingId)) return false;
   if (Array.isArray(rule.productTags) && rule.productTags.length > 0) return false;
+  if (!shippingMatches(rule, selectedShippingTitles)) return false;
   if (!pincodeMatches(rule, pincode)) return false;
   if (!areaGroupMatches(rule, pincodeRecord)) return false;
   if (!deliveryAvailabilityMatches(rule, pincodeRecord)) return false;
   return true;
+}
+
+/** True when the rule has no shipping condition, or a selected option matches. */
+function shippingMatches(rule, selectedShippingTitles) {
+  const needle = normalize(rule.selectedShippingContains).toLowerCase();
+  if (!needle) return true;
+  const titles = Array.isArray(selectedShippingTitles)
+    ? selectedShippingTitles
+    : [];
+  return titles.some((title) => normalize(title).toLowerCase().includes(needle));
 }
 
 /** True when a matcher entry matches the payment method name. */
@@ -146,22 +161,46 @@ function entryMatchesName(entry, name) {
   }
 }
 
+/**
+ * Pincode condition with "*"/"?" wildcard patterns and an optional negation
+ * mode. "has" (default): rule applies when the zip matches a pattern. "not_has":
+ * rule applies when the zip matches none of them (e.g., "hide COD outside the
+ * 11x, 12x, 20x zones"). When patterns exist but the zip is unknown, the rule
+ * does not apply (fail safe — never hide a payment method on an unknown zip).
+ */
 function pincodeMatches(rule, pincode) {
-  const rulePincodes = expandPincodeValues(rule.pincodes);
-  return rulePincodes.length === 0 || rulePincodes.includes(pincode);
+  const patterns = expandZipPatterns(rule.pincodes);
+  if (patterns.length === 0) return true;
+  if (!pincode) return false;
+
+  const matchesAny = patterns.some((pattern) =>
+    zipMatchesPattern(pincode, pattern),
+  );
+  return normalize(rule.pincodeMatchMode) === "not_has" ? !matchesAny : matchesAny;
 }
 
-function expandPincodeValues(value) {
+function expandZipPatterns(value) {
   const rawValues = Array.isArray(value) ? value : [];
-  return [
-    ...new Set(
-      rawValues.flatMap((item) => {
-        const text = normalize(item);
-        if (!text) return [];
-        return text.match(/[1-9]\d{5}/g) ?? [];
-      }),
-    ),
-  ];
+  return rawValues.map(normalize).filter(Boolean);
+}
+
+/** Matches a zip against a pattern supporting "*" (any run) and "?" (one char). */
+function zipMatchesPattern(zip, pattern) {
+  if (!zip || !pattern) return false;
+  if (pattern.indexOf("*") === -1 && pattern.indexOf("?") === -1) {
+    return zip === pattern;
+  }
+  let regex = "";
+  for (const ch of pattern) {
+    if (ch === "*") regex += ".*";
+    else if (ch === "?") regex += ".";
+    else regex += ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  try {
+    return new RegExp("^" + regex + "$").test(zip);
+  } catch {
+    return false;
+  }
 }
 
 function areaGroupMatches(rule, pincodeRecord) {

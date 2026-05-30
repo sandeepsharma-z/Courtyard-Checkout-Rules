@@ -18,7 +18,7 @@ function inputWithConfig(config, zip = PIN, options, cartTime) {
     ],
   };
   if (cartTime !== undefined) {
-    cart.attribute = { value: cartTime };
+    cart.timeAttr = { value: cartTime };
   }
   return {
     shop: { metafield: { value: JSON.stringify(config) } },
@@ -259,6 +259,95 @@ describe("delivery customization", () => {
     expect(run(inputWithConfig(config, PIN, cutoffOptions, "23:59"))).toEqual(
       expected,
     );
+  });
+
+  it("hides every option for an unknown pincode when blocking is enabled", () => {
+    const config = {
+      ...baseConfig(),
+      settings: { blockUnknownPincode: true, unknownPincodeMessage: "X" },
+    };
+    const options = [
+      { handle: "a", title: "A", code: "" },
+      { handle: "b", title: "B", code: "" },
+    ];
+    // "999999" is not in pincodeData.records → unserviceable → hide all.
+    expect(run(inputWithConfig(config, "999999", options))).toEqual({
+      operations: [
+        { hide: { deliveryOptionHandle: "a" } },
+        { hide: { deliveryOptionHandle: "b" } },
+      ],
+    });
+  });
+
+  it("does not hide for a known pincode even when blocking is enabled", () => {
+    const config = {
+      ...baseConfig(),
+      pincodeData: { records: [{ pc: PIN, ag: "", da: "" }] },
+      settings: { blockUnknownPincode: true, unknownPincodeMessage: "X" },
+    };
+    const options = [{ handle: "a", title: "A", code: "" }];
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({ operations: [] });
+  });
+
+  it("hides every option when a product restriction lists the pincode (product tags ignored)", () => {
+    const config = baseConfig({
+      productRestrictions: [
+        {
+          name: "Blocked area",
+          pincodes: [PIN],
+          areaGroups: [],
+          // A product tag must NOT stop shipping from being hidden: Shopify
+          // Functions cannot read tags, so the validation block applies anyway.
+          productTags: ["FRESH_FROM_ADMIN"],
+          deliveryAvailabilityText: "",
+          validationMessage: "Not available",
+        },
+      ],
+    });
+    const options = [
+      { handle: "a", title: "A", code: "" },
+      { handle: "b", title: "B", code: "" },
+    ];
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({
+      operations: [
+        { hide: { deliveryOptionHandle: "a" } },
+        { hide: { deliveryOptionHandle: "b" } },
+      ],
+    });
+  });
+
+  it("does not hide when a restriction matches the pincode but carries no message", () => {
+    const config = baseConfig({
+      productRestrictions: [
+        {
+          name: "No message",
+          pincodes: [PIN],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          validationMessage: "",
+        },
+      ],
+    });
+    const options = [{ handle: "a", title: "A", code: "" }];
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({ operations: [] });
+  });
+
+  it("does not hide when a restriction does not list this pincode", () => {
+    const config = baseConfig({
+      productRestrictions: [
+        {
+          name: "Other area",
+          pincodes: ["222222"],
+          areaGroups: [],
+          productTags: [],
+          deliveryAvailabilityText: "",
+          validationMessage: "Not available",
+        },
+      ],
+    });
+    const options = [{ handle: "a", title: "A", code: "" }];
+    expect(run(inputWithConfig(config, PIN, options))).toEqual({ operations: [] });
   });
 
   it("does not act on a pincode outside the rule", () => {

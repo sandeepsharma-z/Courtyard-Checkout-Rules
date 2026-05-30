@@ -36,7 +36,11 @@ export function run(input) {
 
   const cartTags = getCartProductTags(input);
   // Shop-local time ("HH:MM") written by the Courtyard time embed block.
-  const cartTime = trim(input?.cart?.attribute?.value);
+  // Reads the current and legacy underscore keys, so it works whether the
+  // storefront serves the new or the previously deployed embed.
+  const cartTime =
+    trim(input?.cart?.timeAttr?.value) ||
+    trim(input?.cart?.timeAttrLegacy?.value);
   const errors = [];
 
   for (const group of deliveryGroups) {
@@ -53,7 +57,10 @@ export function run(input) {
     ) {
       errors.push({
         message: unknownPincodeMessage,
-        target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+        // Target the cart (not the zip field): when the delivery function hides
+        // every shipping option, Shopify suppresses field-level errors, so a
+        // cart-level error is needed for the message to remain visible.
+        target: "$.cart",
       });
       continue;
     }
@@ -68,7 +75,10 @@ export function run(input) {
         if (!message) continue;
         errors.push({
           message,
-          target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+          // Target the cart (not the zip field): when the delivery function hides
+        // every shipping option, Shopify suppresses field-level errors, so a
+        // cart-level error is needed for the message to remain visible.
+        target: "$.cart",
         });
         break;
       }

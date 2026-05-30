@@ -8,7 +8,11 @@ const OTHER_PIN = "200002";
 const COD_ID = "gid://shopify/PaymentCustomizationPaymentMethod/1";
 const CARD_ID = "gid://shopify/PaymentCustomizationPaymentMethod/2";
 
-function inputWithConfig(config, { zip = PIN, paymentMethods } = {}) {
+function inputWithConfig(config, { zip = PIN, paymentMethods, shippingTitle } = {}) {
+  const group = { deliveryAddress: { zip } };
+  if (shippingTitle !== undefined) {
+    group.selectedDeliveryOption = { title: shippingTitle };
+  }
   return {
     paymentMethods:
       paymentMethods ?? [
@@ -16,7 +20,7 @@ function inputWithConfig(config, { zip = PIN, paymentMethods } = {}) {
         { id: CARD_ID, name: "CARD_NAME_FROM_ADMIN" },
       ],
     cart: {
-      deliveryGroups: [{ deliveryAddress: { zip } }],
+      deliveryGroups: [group],
     },
     shop: { metafield: { value: JSON.stringify(config) } },
   };
@@ -84,12 +88,64 @@ describe("payment customization", () => {
     });
   });
 
-  it("ignores selectedShippingContains (always applicable)", () => {
+  it("applies a selectedShippingContains rule only when a selected option matches", () => {
     const config = baseConfig({
-      paymentHideRules: [rule({ selectedShippingContains: "EXPRESS_FROM_ADMIN" })],
+      paymentHideRules: [rule({ selectedShippingContains: "Same Day Delivery" })],
     });
-    expect(run(inputWithConfig(config, { zip: PIN }))).toEqual({
+    // Matching selected shipping option → hide.
+    expect(
+      run(
+        inputWithConfig(config, {
+          zip: PIN,
+          shippingTitle: "Same Day Delivery (Evening Slot 4PM-8PM)",
+        }),
+      ),
+    ).toEqual({ operations: [{ hide: { paymentMethodId: COD_ID } }] });
+    // Different selected option → does not hide.
+    expect(
+      run(
+        inputWithConfig(config, {
+          zip: PIN,
+          shippingTitle: "Cold Chain Delivery Tomorrow",
+        }),
+      ),
+    ).toEqual({ operations: [] });
+    // No selected option yet → does not hide (fail safe).
+    expect(run(inputWithConfig(config, { zip: PIN }))).toEqual({ operations: [] });
+  });
+
+  it("matches pincodes with a wildcard pattern", () => {
+    const config = baseConfig({
+      paymentHideRules: [rule({ pincodes: ["11*"] })],
+    });
+    expect(run(inputWithConfig(config, { zip: "110082" }))).toEqual({
       operations: [{ hide: { paymentMethodId: COD_ID } }],
     });
+    expect(run(inputWithConfig(config, { zip: "201010" }))).toEqual({
+      operations: [],
+    });
+  });
+
+  it("supports not_has mode: hides when zip is outside the listed patterns", () => {
+    const config = baseConfig({
+      paymentHideRules: [
+        rule({ pincodeMatchMode: "not_has", pincodes: ["11*", "12*", "20*"] }),
+      ],
+    });
+    // Outside 11*/12*/20* → hide COD.
+    expect(run(inputWithConfig(config, { zip: "560001" }))).toEqual({
+      operations: [{ hide: { paymentMethodId: COD_ID } }],
+    });
+    // Inside 11* → do not hide.
+    expect(run(inputWithConfig(config, { zip: "110001" }))).toEqual({
+      operations: [],
+    });
+  });
+
+  it("does not hide for a not_has rule when the zip is unknown (fail safe)", () => {
+    const config = baseConfig({
+      paymentHideRules: [rule({ pincodeMatchMode: "not_has", pincodes: ["11*"] })],
+    });
+    expect(run(inputWithConfig(config, { zip: "" }))).toEqual({ operations: [] });
   });
 });

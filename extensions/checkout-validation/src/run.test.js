@@ -21,7 +21,7 @@ function inputWithConfig(config, zip = "PINCODE_PLACEHOLDER", cartTime) {
     ],
   };
   if (cartTime !== undefined) {
-    cart.attribute = { value: cartTime };
+    cart.timeAttr = { value: cartTime };
   }
   return {
     cart,
@@ -67,7 +67,7 @@ const cutoffError = {
         errors: [
           {
             message: "VALIDATION_MESSAGE_PLACEHOLDER",
-            target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+            target: "$.cart",
           },
         ],
       },
@@ -105,7 +105,7 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "UNKNOWN_PINCODE_MESSAGE_FROM_ADMIN",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+                target: "$.cart",
               },
             ],
           },
@@ -135,7 +135,7 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "VALIDATION_MESSAGE_PLACEHOLDER",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+                target: "$.cart",
               },
             ],
           },
@@ -166,7 +166,7 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "VALIDATION_MESSAGE_PLACEHOLDER",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+                target: "$.cart",
               },
             ],
           },
@@ -196,7 +196,7 @@ describe("checkout validation function", () => {
             errors: [
               {
                 message: "VALIDATION_MESSAGE_PLACEHOLDER",
-                target: "$.cart.deliveryGroups[0].deliveryAddress.zip",
+                target: "$.cart",
               },
             ],
           },

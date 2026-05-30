@@ -1,6 +1,9 @@
 query RunInput {
   cart {
-    attribute(key: "_courtyard_time") {
+    timeAttr: attribute(key: "courtyard_time") {
+      value
+    }
+    timeAttrLegacy: attribute(key: "_courtyard_time") {
       value
     }
     deliveryGroups {

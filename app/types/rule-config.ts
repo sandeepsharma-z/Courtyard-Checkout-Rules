@@ -85,6 +85,7 @@ export type PublishedPaymentHideRule = {
   selectedPaymentMethods: PublishedSelectedPaymentMethod[];
   cutoffRuleSettingId: string;
   selectedShippingContains: string;
+  pincodeMatchMode: "has" | "not_has";
   productTags: string[];
   pincodes: string[];
   areaGroups: string[];

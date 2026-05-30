@@ -23,7 +23,11 @@ export function run(input) {
     ? input.cart.deliveryGroups
     : [];
   // Shop-local time ("HH:MM") written by the Courtyard time embed block.
-  const cartTime = normalize(input?.cart?.attribute?.value);
+  // Reads the current attribute key and the legacy underscore key, so it works
+  // whether the storefront serves the new or the previously deployed embed.
+  const cartTime =
+    normalize(input?.cart?.timeAttr?.value) ||
+    normalize(input?.cart?.timeAttrLegacy?.value);
 
   for (const group of deliveryGroups) {
     const pincode = normalize(group?.deliveryAddress?.zip);
@@ -31,6 +35,17 @@ export function run(input) {
     const options = Array.isArray(group?.deliveryOptions)
       ? group.deliveryOptions
       : [];
+
+    // Unserviceable / blocked pincode: hide every delivery option so the
+    // checkout offers no shipping (mirrors the product-validation block, where
+    // the location shows a "not available" error).
+    if (pincodeBlocked(config, pincode, pincodeRecord, cartTime)) {
+      for (const option of options) {
+        const handle = normalize(option?.handle);
+        if (handle) operations.push({ hide: { deliveryOptionHandle: handle } });
+      }
+      continue;
+    }
 
     const hideRules = Array.isArray(config.rules?.shippingHideRules)
       ? config.rules.shippingHideRules
@@ -112,6 +127,66 @@ function findPincodeRecord(config, pincode) {
     ? config.pincodeData.records
     : [];
   return records.find((record) => normalize(record.pc) === pincode) ?? null;
+}
+
+/**
+ * True when the customer's pincode is blocked / unserviceable, so no shipping
+ * should be offered. Mirrors the checkout-validation block exactly, so shipping
+ * is hidden precisely when the validation function shows a "not available"
+ * error:
+ *   1. Unknown pincode when "block unknown pincodes" is enabled.
+ *   2. A product restriction (carrying a message) whose location conditions
+ *      match. Product tags are NOT readable by Shopify Functions, so — exactly
+ *      like the validation function — they do not narrow the match.
+ */
+function pincodeBlocked(config, pincode, pincodeRecord, cartTime) {
+  if (!pincode) return false;
+
+  const settings = config?.settings ?? {};
+  if (
+    settings.blockUnknownPincode === true &&
+    !pincodeRecord &&
+    normalize(settings.unknownPincodeMessage)
+  ) {
+    return true;
+  }
+
+  const restrictions = Array.isArray(config?.rules?.productRestrictions)
+    ? config.rules.productRestrictions
+    : [];
+  for (const rule of restrictions) {
+    if (!normalize(rule.validationMessage)) continue;
+    if (!cutoffAllows(rule, config, cartTime)) continue;
+    if (!restrictionLocationMatches(rule, pincode, pincodeRecord)) continue;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Location-only match for a product restriction, mirroring the validation
+ * function's pincodeMatchesRule (explicit pincodes / area groups / delivery
+ * availability text). Product tags are intentionally not considered here.
+ */
+function restrictionLocationMatches(rule, pincode, pincodeRecord) {
+  const rulePincodes = expandPincodeValues(rule.pincodes);
+  if (rulePincodes.length > 0 && !rulePincodes.includes(pincode)) return false;
+
+  const ruleAreaGroups = Array.isArray(rule.areaGroups) ? rule.areaGroups : [];
+  if (ruleAreaGroups.length > 0) {
+    if (!pincodeRecord) return false;
+    if (!ruleAreaGroups.map(normalize).includes(normalize(pincodeRecord.ag))) {
+      return false;
+    }
+  }
+
+  const ruleDeliveryText = normalize(rule.deliveryAvailabilityText);
+  if (ruleDeliveryText) {
+    if (!pincodeRecord) return false;
+    if (normalize(pincodeRecord.da) !== ruleDeliveryText) return false;
+  }
+
+  return true;
 }
 
 /**

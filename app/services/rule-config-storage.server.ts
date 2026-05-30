@@ -196,6 +196,10 @@ export async function handleRuleManagerAction(formData: FormData) {
             formData,
             "selectedShippingContains",
           ),
+          conditionsJson: JSON.stringify({
+            pincodeMatchMode:
+              getString(formData, "pincodeMode") === "not_has" ? "not_has" : "has",
+          }),
           productTagsJson: listJson(formData, "productTags"),
           pincodesJson: listJson(formData, "pincodes"),
           areaGroupsJson: listJson(formData, "areaGroups"),
@@ -545,6 +549,10 @@ async function updateRule(kind: string, id: string, formData: FormData) {
             formData,
             "selectedShippingContains",
           ),
+          conditionsJson: JSON.stringify({
+            pincodeMatchMode:
+              getString(formData, "pincodeMode") === "not_has" ? "not_has" : "has",
+          }),
           productTagsJson: listJson(formData, "productTags"),
           pincodesJson: listJson(formData, "pincodes"),
           areaGroupsJson: listJson(formData, "areaGroups"),

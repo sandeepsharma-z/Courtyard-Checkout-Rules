@@ -3,7 +3,7 @@
  *
  * Shopify Functions cannot read the current wall-clock time, so this script
  * writes the current shop-local time ("HH:MM", 24h) into a cart attribute
- * named "_courtyard_time" via the Cart AJAX API. The delivery and validation
+ * named "courtyard_time" via the Cart AJAX API. The delivery and validation
  * functions read that attribute to evaluate time-of-day (cutoff) conditions.
  *
  * Defensive by design: never throws, only updates when the value changes.
@@ -11,7 +11,7 @@
 (function () {
   "use strict";
 
-  var ATTRIBUTE_KEY = "_courtyard_time";
+  var ATTRIBUTE_KEY = "courtyard_time";
   var DEFAULT_TIMEZONE = "Asia/Kolkata";
 
   function getTimezone() {

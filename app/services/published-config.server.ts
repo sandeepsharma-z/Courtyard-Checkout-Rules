@@ -9,6 +9,17 @@ import { getCheckoutRuleSettings } from "./checkout-settings.server";
 
 const parseList = (value: string) => JSON.parse(value) as string[];
 
+// Payment-hide rules store their pincode match mode ("has" | "not_has") inside
+// the generic conditionsJson bag, so no schema column is needed.
+const parsePincodeMatchMode = (value: string): "has" | "not_has" => {
+  try {
+    const parsed = JSON.parse(value || "{}") as { pincodeMatchMode?: string };
+    return parsed?.pincodeMatchMode === "not_has" ? "not_has" : "has";
+  } catch {
+    return "has";
+  }
+};
+
 const parsePincodeList = (value: string) => {
   const parsed = parseList(value);
   return Array.from(
@@ -183,6 +194,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         selectedPaymentMethods: parseList(rule.selectedPaymentMethodsJson) as unknown as import("../types/rule-config").PublishedSelectedPaymentMethod[],
         cutoffRuleSettingId: rule.cutoffRuleSettingId,
         selectedShippingContains: rule.selectedShippingContains,
+        pincodeMatchMode: parsePincodeMatchMode(rule.conditionsJson),
         productTags: parseList(rule.productTagsJson),
         pincodes: parsePincodeList(rule.pincodesJson),
         areaGroups: parseList(rule.areaGroupsJson),

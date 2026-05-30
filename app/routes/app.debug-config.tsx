@@ -138,8 +138,9 @@ export default function DebugConfigPage() {
       <h1>Published config (live metafield)</h1>
       <p>metafield updatedAt: {updatedAt ?? "—"}</p>
       <p style={{ background: "#ffe", padding: 8 }}>
-        Check below: <b>cutoffSettings</b> (should list "After 3:30 PM") and{" "}
-        <b>hideRulesWithCutoff</b> (should list a rule with has110005:true).
+        Check below: <b>bytes</b> (must stay under 10000 for Functions to read
+        it), <b>cutoffSettings</b>, <b>paymentHideRules</b>, and{" "}
+        <b>hideRulesWithCutoff</b>.
       </p>
       <h2>Deployed Shopify Functions</h2>
       <pre style={{ whiteSpace: "pre-wrap", background: "#efe", padding: 16, borderRadius: 8 }}>

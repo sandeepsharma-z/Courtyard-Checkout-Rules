@@ -59,12 +59,14 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
       })
     : [];
 
+  // Only fetch what the checkout Functions actually read. Shipping method
+  // mappings, payment method mappings, and shipping rename rules are NOT used
+  // by any Function (rename is not applied at checkout), so they are excluded
+  // from the published metafield to keep it under Shopify's 10 KB
+  // Function-input limit. They remain editable in the admin (read from the DB).
   const [
     productRestrictionRules,
-    shippingMethodMappings,
-    paymentMethodMappings,
     shippingHideRules,
-    shippingRenameRules,
     paymentHideRules,
     cutoffSettings,
     checkoutSettings,
@@ -73,19 +75,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
       where: { enabled: true },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     }),
-    prisma.shippingMethodMapping.findMany({
-      where: { enabled: true },
-      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-    }),
-    prisma.paymentMethodMapping.findMany({
-      where: { enabled: true },
-      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-    }),
     prisma.shippingHideRule.findMany({
-      where: { enabled: true },
-      orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
-    }),
-    prisma.shippingRenameRule.findMany({
       where: { enabled: true },
       orderBy: [{ priority: "asc" }, { createdAt: "asc" }],
     }),
@@ -137,22 +127,10 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         validationMessage: rule.validationMessage,
         notes: rule.notes,
       })),
-      shippingMethodMappings: shippingMethodMappings.map((mapping) => ({
-        id: mapping.id,
-        name: mapping.name,
-        priority: mapping.priority,
-        matchType: mapping.matchType === "contains" ? "contains" : "exact",
-        matchValue: mapping.matchValue,
-        notes: mapping.notes,
-      })),
-      paymentMethodMappings: paymentMethodMappings.map((mapping) => ({
-        id: mapping.id,
-        name: mapping.name,
-        priority: mapping.priority,
-        matchType: mapping.matchType === "contains" ? "contains" : "exact",
-        matchValue: mapping.matchValue,
-        notes: mapping.notes,
-      })),
+      // Not read by any checkout Function — omitted to keep the published
+      // metafield under Shopify's 10 KB Function-input limit.
+      shippingMethodMappings: [],
+      paymentMethodMappings: [],
       shippingHideRules: shippingHideRules.map((rule) => ({
         id: rule.id,
         name: rule.name,
@@ -167,20 +145,9 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         notes: rule.notes,
       })),
-      shippingRenameRules: shippingRenameRules.map((rule) => ({
-        id: rule.id,
-        name: rule.name,
-        priority: rule.priority,
-        shippingMethodMappingId: rule.shippingMethodMappingId,
-        selectedShippingMethods: parseList(rule.selectedShippingMethodsJson) as unknown as import("../types/rule-config").PublishedSelectedRenameMethod[],
-        cutoffRuleSettingId: rule.cutoffRuleSettingId,
-        newLabel: rule.newLabel,
-        productTags: parseList(rule.productTagsJson),
-        pincodes: parsePincodeList(rule.pincodesJson),
-        areaGroups: parseList(rule.areaGroupsJson),
-        deliveryAvailabilityText: rule.deliveryAvailabilityText,
-        notes: rule.notes,
-      })),
+      // Rename is not applied at checkout (Shopify discards hide+rename mixed
+      // output) and is not read by any Function — omitted to save space.
+      shippingRenameRules: [],
       paymentHideRules: paymentHideRules.map((rule) => ({
         id: rule.id,
         name: rule.name,

@@ -79,6 +79,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       const hides = p?.rules?.shippingHideRules ?? [];
       const renames = p?.rules?.shippingRenameRules ?? [];
       const cutoffs = p?.rules?.cutoffSettings ?? [];
+      const payments = p?.rules?.paymentHideRules ?? [];
       summary = {
         present: true,
         bytes: value.length,
@@ -96,6 +97,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             methods: h.selectedShippingMethods,
             has110005: (Array.isArray(h.pincodes) ? h.pincodes : []).includes("110005"),
           })),
+        settings: p?.settings ?? null,
+        paymentCount: payments.length,
+        paymentHideRules: payments.slice(0, 12).map((r: Record<string, unknown>) => ({
+          name: r.name,
+          pincodeMatchMode: r.pincodeMatchMode,
+          methods: r.selectedPaymentMethods,
+          selectedShippingContains: r.selectedShippingContains,
+          pincodes: r.pincodes,
+        })),
         hideCount: hides.length,
         renameCount: renames.length,
         hideRules: hides.slice(0, 12).map((h: Record<string, unknown>) => ({

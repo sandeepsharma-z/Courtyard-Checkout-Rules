@@ -113,20 +113,15 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
       records: records.length,
     },
     pincodeData: {
+      // Only the fields the checkout Functions actually read: pincode (pc),
+      // area group (ag), delivery availability (da). The other descriptive CSV
+      // columns are dropped here to keep the published metafield small enough
+      // to stay within the size that Shopify includes in a Function's input
+      // (a large metafield value is delivered to the Function as null).
       records: records.map((record) => ({
-        st: record.state,
-        di: record.district,
         pc: record.pincode,
-        ln: record.locationName,
         ag: record.areaGroup,
         da: record.deliveryAvailability,
-        sd: record.sameDayDeliveryRule,
-        nd: record.nextDayDeliveryRule,
-        pa: record.productAvailabilityRule,
-        rm: record.remarks,
-        ch: record.chargesPricingText,
-        usd: record.updatedSameDayRule,
-        und: record.updatedNextDayRule,
       })),
     },
     settings: checkoutSettings,

@@ -5,7 +5,7 @@ export function evaluateProductRestrictions({
   inputs,
   pincode,
 }: RuleEngineContext & {
-  pincode: { input: string; record: { ag: string; da: string; pa: string; pc: string } | null };
+  pincode: { input: string; record: { ag: string; da: string; pa?: string; pc: string } | null };
 }): ProductRestrictionPreview {
   const rules = config.rules?.productRestrictions ?? [];
   const matchedRules = rules.filter((rule) => {

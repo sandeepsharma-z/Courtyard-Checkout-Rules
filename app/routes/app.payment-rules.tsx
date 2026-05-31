@@ -1,11 +1,11 @@
-import { useActionToast } from "../components/Toast";
-import { useRef, useState } from "react";
+import { showToast } from "../components/Toast";
+import { useEffect, useRef, useState } from "react";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, Link, redirect, useLoaderData } from "react-router";
+import { Form, Link, redirect, useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
@@ -56,13 +56,27 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   await authenticate.admin(request);
-  await handleRuleManagerAction(await request.formData());
-  return redirect("/app/payment-rules");
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+  await handleRuleManagerAction(formData);
+  const msg = intent.includes("delete") ? "deleted" : "saved";
+  return redirect(`/app/payment-rules?saved=${msg}`);
 };
 
 export default function PaymentRulesPage() {
   const { cutoffs, pincodeOptions, rules } =
     useLoaderData<typeof loader>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const savedParam = searchParams.get("saved");
+  useEffect(() => {
+    if (savedParam) {
+      showToast(
+        savedParam === "deleted" ? "Rule deleted." : "Rule saved successfully.",
+        savedParam === "deleted" ? "info" : "success",
+      );
+      setSearchParams({}, { replace: true });
+    }
+  }, [savedParam, setSearchParams]);
 
   return (
     <div className="bsure-page">

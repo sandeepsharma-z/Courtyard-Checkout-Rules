@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { showToast } from "../components/Toast";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, Link, redirect, useLoaderData } from "react-router";
+import { Form, Link, redirect, useLoaderData, useSearchParams } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
@@ -63,17 +64,32 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   await authenticate.admin(request);
   const formData = await request.formData();
-  const mode = String(formData.get("intent") ?? "").includes("Rename")
-    ? "rename"
-    : "hide";
+  const intent = String(formData.get("intent") ?? "");
+  const mode = intent.includes("Rename") ? "rename" : "hide";
+  const msg = intent.includes("delete") ? "deleted" : "saved";
   await handleRuleManagerAction(formData);
-  return redirect(`/app/shipping-rules?mode=${mode}`);
+  return redirect(`/app/shipping-rules?mode=${mode}&saved=${msg}`);
 };
 
 export default function ShippingRulesPage() {
   const { cutoffs, hideRules, mode, pincodeOptions, renameRules } =
     useLoaderData<typeof loader>();
   const isRename = mode === "rename";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const savedParam = searchParams.get("saved");
+  useEffect(() => {
+    if (savedParam) {
+      showToast(
+        savedParam === "deleted" ? "Rule deleted." : "Rule saved successfully.",
+        savedParam === "deleted" ? "info" : "success",
+      );
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("saved");
+        return next;
+      }, { replace: true });
+    }
+  }, [savedParam, setSearchParams]);
 
   return (
     <div className="bsure-page">

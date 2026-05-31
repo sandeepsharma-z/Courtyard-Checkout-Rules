@@ -100,7 +100,7 @@ export default function CheckoutSettingsPage() {
           </div>
         )}
 
-        <Form method="post" style={{ marginTop: "20px", display: "grid", gap: "16px", maxWidth: "640px" }}>
+        <Form method="post" style={{ marginTop: "20px", display: "grid", gap: "16px" }}>
           <section style={cardStyle}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
               <span style={{ fontSize: "18px" }}>🚚</span>

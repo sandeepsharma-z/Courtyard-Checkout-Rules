@@ -18,67 +18,103 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="bsure-flow" style={{ marginTop: "16px" }}>
-          <section className="bsure-card">
-            <h2>Pincode delivery data</h2>
-            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
-              Manage manually entered pincode delivery records used by rules.
-            </p>
-            <Link className="bsure-button secondary" to="/app/pincodes">
-              Manage pincode data
-            </Link>
-          </section>
-
-          <section className="bsure-card">
-            <h2>Publish config</h2>
-            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
-              Publish your configured rules as a Shopify metafield snapshot so checkout functions can read them.
-            </p>
-            <Link className="bsure-button" to="/app/publish">
-              Publish config
-            </Link>
-          </section>
-
-          <section className="bsure-card">
-            <h2>Shipping method mappings</h2>
-            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
-              Manage named shipping method patterns for use in rules.
-            </p>
-            <Link className="bsure-button secondary" to="/app/shipping-mappings">
-              Manage mappings
-            </Link>
-          </section>
-
-          <section className="bsure-card">
-            <h2>Cutoff time settings</h2>
-            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
-              Configure time-based cutoff rules for delivery windows.
-            </p>
-            <Link className="bsure-button secondary" to="/app/cutoff-settings">
-              Manage cutoff settings
-            </Link>
-          </section>
-
-          <section className="bsure-card">
-            <h2>Checkout behaviour</h2>
-            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
-              Default shipping method for unconfigured pincodes, and unknown
-              pincode blocking.
-            </p>
-            <Link className="bsure-button secondary" to="/app/checkout-settings">
-              Manage checkout behaviour
-            </Link>
-          </section>
-
-          <section className="bsure-card">
-            <h2>CSV import</h2>
-            <p style={{ color: "#5c5f62", fontSize: "14px", margin: "6px 0 14px" }}>
-              Import pincode data from a CSV file.
-            </p>
-            <Link className="bsure-button secondary" to="/app/import">
-              Import CSV
-            </Link>
-          </section>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: "16px",
+          marginTop: "20px",
+        }}>
+          {[
+            {
+              icon: "📍",
+              title: "Pincode delivery data",
+              desc: "Manage manually entered pincode delivery records used by rules.",
+              to: "/app/pincodes",
+              label: "Manage pincode data",
+              primary: false,
+            },
+            {
+              icon: "🚀",
+              title: "Publish config",
+              desc: "Publish your configured rules as a Shopify metafield so checkout functions can read them.",
+              to: "/app/publish",
+              label: "Publish config",
+              primary: true,
+            },
+            {
+              icon: "🚚",
+              title: "Shipping method mappings",
+              desc: "Manage named shipping method patterns for use in rules.",
+              to: "/app/shipping-mappings",
+              label: "Manage mappings",
+              primary: false,
+            },
+            {
+              icon: "⏰",
+              title: "Cutoff time settings",
+              desc: "Configure time-based cutoff rules for delivery windows.",
+              to: "/app/cutoff-settings",
+              label: "Manage cutoff settings",
+              primary: false,
+            },
+            {
+              icon: "⚙️",
+              title: "Checkout behaviour",
+              desc: "Default shipping method for unconfigured pincodes, and unknown pincode blocking.",
+              to: "/app/checkout-settings",
+              label: "Manage checkout behaviour",
+              primary: false,
+            },
+            {
+              icon: "📥",
+              title: "CSV import",
+              desc: "Import pincode data from a CSV file.",
+              to: "/app/import",
+              label: "Import CSV",
+              primary: false,
+            },
+          ].map((item) => (
+            <div
+              key={item.to}
+              style={{
+                background: "#fff",
+                border: "1px solid #e3e3e3",
+                borderRadius: "12px",
+                padding: "20px 20px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "6px",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+              }}
+            >
+              <div style={{ fontSize: "22px", marginBottom: "2px" }}>{item.icon}</div>
+              <h2 style={{ margin: 0, fontSize: "15px", fontWeight: 600, color: "#1a1a1a" }}>
+                {item.title}
+              </h2>
+              <p style={{ margin: "4px 0 14px", color: "#6d7175", fontSize: "13px", lineHeight: "1.5", flexGrow: 1 }}>
+                {item.desc}
+              </p>
+              <div>
+                <Link
+                  to={item.to}
+                  style={{
+                    display: "inline-block",
+                    padding: "8px 18px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    textDecoration: "none",
+                    background: item.primary ? "#1a7a4a" : "#f3f3f3",
+                    color: item.primary ? "#fff" : "#333",
+                    border: item.primary ? "none" : "1px solid #ddd",
+                    transition: "opacity 0.15s",
+                  }}
+                >
+                  {item.label} →
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

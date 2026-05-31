@@ -249,332 +249,235 @@ export default function PublishPage() {
     validationStatus,
     deliveryCustomizationStatus,
     paymentCustomizationStatus,
-  } =
-    useLoaderData<typeof loader>();
+  } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionResult | undefined;
 
   return (
-    <s-page heading="Publish config">
-      <s-section heading="Single metafield snapshot">
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <p>
-            Phase 4 publishes the approved local pincode dataset to one
-            shop-level JSON metafield. This does not add Shopify Functions and
-            does not change checkout behavior.
-          </p>
-          <p>
-            Target: <strong>courtyard_checkout_rules.published_config</strong>
-          </p>
-          {actionData && (
-            <p>
-              <strong>
-                {actionData.status === "success" ? "Success" : "Error"}:
-              </strong>{" "}
-              {actionData.message}
-            </p>
-          )}
+    <div className="bsure-page">
+      <div className="bsure-shell">
+        {/* Topbar */}
+        <div className="bsure-topbar">
+          <div className="bsure-title"><h1>Publish config</h1></div>
         </div>
-      </s-section>
 
-      <s-section heading="Delivery customization activation">
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <p>
-            Shipping method hide and rename behavior only works after the
-            delivery customization Function is deployed and enabled for this
-            store. This is separate from checkout validation.
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gap: "0.75rem",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            }}
-          >
-            <SummaryBox
-              label="Status"
-              value={deliveryCustomizationStatus.isActive ? "Active" : "Inactive"}
-            />
-            <SummaryBox
-              label="Function"
-              value={
-                deliveryCustomizationStatus.deliveryCustomization
-                  ?.shopifyFunction.title ?? "n/a"
-              }
-            />
-            <SummaryBox
-              label="Checkout effect"
-              value={
-                deliveryCustomizationStatus.isActive ? "Enabled" : "No"
-              }
-            />
-          </div>
-          {"error" in deliveryCustomizationStatus &&
-            deliveryCustomizationStatus.error && (
-              <p>
-                <strong>Status error:</strong>{" "}
-                {deliveryCustomizationStatus.error}
-              </p>
-            )}
-          {deliveryCustomizationStatus.deliveryCustomization && (
-            <p>
-              Delivery customization ID:{" "}
-              <strong>
-                {deliveryCustomizationStatus.deliveryCustomization.id}
-              </strong>
-            </p>
-          )}
-          {!deliveryCustomizationStatus.isActive && (
-            <Form method="post">
-              <input
-                type="hidden"
-                name="intent"
-                value="enableDeliveryCustomization"
-              />
-              <button type="submit">Enable delivery customization</button>
-            </Form>
-          )}
-        </div>
-      </s-section>
-
-      <s-section heading="Payment customization activation">
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <p>
-            Payment method hide behavior only works after the payment
-            customization Function is deployed and enabled for this store. This
-            is separate from checkout validation and delivery customization.
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gap: "0.75rem",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            }}
-          >
-            <SummaryBox
-              label="Status"
-              value={paymentCustomizationStatus.isActive ? "Active" : "Inactive"}
-            />
-            <SummaryBox
-              label="Function"
-              value={
-                paymentCustomizationStatus.paymentCustomization
-                  ?.shopifyFunction.title ?? "n/a"
-              }
-            />
-            <SummaryBox
-              label="Checkout effect"
-              value={paymentCustomizationStatus.isActive ? "Enabled" : "No"}
-            />
-          </div>
-          {"error" in paymentCustomizationStatus &&
-            paymentCustomizationStatus.error && (
-              <p>
-                <strong>Status error:</strong>{" "}
-                {paymentCustomizationStatus.error}
-              </p>
-            )}
-          {paymentCustomizationStatus.paymentCustomization && (
-            <p>
-              Payment customization ID:{" "}
-              <strong>
-                {paymentCustomizationStatus.paymentCustomization.id}
-              </strong>
-            </p>
-          )}
-          {!paymentCustomizationStatus.isActive && (
-            <Form method="post">
-              <input
-                type="hidden"
-                name="intent"
-                value="enablePaymentCustomization"
-              />
-              <button type="submit">Enable payment customization</button>
-            </Form>
-          )}
-        </div>
-      </s-section>
-
-      <s-section heading="Checkout validation activation">
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <p>
-            Product validation rules only block checkout after the checkout
-            validation Function is deployed and enabled for this store. Saving a
-            rule and publishing config alone will not activate checkout
-            blocking.
-          </p>
-          <div
-            style={{
-              display: "grid",
-              gap: "0.75rem",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            }}
-          >
-            <SummaryBox
-              label="Status"
-              value={validationStatus.isActive ? "Active" : "Inactive"}
-            />
-            <SummaryBox
-              label="Function"
-              value={validationStatus.validation?.shopifyFunction.title ?? "n/a"}
-            />
-            <SummaryBox
-              label="Block on failure"
-              value={
-                validationStatus.validation?.blockOnFailure ? "Enabled" : "No"
-              }
-            />
-          </div>
-          {"error" in validationStatus && validationStatus.error && (
-            <p>
-              <strong>Status error:</strong> {validationStatus.error}
-            </p>
-          )}
-          {validationStatus.validation && (
-            <p>
-              Validation ID: <strong>{validationStatus.validation.id}</strong>
-            </p>
-          )}
-          {!validationStatus.isActive && (
-            <Form method="post">
-              <input
-                type="hidden"
-                name="intent"
-                value="enableCheckoutValidation"
-              />
-              <button type="submit">Enable checkout validation</button>
-            </Form>
-          )}
-        </div>
-      </s-section>
-
-      <s-section heading="Current snapshot preview">
-        {!snapshot ? (
-          <s-paragraph>
-            No snapshot preview available. Add rules or pincode data and publish.
-          </s-paragraph>
-        ) : (
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <div
-              style={{
-                display: "grid",
-                gap: "0.75rem",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-              }}
-            >
-              <SummaryBox label="Schema version" value={snapshot.payload.v} />
-              <SummaryBox label="Records" value={snapshot.recordCount} />
-              <SummaryBox
-                label="Payload bytes"
-                value={formatBytes(snapshot.payloadSizeBytes)}
-              />
-              <SummaryBox
-                label="Single-field guard"
-                value={formatBytes(snapshot.maxBytes)}
-              />
-            </div>
-
-            <p>
-              Source batch: <strong>{snapshot.sourceFilename}</strong>
-            </p>
-
-            {snapshot.isTooLarge ? (
-              <p>
-                <strong>Publish blocked:</strong> payload size is too large for
-                the current single-metafield strategy. Use a future chunked
-                metafield or metaobject strategy for large datasets.
-              </p>
-            ) : (
-              <Form method="post">
-                <input type="hidden" name="intent" value="publish" />
-                <button type="submit">Publish current approved config</button>
-              </Form>
-            )}
+        {/* Action result banner */}
+        {actionData && (
+          <div style={{
+            marginTop: "14px",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            fontSize: "14px",
+            background: actionData.status === "success" ? "#e3f1df" : "#fce8e8",
+            border: `1px solid ${actionData.status === "success" ? "#aee9d1" : "#f5c0c0"}`,
+            color: actionData.status === "success" ? "#1a5c35" : "#8a1a1a",
+          }}>
+            <strong>{actionData.status === "success" ? "✓ Success" : "✗ Error"}:</strong>{" "}
+            {actionData.message}
           </div>
         )}
-      </s-section>
 
-      <s-section heading="Publish history">
-        {history.length === 0 ? (
-          <s-paragraph>No publish history exists yet.</s-paragraph>
-        ) : (
-          <div style={{ display: "grid", gap: "0.75rem" }}>
-            {history.map((entry) => (
-              <div
-                key={entry.id}
-                style={{
-                  border: "1px solid #d8ddd2",
-                  borderRadius: "8px",
-                  display: "grid",
-                  gap: "0.5rem",
-                  padding: "0.75rem",
-                }}
-              >
-                <strong>
-                  {entry.status} - {entry.sourceFilename || "stored snapshot"}
-                </strong>
-                <span>
-                  {entry.recordCount} records,{" "}
-                  {formatBytes(entry.payloadSizeBytes)} bytes, schema v
-                  {entry.schemaVersion}
-                </span>
-                {entry.message && <span>{entry.message}</span>}
-                {(entry.status === "published" ||
-                  entry.status === "republished") && (
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
+        {/* Publish CTA card */}
+        {snapshot && !snapshot.isTooLarge && (
+          <div style={{
+            marginTop: "16px",
+            background: "#f0faf4",
+            border: "1px solid #aee9d1",
+            borderRadius: "12px",
+            padding: "20px 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "16px",
+            flexWrap: "wrap",
+          }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: "15px", color: "#1a5c35" }}>
+                Ready to publish
+              </div>
+              <div style={{ fontSize: "13px", color: "#5c7a6a", marginTop: "2px" }}>
+                {formatBytes(snapshot.payloadSizeBytes)} bytes · {snapshot.recordCount} records · {snapshot.sourceFilename}
+              </div>
+            </div>
+            <Form method="post">
+              <input type="hidden" name="intent" value="publish" />
+              <button type="submit" style={{
+                background: "#1a7a4a", color: "#fff",
+                border: "none", borderRadius: "8px",
+                padding: "10px 22px", fontSize: "14px",
+                fontWeight: 600, cursor: "pointer",
+              }}>
+                Publish config →
+              </button>
+            </Form>
+          </div>
+        )}
+
+        {/* Functions status */}
+        <div style={{ marginTop: "20px" }}>
+          <h2 style={{ fontSize: "15px", fontWeight: 600, margin: "0 0 12px" }}>
+            Function activation status
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+            <FunctionCard
+              title="Delivery customization"
+              icon="🚚"
+              isActive={deliveryCustomizationStatus.isActive}
+              functionName={deliveryCustomizationStatus.deliveryCustomization?.shopifyFunction.title}
+              id={deliveryCustomizationStatus.deliveryCustomization?.id}
+              effectLabel="Checkout effect"
+              enableIntent="enableDeliveryCustomization"
+              enableLabel="Enable delivery customization"
+            />
+            <FunctionCard
+              title="Payment customization"
+              icon="💳"
+              isActive={paymentCustomizationStatus.isActive}
+              functionName={paymentCustomizationStatus.paymentCustomization?.shopifyFunction.title}
+              id={paymentCustomizationStatus.paymentCustomization?.id}
+              effectLabel="Checkout effect"
+              enableIntent="enablePaymentCustomization"
+              enableLabel="Enable payment customization"
+            />
+            <FunctionCard
+              title="Checkout validation"
+              icon="✅"
+              isActive={validationStatus.isActive}
+              functionName={validationStatus.validation?.shopifyFunction.title}
+              id={validationStatus.validation?.id}
+              effectLabel="Block on failure"
+              enableIntent="enableCheckoutValidation"
+              enableLabel="Enable checkout validation"
+            />
+          </div>
+        </div>
+
+        {/* Publish history */}
+        {history.length > 0 && (
+          <div style={{ marginTop: "24px" }}>
+            <h2 style={{ fontSize: "15px", fontWeight: 600, margin: "0 0 12px" }}>
+              Publish history
+            </h2>
+            <div style={{ display: "grid", gap: "8px" }}>
+              {history.map((entry) => (
+                <div key={entry.id} style={{
+                  background: "#fff",
+                  border: "1px solid #e3e3e3",
+                  borderRadius: "10px",
+                  padding: "14px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                      <span style={{
+                        fontSize: "11px", fontWeight: 600, padding: "2px 8px",
+                        borderRadius: "12px",
+                        background: entry.status === "published" || entry.status === "republished" ? "#e3f1df" : "#fff3e0",
+                        color: entry.status === "published" || entry.status === "republished" ? "#1a5c35" : "#7a4a00",
+                      }}>
+                        {entry.status}
+                      </span>
+                      <span style={{ fontSize: "13px", fontWeight: 500, color: "#1a1a1a" }}>
+                        {entry.sourceFilename || "stored snapshot"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#6d7175", marginTop: "4px" }}>
+                      {entry.recordCount} records · {formatBytes(entry.payloadSizeBytes)} bytes · schema v{entry.schemaVersion}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                    {(entry.status === "published" || entry.status === "republished") && (
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="republish" />
+                        <input type="hidden" name="snapshotId" value={entry.id} />
+                        <button type="submit" style={{
+                          background: "#f3f3f3", border: "1px solid #ddd",
+                          borderRadius: "6px", padding: "6px 12px",
+                          fontSize: "12px", cursor: "pointer", color: "#333",
+                        }}>
+                          Republish
+                        </button>
+                      </Form>
+                    )}
                     <Form method="post">
-                      <input type="hidden" name="intent" value="republish" />
+                      <input type="hidden" name="intent" value="deleteSnapshot" />
                       <input type="hidden" name="snapshotId" value={entry.id} />
-                      <button type="submit">Republish this snapshot</button>
-                    </Form>
-                    <Form method="post">
-                      <input
-                        type="hidden"
-                        name="intent"
-                        value="deleteSnapshot"
-                      />
-                      <input type="hidden" name="snapshotId" value={entry.id} />
-                      <button type="submit">Delete history</button>
+                      <button type="submit" style={{
+                        background: "#fff0f0", border: "1px solid #f5c0c0",
+                        borderRadius: "6px", padding: "6px 12px",
+                        fontSize: "12px", cursor: "pointer", color: "#c0392b",
+                      }}>
+                        Delete
+                      </button>
                     </Form>
                   </div>
-                )}
-                {entry.status !== "published" &&
-                  entry.status !== "republished" && (
-                    <Form method="post">
-                      <input
-                        type="hidden"
-                        name="intent"
-                        value="deleteSnapshot"
-                      />
-                      <input type="hidden" name="snapshotId" value={entry.id} />
-                      <button type="submit">Delete history</button>
-                    </Form>
-                  )}
-              </div>
-            ))}
+                </div>
+              ))}
+            </div>
           </div>
         )}
-      </s-section>
-    </s-page>
+      </div>
+    </div>
   );
 }
 
-function SummaryBox({
-  label,
-  value,
+function FunctionCard({
+  title, icon, isActive, functionName, id, effectLabel, enableIntent, enableLabel,
 }: {
-  label: string;
-  value: string | number;
+  title: string; icon: string; isActive: boolean;
+  functionName?: string; id?: string;
+  effectLabel: string; enableIntent: string; enableLabel: string;
 }) {
   return (
-    <div
-      style={{
-        border: "1px solid #d8ddd2",
-        borderRadius: "8px",
-        padding: "0.75rem",
-      }}
-    >
-      <strong style={{ display: "block", fontSize: "1.2rem" }}>{value}</strong>
-      <span>{label}</span>
+    <div style={{
+      background: "#fff",
+      border: `1px solid ${isActive ? "#aee9d1" : "#e3e3e3"}`,
+      borderRadius: "12px",
+      padding: "16px",
+      display: "flex", flexDirection: "column", gap: "8px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontSize: "18px" }}>{icon}</span>
+        <span style={{ fontWeight: 600, fontSize: "14px", color: "#1a1a1a" }}>{title}</span>
+        <span style={{
+          marginLeft: "auto", fontSize: "11px", fontWeight: 600,
+          padding: "2px 8px", borderRadius: "12px",
+          background: isActive ? "#e3f1df" : "#f5f5f5",
+          color: isActive ? "#1a5c35" : "#6d7175",
+        }}>
+          {isActive ? "Active" : "Inactive"}
+        </span>
+      </div>
+      {functionName && (
+        <div style={{ fontSize: "12px", color: "#6d7175" }}>
+          {functionName}
+        </div>
+      )}
+      <div style={{ fontSize: "12px", color: isActive ? "#1a5c35" : "#6d7175" }}>
+        {effectLabel}: <strong>{isActive ? "Enabled" : "Not enabled"}</strong>
+      </div>
+      {id && (
+        <div style={{ fontSize: "11px", color: "#aaa", wordBreak: "break-all" }}>
+          ID: {id}
+        </div>
+      )}
+      {!isActive && (
+        <Form method="post" style={{ marginTop: "4px" }}>
+          <input type="hidden" name="intent" value={enableIntent} />
+          <button type="submit" style={{
+            width: "100%", background: "#1a7a4a", color: "#fff",
+            border: "none", borderRadius: "6px",
+            padding: "8px 12px", fontSize: "12px",
+            fontWeight: 600, cursor: "pointer",
+          }}>
+            {enableLabel}
+          </button>
+        </Form>
+      )}
     </div>
   );
 }

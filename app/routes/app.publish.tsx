@@ -1,3 +1,4 @@
+import { useActionToast } from "../components/Toast";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -251,6 +252,7 @@ export default function PublishPage() {
     paymentCustomizationStatus,
   } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>() as ActionResult | undefined;
+  useActionToast(actionData);
 
   return (
     <div className="bsure-page">

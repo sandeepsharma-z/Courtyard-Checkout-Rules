@@ -1,3 +1,4 @@
+import { useActionToast } from "../components/Toast";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -71,6 +72,7 @@ export default function PincodeGroupsPage() {
   const { activeCount, approvedBatch, recentRecords } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useActionToast(actionData ? { status: "success", message: "Saved successfully." } : undefined);
 
   return (
     <div className="bsure-page">

@@ -1,3 +1,4 @@
+import { useActionToast } from "../components/Toast";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -39,6 +40,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function CheckoutSettingsPage() {
   const { settings } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useActionToast(actionData ? { status: "success", message: "Settings saved! Publish config for changes to take effect." } : undefined);
 
   return (
     <div className="bsure-page">

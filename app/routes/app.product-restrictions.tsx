@@ -1,3 +1,4 @@
+import { useActionToast } from "../components/Toast";
 import { useRef, useState } from "react";
 import type {
   ActionFunctionArgs,
@@ -70,6 +71,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function ProductRestrictionsPage() {
   const { pincodeOptions, rules } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
+  useActionToast(actionData ? { status: actionData.status as "success" | "error", message: actionData.message } : undefined);
   const enabledRulesWithoutMessage = rules.filter(
     (rule) => rule.enabled && !rule.validationMessage.trim(),
   );

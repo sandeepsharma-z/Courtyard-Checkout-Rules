@@ -2,6 +2,7 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { ToastContainer } from "../components/Toast";
 
 import { authenticate } from "../shopify.server";
 
@@ -22,6 +23,7 @@ export default function App() {
         <s-link href="/app/settings">Settings</s-link>
       </s-app-nav>
       <Outlet />
+      <ToastContainer />
     </AppProvider>
   );
 }

@@ -6,8 +6,23 @@ import {
   type PublishedConfigSnapshotPayload,
 } from "../types/published-config";
 import { getCheckoutRuleSettings } from "./checkout-settings.server";
+import { getPincodeGroupMap } from "./pincode-group-storage.server";
 
 const parseList = (value: string) => JSON.parse(value) as string[];
+
+// Rules may reference reusable pincode groups (ids stored in conditionsJson).
+// At publish time those group pincodes are merged into the rule's own pincode
+// list, so the checkout Functions keep receiving plain pincode lists.
+const parseGroupIds = (value: string): string[] => {
+  try {
+    const parsed = JSON.parse(value || "{}") as { groupIds?: unknown };
+    return Array.isArray(parsed?.groupIds)
+      ? parsed.groupIds.map((g) => String(g)).filter(Boolean)
+      : [];
+  } catch {
+    return [];
+  }
+};
 
 // Payment-hide rules store their pincode match mode ("has" | "not_has") inside
 // the generic conditionsJson bag, so no schema column is needed.
@@ -20,6 +35,18 @@ const parsePincodeMatchMode = (value: string): "has" | "not_has" => {
   }
 };
 
+// Product restrictions store their tag match mode ("has" | "not_has") in the
+// same conditionsJson bag. "not_has" blocks when the cart is MISSING the tag —
+// used to block a product in zones its reach tag does not cover.
+const parseProductTagMode = (value: string): "has" | "not_has" => {
+  try {
+    const parsed = JSON.parse(value || "{}") as { productTagMode?: string };
+    return parsed?.productTagMode === "not_has" ? "not_has" : "has";
+  } catch {
+    return "has";
+  }
+};
+
 const parsePincodeList = (value: string) => {
   const parsed = parseList(value);
   return Array.from(
@@ -27,8 +54,10 @@ const parsePincodeList = (value: string) => {
       parsed.flatMap((item) => {
         const text = String(item ?? "").trim();
         if (!text) return [];
-        const matches = text.match(/[1-9]\d{5}/g);
-        return matches?.length ? matches : [text];
+        return text
+          .split(/[,\r\n\s]+/)
+          .map((token) => token.trim())
+          .filter(Boolean);
       }),
     ),
   );
@@ -90,6 +119,21 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
     getCheckoutRuleSettings(),
   ]);
 
+  // Resolve a rule's effective pincodes: its own list plus every pincode from
+  // the groups it references. Deduped. Group pincodes may include prefixes
+  // (e.g. "400*") which the delivery Function already understands.
+  const groupMap = await getPincodeGroupMap();
+  const resolvePincodes = (pincodesJson: string, conditionsJson: string) => {
+    const own = parsePincodeList(pincodesJson);
+    const groupIds = parseGroupIds(conditionsJson);
+    if (groupIds.length === 0) return own;
+    const merged = new Set(own);
+    for (const gid of groupIds) {
+      for (const pc of groupMap.get(gid) ?? []) merged.add(String(pc).trim());
+    }
+    return Array.from(merged).filter(Boolean);
+  };
+
   const payload: PublishedConfigSnapshotPayload = {
     v: PUBLISHED_CONFIG_SCHEMA_VERSION,
     kind: "courtyard_checkout_rules.pincode_config",
@@ -121,7 +165,8 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         name: rule.name,
         priority: rule.priority,
         productTags: parseList(rule.productTagsJson),
-        pincodes: parsePincodeList(rule.pincodesJson),
+        productTagMode: parseProductTagMode(rule.conditionsJson),
+        pincodes: resolvePincodes(rule.pincodesJson, rule.conditionsJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         validationMessage: rule.validationMessage,
@@ -140,7 +185,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         methodMatchMode: rule.methodMatchMode,
         cutoffRuleSettingId: rule.cutoffRuleSettingId,
         productTags: parseList(rule.productTagsJson),
-        pincodes: parsePincodeList(rule.pincodesJson),
+        pincodes: resolvePincodes(rule.pincodesJson, rule.conditionsJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         notes: rule.notes,
@@ -158,7 +203,7 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         selectedShippingContains: rule.selectedShippingContains,
         pincodeMatchMode: parsePincodeMatchMode(rule.conditionsJson),
         productTags: parseList(rule.productTagsJson),
-        pincodes: parsePincodeList(rule.pincodesJson),
+        pincodes: resolvePincodes(rule.pincodesJson, rule.conditionsJson),
         areaGroups: parseList(rule.areaGroupsJson),
         deliveryAvailabilityText: rule.deliveryAvailabilityText,
         notes: rule.notes,

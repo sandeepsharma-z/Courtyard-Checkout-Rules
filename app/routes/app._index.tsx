@@ -143,6 +143,9 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="rules-actions">
+            <Link className="bsure-button secondary" to="/app/groups">
+              Pincode groups
+            </Link>
             <Link className="bsure-button" to="/app/product-restrictions">
               Create rule
             </Link>

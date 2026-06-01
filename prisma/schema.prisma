@@ -240,3 +240,16 @@ model PaymentHideRule {
   @@index([priority])
   @@index([paymentMethodMappingId])
 }
+
+// Reusable named set of pincodes. Rules reference groups by id (stored in the
+// rule's conditionsJson). At publish time a group's pincodes are merged into
+// the referencing rule's pincode list, so the checkout Functions stay unchanged
+// (they still receive plain pincode lists).
+model PincodeGroup {
+  id           String   @id @default(cuid())
+  name         String
+  pincodesJson String   @default("[]")
+  notes        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

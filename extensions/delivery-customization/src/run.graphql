@@ -6,6 +6,21 @@ query RunInput {
     timeAttrLegacy: attribute(key: "_courtyard_time") {
       value
     }
+    lines {
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            # Shopify Functions only expose tag presence for an explicit list.
+            # This list MUST stay in sync with READABLE_TAGS in run.js.
+            hasTags(tags: ["DNCR-cow-milk", "DNCR", "NT2", "Mum", "MT2", "Ind"]) {
+              tag
+              hasTag
+            }
+          }
+        }
+      }
+    }
     deliveryGroups {
       deliveryAddress {
         zip

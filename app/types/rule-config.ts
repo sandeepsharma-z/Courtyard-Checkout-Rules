@@ -24,6 +24,7 @@ export type PublishedProductRestrictionRule = {
   name: string;
   priority: number;
   productTags: string[];
+  productTagMode?: "has" | "not_has";
   pincodes: string[];
   areaGroups: string[];
   deliveryAvailabilityText: string;

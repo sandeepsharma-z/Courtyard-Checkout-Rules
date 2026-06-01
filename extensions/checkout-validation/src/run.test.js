@@ -257,7 +257,7 @@ describe("checkout validation function", () => {
     );
   });
 
-  test("returns no operations when product tag input is available but does not match", () => {
+  test("returns no operations when readable product tag input is available but does not match", () => {
     const config = {
       ...baseConfig,
       rules: {
@@ -265,7 +265,7 @@ describe("checkout validation function", () => {
           {
             priority: "10",
             pincodes: ["PINCODE_PLACEHOLDER"],
-            productTags: ["PRODUCT_TAG_PLACEHOLDER"],
+            productTags: ["DNCR"],
             validationMessage: "VALIDATION_MESSAGE_PLACEHOLDER",
           },
         ],
@@ -277,7 +277,80 @@ describe("checkout validation function", () => {
       {
         merchandise: {
           product: {
-            tags: ["OTHER_PRODUCT_TAG_PLACEHOLDER"],
+            hasTags: [{ tag: "DNCR", hasTag: false }],
+          },
+        },
+      },
+    ];
+
+    expect(run(input)).toEqual({ operations: [] });
+  });
+
+  test("not_has product-tag mode blocks when the readable tag is missing", () => {
+    const config = {
+      ...baseConfig,
+      rules: {
+        productRestrictions: [
+          {
+            priority: "10",
+            pincodes: ["PINCODE_PLACEHOLDER"],
+            productTags: ["DNCR"],
+            productTagMode: "not_has",
+            validationMessage: "VALIDATION_MESSAGE_PLACEHOLDER",
+          },
+        ],
+      },
+    };
+
+    const input = inputWithConfig(config);
+    input.cart.lines = [
+      {
+        merchandise: {
+          product: {
+            hasTags: [{ tag: "DNCR", hasTag: false }],
+          },
+        },
+      },
+    ];
+
+    expect(run(input)).toEqual({
+      operations: [
+        {
+          validationAdd: {
+            errors: [
+              {
+                message: "VALIDATION_MESSAGE_PLACEHOLDER",
+                target: "$.cart",
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+
+  test("not_has product-tag mode does not block when the readable tag is present", () => {
+    const config = {
+      ...baseConfig,
+      rules: {
+        productRestrictions: [
+          {
+            priority: "10",
+            pincodes: ["PINCODE_PLACEHOLDER"],
+            productTags: ["DNCR"],
+            productTagMode: "not_has",
+            validationMessage: "VALIDATION_MESSAGE_PLACEHOLDER",
+          },
+        ],
+      },
+    };
+
+    const input = inputWithConfig(config);
+    input.cart.lines = [
+      {
+        merchandise: {
+          product: {
+            hasTags: [{ tag: "DNCR", hasTag: true }],
           },
         },
       },

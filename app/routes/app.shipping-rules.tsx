@@ -9,6 +9,7 @@ import { Form, Link, redirect, useLoaderData, useSearchParams } from "react-rout
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import { getActivePincodeRuleOptions } from "../services/pincode-storage.server";
+import { listPincodeGroups } from "../services/pincode-group-storage.server";
 import {
   getRuleManagerData,
   handleRuleManagerAction,
@@ -47,13 +48,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const mode: Mode =
     url.searchParams.get("mode") === "rename" ? "rename" : "hide";
-  const [ruleData, pincodeOptions] = await Promise.all([
+  const [ruleData, pincodeOptions, groupRecords] = await Promise.all([
     getRuleManagerData(),
     getActivePincodeRuleOptions(),
+    listPincodeGroups(),
   ]);
 
   return {
     cutoffs: ruleData.cutoffRuleSettings,
+    groups: groupRecords.map((g) => ({ id: g.id, name: g.name })),
     hideRules: ruleData.shippingHideRules,
     mode,
     pincodeOptions,
@@ -72,7 +75,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ShippingRulesPage() {
-  const { cutoffs, hideRules, mode, pincodeOptions, renameRules } =
+  const { cutoffs, groups, hideRules, mode, pincodeOptions, renameRules } =
     useLoaderData<typeof loader>();
   const isRename = mode === "rename";
   const [searchParams, setSearchParams] = useSearchParams();
@@ -223,6 +226,7 @@ export default function ShippingRulesPage() {
               deliveryAvailabilityValues={
                 pincodeOptions.deliveryAvailabilityValues
               }
+              groups={groups}
               pincodeOptions={pincodeOptions.pincodes}
             />
           ) : (
@@ -232,6 +236,7 @@ export default function ShippingRulesPage() {
               deliveryAvailabilityValues={
                 pincodeOptions.deliveryAvailabilityValues
               }
+              groups={groups}
               pincodeOptions={pincodeOptions.pincodes}
             />
           )}
@@ -301,11 +306,13 @@ function ShippingRenameMultiForm({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
+  groups,
   pincodeOptions,
 }: {
   areaGroups: string[];
   cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
+  groups: { id: string; name: string }[];
   pincodeOptions: PincodeOption[];
 }) {
   const [blockIds, setBlockIds] = useState<number[]>([0]);
@@ -327,6 +334,7 @@ function ShippingRenameMultiForm({
             areaGroups={areaGroups}
             cutoffs={cutoffs}
             deliveryAvailabilityValues={deliveryAvailabilityValues}
+            groups={groups}
             idx={idx}
             onRemove={() => removeBlock(id)}
             pincodeOptions={pincodeOptions}
@@ -397,6 +405,7 @@ function RenameBlock({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
+  groups,
   idx,
   onRemove,
   pincodeOptions,
@@ -405,6 +414,7 @@ function RenameBlock({
   areaGroups: string[];
   cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
+  groups: { id: string; name: string }[];
   idx: number;
   onRemove: () => void;
   pincodeOptions: PincodeOption[];
@@ -463,6 +473,27 @@ function RenameBlock({
           </button>
         </div>
         <PincodeChips fieldName={`pincodes_${idx}`} options={pincodeOptions} />
+
+        {groups.length > 0 && (
+          <div style={{ marginTop: "8px" }}>
+            <span className="bsure-help">
+              Or pick pincode group(s) (Ctrl/Cmd-click for multiple):
+            </span>
+            <select
+              className="bsure-select"
+              multiple
+              name={`groupIds_${idx}`}
+              size={Math.min(groups.length, 4)}
+              style={{ width: "100%", marginTop: "4px" }}
+            >
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="bsure-mini-or">And</div>
 
@@ -610,11 +641,13 @@ function ShippingHideMultiForm({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
+  groups,
   pincodeOptions,
 }: {
   areaGroups: string[];
   cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
+  groups: { id: string; name: string }[];
   pincodeOptions: PincodeOption[];
 }) {
   const [blockIds, setBlockIds] = useState<number[]>([0]);
@@ -636,6 +669,7 @@ function ShippingHideMultiForm({
             areaGroups={areaGroups}
             cutoffs={cutoffs}
             deliveryAvailabilityValues={deliveryAvailabilityValues}
+            groups={groups}
             idx={idx}
             onRemove={() => removeBlock(id)}
             pincodeOptions={pincodeOptions}
@@ -706,6 +740,7 @@ function HideBlock({
   areaGroups,
   cutoffs,
   deliveryAvailabilityValues,
+  groups,
   idx,
   onRemove,
   pincodeOptions,
@@ -714,6 +749,7 @@ function HideBlock({
   areaGroups: string[];
   cutoffs: { id: string; name: string }[];
   deliveryAvailabilityValues: string[];
+  groups: { id: string; name: string }[];
   idx: number;
   onRemove: () => void;
   pincodeOptions: PincodeOption[];
@@ -768,6 +804,27 @@ function HideBlock({
           </button>
         </div>
         <PincodeChips fieldName={`pincodes_${idx}`} options={pincodeOptions} />
+
+        {groups.length > 0 && (
+          <div style={{ marginTop: "8px" }}>
+            <span className="bsure-help">
+              Or pick pincode group(s) (Ctrl/Cmd-click for multiple):
+            </span>
+            <select
+              className="bsure-select"
+              multiple
+              name={`groupIds_${idx}`}
+              size={Math.min(groups.length, 4)}
+              style={{ width: "100%", marginTop: "4px" }}
+            >
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="bsure-mini-or">And</div>
 

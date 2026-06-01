@@ -36,11 +36,23 @@ type ProductRestrictionRule = {
   enabled: boolean;
   priority: number;
   productTagsJson: string;
+  conditionsJson: string;
   pincodesJson: string;
   areaGroupsJson: string;
   deliveryAvailabilityText: string;
   validationMessage: string;
   notes: string;
+};
+
+const getProductTagMode = (conditionsJson: string) => {
+  try {
+    const parsed = JSON.parse(conditionsJson || "{}") as {
+      productTagMode?: string;
+    };
+    return parsed.productTagMode === "not_has" ? "not_has" : "has";
+  } catch {
+    return "has";
+  }
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -414,7 +426,10 @@ function WhenArea({
 
       <div className="bsure-cond-row">
         <ConditionFieldSelect defaultValue="productTags" />
-        <ConditionOperatorSelect defaultValue="any" />
+        <select className="bsure-select" name={`productTagMode_${blockIdx}`}>
+          <option value="has">Has any of these values</option>
+          <option value="not_has">Does not have any of these values</option>
+        </select>
         <button className="bsure-cond-del" disabled type="button">
           Delete
         </button>
@@ -741,6 +756,7 @@ function RuleItem({ item }: { item: ProductRestrictionRule }) {
   const pincodes = parseJsonList(item.pincodesJson);
   const tags = parseJsonList(item.productTagsJson);
   const areaGroups = parseJsonList(item.areaGroupsJson);
+  const productTagMode = getProductTagMode(item.conditionsJson);
 
   return (
     <article className="bsure-rule-item">
@@ -764,7 +780,14 @@ function RuleItem({ item }: { item: ProductRestrictionRule }) {
           )}
           {item.notes && <div className="bsure-rule-meta">{item.notes}</div>}
           <ChipRow items={pincodes} label="Pincodes" />
-          <ChipRow items={tags} label="Tags" />
+          <ChipRow
+            items={tags}
+            label={
+              productTagMode === "not_has"
+                ? "Tags required on product"
+                : "Tags"
+            }
+          />
         </div>
         <div className="bsure-actions">
           <button
@@ -838,6 +861,17 @@ function RuleItem({ item }: { item: ProductRestrictionRule }) {
               />
             </F>
             <F label="Product tags">
+              <select
+                className="bsure-select"
+                defaultValue={productTagMode}
+                name="productTagMode"
+                style={{ marginBottom: "8px", width: "100%" }}
+              >
+                <option value="has">Block when product has these tags</option>
+                <option value="not_has">
+                  Block when product does not have these tags
+                </option>
+              </select>
               <textarea
                 className="bsure-textarea"
                 defaultValue={tags.join(", ")}

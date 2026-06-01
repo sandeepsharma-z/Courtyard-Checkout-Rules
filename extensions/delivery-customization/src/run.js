@@ -5,6 +5,19 @@ const PUBLISHED_CONFIG_MAX_CHARS = 100000;
 const SUPPORTED_SCHEMA_VERSION = 2;
 const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
 
+// Product tags whose presence in the cart the Function can actually read.
+// MUST stay in sync with the hasTags(...) list in run.graphql. A rule that uses
+// a tag outside this list keeps its legacy behavior, so existing rules never
+// change.
+const READABLE_TAGS = ["DNCR-cow-milk", "DNCR", "NT2", "Mum", "MT2", "Ind"];
+
+// Tags that take OVER the cart: if any cart product carries one, only rules
+// scoped to that tag apply and plain (no-tag) zone rules are skipped. Used for
+// cow-milk, which must never show same-day even at a Delhi-NCR pincode where the
+// plain Near/Average rules would otherwise offer it. All other readable tags are
+// additive (they combine with the zone rules).
+const EXCLUSIVE_TAGS = ["DNCR-cow-milk"];
+
 /**
  * Applies published shipping hide / show (allowlist) / rename rules at checkout.
  * Lean single-pass implementation: keeps the function fast and its output small.
@@ -28,6 +41,9 @@ export function run(input) {
   const cartTime =
     normalize(input?.cart?.timeAttr?.value) ||
     normalize(input?.cart?.timeAttrLegacy?.value);
+  // Tags present on any product in the cart (only those listed in run.graphql
+  // are observable). Used to apply tag-scoped rules, e.g. cow-milk.
+  const cartTags = collectCartTags(input);
 
   for (const group of deliveryGroups) {
     const pincode = normalize(group?.deliveryAddress?.zip);
@@ -39,7 +55,7 @@ export function run(input) {
     // Unserviceable / blocked pincode: hide every delivery option so the
     // checkout offers no shipping (mirrors the product-validation block, where
     // the location shows a "not available" error).
-    if (pincodeBlocked(config, pincode, pincodeRecord, cartTime)) {
+    if (pincodeBlocked(config, pincode, pincodeRecord, cartTime, cartTags)) {
       for (const option of options) {
         const handle = normalize(option?.handle);
         if (handle) operations.push({ hide: { deliveryOptionHandle: handle } });
@@ -56,7 +72,16 @@ export function run(input) {
     let hasAllowlist = false;
     let ruleMatched = false;
     for (const rule of hideRules) {
-      if (!ruleMatchesContext(rule, pincode, pincodeRecord, config, cartTime))
+      if (
+        !ruleMatchesContext(
+          rule,
+          pincode,
+          pincodeRecord,
+          config,
+          cartTime,
+          cartTags,
+        )
+      )
         continue;
       ruleMatched = true;
       const methods = Array.isArray(rule.selectedShippingMethods)
@@ -156,11 +181,18 @@ function findPincodeRecord(config, pincode) {
  *      match. Product tags are NOT readable by Shopify Functions, so — exactly
  *      like the validation function — they do not narrow the match.
  */
-function pincodeBlocked(config, pincode, pincodeRecord, cartTime) {
+function pincodeBlocked(config, pincode, pincodeRecord, cartTime, cartTags) {
   if (!pincode) return false;
 
   const settings = config?.settings ?? {};
+  // "Block unknown pincodes" only makes sense when a known-pincode list exists.
+  // With zero records EVERY pincode would look "unknown" and get blocked, which
+  // is never the intent — so the guard is skipped when there are no records.
+  const hasRecords =
+    Array.isArray(config?.pincodeData?.records) &&
+    config.pincodeData.records.length > 0;
   if (
+    hasRecords &&
     settings.blockUnknownPincode === true &&
     !pincodeRecord &&
     normalize(settings.unknownPincodeMessage)
@@ -174,6 +206,9 @@ function pincodeBlocked(config, pincode, pincodeRecord, cartTime) {
   for (const rule of restrictions) {
     if (!normalize(rule.validationMessage)) continue;
     if (!cutoffAllows(rule, config, cartTime)) continue;
+    // Tag-scoped restriction (e.g. cow-milk) only blocks when the cart carries
+    // the tag. Restrictions without a readable tag keep blocking as before.
+    if (!tagConditionPasses(rule, cartTags, true)) continue;
     if (!restrictionLocationMatches(rule, pincode, pincodeRecord)) continue;
     return true;
   }
@@ -187,7 +222,11 @@ function pincodeBlocked(config, pincode, pincodeRecord, cartTime) {
  */
 function restrictionLocationMatches(rule, pincode, pincodeRecord) {
   const rulePincodes = expandPincodeValues(rule.pincodes);
-  if (rulePincodes.length > 0 && !rulePincodes.includes(pincode)) return false;
+  if (
+    rulePincodes.length > 0 &&
+    !rulePincodes.some((p) => pincodeMatchesPattern(pincode, p))
+  )
+    return false;
 
   const ruleAreaGroups = Array.isArray(rule.areaGroups) ? rule.areaGroups : [];
   if (ruleAreaGroups.length > 0) {
@@ -207,13 +246,24 @@ function restrictionLocationMatches(rule, pincode, pincodeRecord) {
 }
 
 /**
- * True when a rule's pincode / area / delivery-text / cutoff conditions match
- * this group. Rules with product-tag conditions are still skipped, since the
- * delivery function cannot evaluate them reliably.
+ * True when a rule's pincode / area / delivery-text / cutoff / product-tag
+ * conditions match this group.
+ *
+ * Tag handling is additive (see shippingRuleTagGate): plain pincode rules
+ * always apply, and tag rules apply on top when the cart carries the tag. Tag
+ * rules carry their own pincode/zone conditions so they only affect the zones
+ * they target.
  */
-function ruleMatchesContext(rule, pincode, pincodeRecord, config, cartTime) {
+function ruleMatchesContext(
+  rule,
+  pincode,
+  pincodeRecord,
+  config,
+  cartTime,
+  cartTags,
+) {
   if (!cutoffAllows(rule, config, cartTime)) return false;
-  if (Array.isArray(rule.productTags) && rule.productTags.length > 0) return false;
+  if (!shippingRuleTagGate(rule, cartTags)) return false;
   if (!pincodeMatches(rule, pincode)) return false;
   if (!areaGroupMatches(rule, pincodeRecord)) return false;
   if (!deliveryAvailabilityMatches(rule, pincodeRecord)) return false;
@@ -323,21 +373,64 @@ function optionMatchesText(option, text) {
 }
 
 function pincodeMatches(rule, pincode) {
-  const rulePincodes = expandPincodeValues(rule.pincodes);
-  return rulePincodes.length === 0 || rulePincodes.includes(pincode);
+  const patterns = expandPincodeValues(rule.pincodes);
+  if (patterns.length === 0) return true;
+  return patterns.some((p) => pincodeMatchesPattern(pincode, p));
 }
 
+/**
+ * Splits the rule's pincode entries into tokens. Entries can be exact 6-digit
+ * codes ("110016"), comma/space separated lists, prefixes ("400"), or wildcard
+ * patterns ("400*"). Prefixes let one rule cover a whole courier zone (e.g.
+ * "400*" = all Mumbai) without listing hundreds of zipcodes, keeping the
+ * published config under the 10KB function limit.
+ */
 function expandPincodeValues(value) {
   const rawValues = Array.isArray(value) ? value : [];
-  return [
-    ...new Set(
-      rawValues.flatMap((item) => {
-        const text = normalize(item);
-        if (!text) return [];
-        return text.match(/[1-9]\d{5}/g) ?? [];
-      }),
-    ),
-  ];
+  const out = [];
+  for (const item of rawValues) {
+    const text = normalize(item);
+    if (!text) continue;
+    // Fast path: a single token (no comma/space) is used as-is. Avoids running
+    // a split regex for every pincode entry (which blew the instruction limit).
+    if (text.indexOf(",") === -1 && text.indexOf(" ") === -1) {
+      out.push(text);
+    } else {
+      for (const token of text.split(/[\s,]+/)) {
+        if (token) out.push(token);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Matches a 6-digit pincode against an exact code ("110001"), a numeric prefix
+ * ("400" → all 400xxx), or a wildcard ("400*"). NO regex on the exact/prefix
+ * paths — those run for every pincode of every rule and regex there exhausted
+ * the Wasm instruction limit.
+ */
+function pincodeMatchesPattern(pincode, pattern) {
+  if (!pincode || !pattern) return false;
+  const star = pattern.indexOf("*") !== -1 || pattern.indexOf("?") !== -1;
+  if (!star) {
+    // Exact when same length, prefix when shorter — plain string ops, no regex.
+    if (pattern.length === pincode.length) return pattern === pincode;
+    if (pattern.length < pincode.length) return pincode.startsWith(pattern);
+    return false;
+  }
+  const regex =
+    "^" +
+    pattern
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*/g, "\\d*")
+      .replace(/\?/g, "\\d") +
+    "$";
+  try {
+    return new RegExp(regex).test(pincode);
+  } catch {
+    return false;
+  }
 }
 
 function areaGroupMatches(rule, pincodeRecord) {
@@ -351,6 +444,80 @@ function deliveryAvailabilityMatches(rule, pincodeRecord) {
   if (!text) return true;
   if (!pincodeRecord) return false;
   return normalize(pincodeRecord.da) === text;
+}
+
+/** Collects the readable product tags present on any line in the cart. */
+function collectCartTags(input) {
+  const tags = new Set();
+  const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
+  for (const line of lines) {
+    const hasTags = line?.merchandise?.product?.hasTags;
+    if (!Array.isArray(hasTags)) continue;
+    for (const entry of hasTags) {
+      if (entry?.hasTag === true) tags.add(normalize(entry.tag));
+    }
+  }
+  return tags;
+}
+
+/**
+ * Tag gate for shipping show/hide rules (see ruleMatchesContext). ADDITIVE:
+ * tag rules and plain (no-tag) rules combine instead of switching modes.
+ *
+ * - No tag condition -> always passes (so pincode-based rules like the
+ *   Delhi-NCR Near/Average/Far keep working even when cart products carry
+ *   tags). This is the key fix that stops tagged products from disabling the
+ *   existing zone rules.
+ * - Readable tag (READABLE_TAGS) -> passes only when the cart carries it.
+ * - Unreadable tag -> skipped (return false), as before.
+ *
+ * Tag rules are expected to also carry pincode/zone conditions, so they only
+ * match the zones they target and never union with the Delhi-NCR rules.
+ */
+function shippingRuleTagGate(rule, cartTags) {
+  const tags = cartTags instanceof Set ? cartTags : new Set();
+  const ruleTags = (Array.isArray(rule.productTags) ? rule.productTags : [])
+    .map(normalize)
+    .filter(Boolean);
+
+  // Exclusive mode: the cart carries a take-over tag (e.g. cow-milk). Only
+  // rules scoped to a present exclusive tag apply; everything else is skipped.
+  const cartExclusive = [...tags].filter((tag) => EXCLUSIVE_TAGS.includes(tag));
+  if (cartExclusive.length > 0) {
+    return ruleTags.some(
+      (tag) => EXCLUSIVE_TAGS.includes(tag) && tags.has(tag),
+    );
+  }
+
+  // Additive mode: plain zone rules always apply; tag rules apply when the
+  // cart carries the (readable) tag.
+  if (ruleTags.length === 0) return true;
+  const enforceable = ruleTags.filter((tag) => READABLE_TAGS.includes(tag));
+  if (enforceable.length === 0) return false;
+  return enforceable.some((tag) => tags.has(tag));
+}
+
+/**
+ * Evaluates a rule's product-tag condition for BLOCK paths (validation mirror).
+ *
+ * - No tag condition -> always passes.
+ * - Tags the Function can read (READABLE_TAGS) -> pass only when the cart
+ *   carries at least one of them.
+ * - Tags the Function cannot read -> fall back to `fallbackWhenUnreadable`,
+ *   which preserves the pre-tag behavior (block paths pass).
+ */
+function tagConditionPasses(rule, cartTags, fallbackWhenUnreadable) {
+  const ruleTags = (Array.isArray(rule.productTags) ? rule.productTags : [])
+    .map(normalize)
+    .filter(Boolean);
+  if (ruleTags.length === 0) return true;
+  const enforceable = ruleTags.filter((tag) => READABLE_TAGS.includes(tag));
+  if (enforceable.length === 0) return fallbackWhenUnreadable;
+  const tags = cartTags instanceof Set ? cartTags : new Set();
+  const has = enforceable.some((tag) => tags.has(tag));
+  // "not_has": condition is satisfied when the cart is MISSING the tag (used to
+  // block products in zones their reach tag does not cover).
+  return normalize(rule.productTagMode) === "not_has" ? !has : has;
 }
 
 function normalize(value) {

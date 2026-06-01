@@ -5,6 +5,12 @@ const PUBLISHED_CONFIG_MAX_CHARS = 100000;
 const SUPPORTED_SCHEMA_VERSION = 2;
 const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
 
+// Product tags whose presence in the cart the Function can actually read.
+// MUST stay in sync with the hasTags(...) list in run.graphql. A rule that uses
+// a tag outside this list keeps its legacy behavior (the tag condition is
+// ignored), so existing rules are never weakened.
+const READABLE_TAGS = ["DNCR-cow-milk", "DNCR", "NT2", "Mum", "MT2", "Ind"];
+
 /**
  * Blocks checkout when the customer's pincode matches a product restriction rule.
  *
@@ -50,7 +56,11 @@ export function run(input) {
     const pincodeRecord = findPincodeRecord(config, pincode);
     const unknownPincodeMessage = trim(config.settings?.unknownPincodeMessage);
 
+    const hasRecords =
+      Array.isArray(config.pincodeData?.records) &&
+      config.pincodeData.records.length > 0;
     if (
+      hasRecords &&
       config.settings?.blockUnknownPincode === true &&
       !pincodeRecord &&
       unknownPincodeMessage
@@ -124,10 +134,10 @@ function getCartProductTags(input) {
   const tags = new Set();
   const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
   for (const line of lines) {
-    const productTags = line?.merchandise?.product?.tags;
-    if (Array.isArray(productTags)) {
-      for (const tag of productTags) {
-        tags.add(trim(tag));
+    const hasTags = line?.merchandise?.product?.hasTags;
+    if (Array.isArray(hasTags)) {
+      for (const entry of hasTags) {
+        if (entry?.hasTag === true) tags.add(trim(entry.tag));
       }
     }
   }
@@ -179,10 +189,19 @@ function expandPincodeValues(value) {
 }
 
 function productTagsMatchRule(rule, cartTags) {
-  const ruleTags = Array.isArray(rule.productTags) ? rule.productTags : [];
+  const ruleTags = (Array.isArray(rule.productTags) ? rule.productTags : [])
+    .map(trim)
+    .filter(Boolean);
   if (ruleTags.length === 0) return true;
-  if (cartTags.size === 0) return true;
-  return ruleTags.map(trim).some((tag) => cartTags.has(tag));
+  // Enforce only tags the Function can read (READABLE_TAGS / run.graphql). For
+  // any other tag, keep the legacy behavior: ignore the condition so the rule
+  // still applies (blocking is never weakened by an unreadable tag).
+  const enforceable = ruleTags.filter((tag) => READABLE_TAGS.includes(tag));
+  if (enforceable.length === 0) return true;
+  const has = enforceable.some((tag) => cartTags.has(tag));
+  // "not_has": rule applies when the cart is MISSING the tag (blocks products
+  // in zones their reach tag does not cover).
+  return trim(rule.productTagMode) === "not_has" ? !has : has;
 }
 
 /**

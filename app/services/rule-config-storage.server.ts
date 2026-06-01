@@ -8,8 +8,14 @@ const splitList = (value: FormDataEntryValue | null) =>
 
 const splitPincodeList = (value: FormDataEntryValue | null) => {
   const text = String(value ?? "");
-  const matches = text.match(/[1-9]\d{5}/g);
-  return matches?.length ? Array.from(new Set(matches)) : splitList(value);
+  return Array.from(
+    new Set(
+      text
+        .split(/[,\r\n\s]+/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 };
 
 const getString = (formData: FormData, key: string) =>
@@ -33,6 +39,22 @@ const getListValues = (formData: FormData, key: string) =>
     .getAll(key)
     .map((value) => String(value ?? "").trim())
     .filter(Boolean);
+
+// Builds the rule's conditionsJson bag: optional product-tag match mode plus
+// any referenced pincode group ids. Both are resolved at publish time.
+const conditionsJsonWith = (
+  formData: FormData,
+  opts: { tagModeKey?: string; groupKey: string },
+) => {
+  const obj: { productTagMode?: string; groupIds?: string[] } = {};
+  if (opts.tagModeKey) {
+    obj.productTagMode =
+      getString(formData, opts.tagModeKey) === "not_has" ? "not_has" : "has";
+  }
+  const ids = getListValues(formData, opts.groupKey);
+  if (ids.length) obj.groupIds = ids;
+  return JSON.stringify(obj);
+};
 
 function assertProductRestrictionCanBeEnabled(input: {
   enabled: boolean;
@@ -117,6 +139,10 @@ export async function handleRuleManagerAction(formData: FormData) {
           enabled: formData.get("enabled") === "on",
           priority: getPriority(formData),
           productTagsJson: listJson(formData, "productTags"),
+          conditionsJson: conditionsJsonWith(formData, {
+            tagModeKey: "productTagMode",
+            groupKey: "groupIds",
+          }),
           pincodesJson: listJson(formData, "pincodes"),
           areaGroupsJson: listJson(formData, "areaGroups"),
           deliveryAvailabilityText: getString(
@@ -151,6 +177,10 @@ export async function handleRuleManagerAction(formData: FormData) {
             enabled: baseEnabled,
             priority: basePriority + i,
             productTagsJson: listJson(formData, `productTags_${i}`),
+            conditionsJson: conditionsJsonWith(formData, {
+              tagModeKey: `productTagMode_${i}`,
+              groupKey: `groupIds_${i}`,
+            }),
             pincodesJson: pincodes,
             areaGroupsJson: listJson(formData, `areaGroups_${i}`),
             deliveryAvailabilityText: getString(
@@ -240,6 +270,7 @@ function shippingRuleBaseData(formData: FormData) {
     productTagsJson: listJson(formData, "productTags"),
     pincodesJson: listJson(formData, "pincodes"),
     areaGroupsJson: listJson(formData, "areaGroups"),
+    conditionsJson: conditionsJsonWith(formData, { groupKey: "groupIds" }),
     deliveryAvailabilityText: getString(formData, "deliveryAvailabilityText"),
     notes: getString(formData, "notes"),
   };
@@ -299,6 +330,9 @@ async function createShippingHideRulesMulti(formData: FormData) {
         productTagsJson: listJson(formData, `productTags_${i}`),
         pincodesJson: pincodes,
         areaGroupsJson: listJson(formData, `areaGroups_${i}`),
+        conditionsJson: conditionsJsonWith(formData, {
+          groupKey: `groupIds_${i}`,
+        }),
         deliveryAvailabilityText: getString(
           formData,
           `deliveryAvailabilityText_${i}`,
@@ -342,6 +376,9 @@ async function createShippingRenameRulesMulti(formData: FormData) {
         productTagsJson: listJson(formData, `productTags_${i}`),
         pincodesJson: pincodes,
         areaGroupsJson: listJson(formData, `areaGroups_${i}`),
+        conditionsJson: conditionsJsonWith(formData, {
+          groupKey: `groupIds_${i}`,
+        }),
         deliveryAvailabilityText: getString(
           formData,
           `deliveryAvailabilityText_${i}`,
@@ -488,6 +525,10 @@ async function updateRule(kind: string, id: string, formData: FormData) {
           enabled: formData.get("enabled") === "on",
           priority: getPriority(formData),
           productTagsJson: listJson(formData, "productTags"),
+          conditionsJson: conditionsJsonWith(formData, {
+            tagModeKey: "productTagMode",
+            groupKey: "groupIds",
+          }),
           pincodesJson: listJson(formData, "pincodes"),
           areaGroupsJson: listJson(formData, "areaGroups"),
           deliveryAvailabilityText: getString(

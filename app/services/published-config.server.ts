@@ -5,7 +5,10 @@ import {
   type BuiltPublishedConfigSnapshot,
   type PublishedConfigSnapshotPayload,
 } from "../types/published-config";
-import { getCheckoutRuleSettings } from "./checkout-settings.server";
+import {
+  getCheckoutRuleSettings,
+  type CheckoutRuleSettings,
+} from "./checkout-settings.server";
 import { getPincodeGroupMap } from "./pincode-group-storage.server";
 
 const parseList = (value: string) => JSON.parse(value) as string[];
@@ -148,6 +151,56 @@ const cutoffActiveNow = (
     : now < cutoff;
 };
 
+// IST calendar date ("YYYY-MM-DD") and day-of-week (0=Sun) for a given instant.
+const istYmdAndDow = (date: Date): { ymd: string; dow: number } => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const dowMap: Record<string, number> = {
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+  };
+  return {
+    ymd: `${get("year")}-${get("month")}-${get("day")}`,
+    dow: dowMap[get("weekday")] ?? -1,
+  };
+};
+
+const isHolidayOn = (
+  date: Date,
+  dates: Set<string>,
+  sundayOff: boolean,
+): boolean => {
+  const { ymd, dow } = istYmdAndDow(date);
+  if (sundayOff && dow === 0) return true;
+  return dates.has(ymd);
+};
+
+// Whether the holiday banner should show: enabled AND (today OR tomorrow, in
+// IST, is a holiday — a listed date or Sunday when the weekly-off is on).
+// Computed at publish/cron time so the checkout-ui extension just reads a flag.
+const computeHolidayBannerActive = (settings: CheckoutRuleSettings): boolean => {
+  if (!settings.holidayBannerEnabled) return false;
+  const dates = new Set(
+    settings.holidayDates
+      .split(/[\s,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  const sundayOff = settings.holidayWeeklyOffSunday;
+  if (dates.size === 0 && !sundayOff) return false;
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 86400000);
+  return (
+    isHolidayOn(now, dates, sundayOff) ||
+    isHolidayOn(tomorrow, dates, sundayOff)
+  );
+};
+
 const byteSize = (value: string) => Buffer.byteLength(value, "utf8");
 
 export function getSingleMetafieldMaxBytes() {
@@ -243,7 +296,19 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         da: record.deliveryAvailability,
       })),
     },
-    settings: checkoutSettings,
+    settings: {
+      blockUnknownPincode: checkoutSettings.blockUnknownPincode,
+      unknownPincodeMessage: checkoutSettings.unknownPincodeMessage,
+      autoRenameDeliveryOption: checkoutSettings.autoRenameDeliveryOption,
+      deliveryLabelSource: checkoutSettings.deliveryLabelSource,
+      hideOtherDeliveryOptions: checkoutSettings.hideOtherDeliveryOptions,
+      defaultShippingMethod: checkoutSettings.defaultShippingMethod,
+      // Holiday banner flag baked here (today/tomorrow is a holiday). The raw
+      // dates/weekly-off stay server-side; only the result + message ship.
+      holidayBannerEnabled: checkoutSettings.holidayBannerEnabled,
+      holidayBannerActive: computeHolidayBannerActive(checkoutSettings),
+      holidayMessage: checkoutSettings.holidayMessage,
+    },
     rules: {
       productRestrictions: productRestrictionRules.map((rule) => ({
         id: rule.id,

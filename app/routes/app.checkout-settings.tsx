@@ -33,6 +33,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     unknownPincodeMessage: String(
       formData.get("unknownPincodeMessage") ?? "",
     ).trim(),
+    holidayBannerEnabled: formData.get("holidayBannerEnabled") === "on",
+    holidayMessage: String(formData.get("holidayMessage") ?? "").trim(),
+    holidayDates: String(formData.get("holidayDates") ?? "").trim(),
+    holidayWeeklyOffSunday: formData.get("holidayWeeklyOffSunday") === "on",
   });
 
   return { saved: true };
@@ -146,6 +150,61 @@ export default function CheckoutSettingsPage() {
               defaultValue={settings.unknownPincodeMessage}
               placeholder="Message shown to the customer"
             />
+          </section>
+
+          <section style={cardStyle}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+              <span style={{ fontSize: "18px" }}>📅</span>
+              <h2 style={headingStyle}>Holiday delivery banner</h2>
+            </div>
+            <p style={descStyle}>
+              Shows a message at checkout when today or tomorrow is a holiday
+              (so customers know delivery may take an extra business day). Needs
+              the &quot;Holiday delivery notice&quot; block added once in the
+              checkout editor.
+            </p>
+            <label style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              fontSize: "14px", color: "#1a1a1a", marginBottom: "12px", cursor: "pointer",
+            }}>
+              <input
+                defaultChecked={settings.holidayBannerEnabled}
+                name="holidayBannerEnabled"
+                type="checkbox"
+                style={{ width: "16px", height: "16px" }}
+              />
+              Enable holiday banner
+            </label>
+            <span style={{ display: "block", fontSize: "13px", color: "#1a1a1a", fontWeight: 600 }}>
+              Message (English)
+            </span>
+            <input
+              style={{ ...inputStyle, marginTop: "4px", marginBottom: "12px" }}
+              name="holidayMessage"
+              defaultValue={settings.holidayMessage}
+              placeholder="Heads up: an upcoming holiday may add an extra business day to your delivery."
+            />
+            <span style={{ display: "block", fontSize: "13px", color: "#1a1a1a", fontWeight: 600 }}>
+              Holiday dates (YYYY-MM-DD, comma separated)
+            </span>
+            <textarea
+              style={{ ...inputStyle, marginTop: "4px", marginBottom: "12px", minHeight: "60px" }}
+              name="holidayDates"
+              defaultValue={settings.holidayDates}
+              placeholder="2026-08-15, 2026-10-20, 2026-11-01"
+            />
+            <label style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              fontSize: "14px", color: "#1a1a1a", cursor: "pointer",
+            }}>
+              <input
+                defaultChecked={settings.holidayWeeklyOffSunday}
+                name="holidayWeeklyOffSunday"
+                type="checkbox"
+                style={{ width: "16px", height: "16px" }}
+              />
+              Treat every Sunday as a holiday
+            </label>
           </section>
 
           <div>

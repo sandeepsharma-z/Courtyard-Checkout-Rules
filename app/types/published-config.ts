@@ -50,6 +50,12 @@ export type PublishedConfigSnapshotPayload = {
     deliveryLabelSource: "same_day" | "next_day" | "updated_first";
     hideOtherDeliveryOptions: boolean;
     defaultShippingMethod: string;
+    // Holiday banner, read by the checkout-ui "holiday-banner" extension.
+    // holidayBannerActive is computed at publish/cron time (today or tomorrow is
+    // a holiday); the extension just shows holidayMessage when active + enabled.
+    holidayBannerEnabled?: boolean;
+    holidayBannerActive?: boolean;
+    holidayMessage?: string;
   };
   rules?: PublishedRuleConfig;
 };

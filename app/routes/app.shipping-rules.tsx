@@ -1384,8 +1384,8 @@ function RuleItem({
             </select>
             <span className="bsure-help">
               Attach a cutoff only to time-limited rules (e.g. hide Same Day
-              after 3:30). Keep "No cutoff condition" for always-on rules like
-              "only show [Local]".
+              after 3:30). Keep &quot;No cutoff condition&quot; for always-on
+              rules like &quot;only show [Local]&quot;.
             </span>
           </F>
 

@@ -2,5 +2,10 @@
   "crons": [
     { "path": "/api/cron/republish", "schedule": "0 10 * * *" },
     { "path": "/api/cron/republish", "schedule": "30 18 * * *" }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "dependabot/**": false
+    }
+  }
 }

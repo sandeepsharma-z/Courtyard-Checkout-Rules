@@ -272,6 +272,7 @@ export default function ShippingRulesPage() {
           </div>
 
           <ConfiguredRules
+            cutoffs={cutoffs}
             groups={groups}
             hideRules={hideRules}
             renameRules={renameRules}
@@ -974,10 +975,12 @@ function HideBlock({
 
 
 function ConfiguredRules({
+  cutoffs,
   groups,
   hideRules,
   renameRules,
 }: {
+  cutoffs: { id: string; name: string }[];
   groups: { id: string; name: string }[];
   hideRules: ShippingRule[];
   renameRules: ShippingRenameRule[];
@@ -996,6 +999,7 @@ function ConfiguredRules({
       <div className="bsure-rule-list">
         {hideRules.map((item) => (
           <RuleItem
+            cutoffs={cutoffs}
             groups={groups}
             item={item}
             key={item.id}
@@ -1005,6 +1009,7 @@ function ConfiguredRules({
         ))}
         {renameRules.map((item) => (
           <RuleItem
+            cutoffs={cutoffs}
             groups={groups}
             item={item}
             key={item.id}
@@ -1186,12 +1191,14 @@ function PincodeChips({
 }
 
 function RuleItem({
+  cutoffs,
   groups,
   item,
   kind,
   newLabel,
   type,
 }: {
+  cutoffs: { id: string; name: string }[];
   groups: { id: string; name: string }[];
   item: ShippingRule;
   kind: string;
@@ -1359,22 +1366,28 @@ function RuleItem({
             />
             <label htmlFor={`enabled-${item.id}`}>Enabled</label>
           </div>
-          {isRename ? (
-            <>
-              <input name="newLabel" type="hidden" value={newLabel ?? ""} />
-              <input
-                name="cutoffRuleSettingId"
-                type="hidden"
-                value={item.cutoffRuleSettingId}
-              />
-            </>
-          ) : (
-            <input
-              name="cutoffRuleSettingId"
-              type="hidden"
-              value={item.cutoffRuleSettingId}
-            />
+          {isRename && (
+            <input name="newLabel" type="hidden" value={newLabel ?? ""} />
           )}
+          <F label="Cutoff condition" style={{ marginTop: "10px" }}>
+            <select
+              className="bsure-select"
+              defaultValue={item.cutoffRuleSettingId || ""}
+              name="cutoffRuleSettingId"
+            >
+              <option value="">No cutoff condition</option>
+              {cutoffs.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <span className="bsure-help">
+              Attach a cutoff only to time-limited rules (e.g. hide Same Day
+              after 3:30). Keep "No cutoff condition" for always-on rules like
+              "only show [Local]".
+            </span>
+          </F>
 
           {/* Editable shipping methods */}
           <div className="bsure-then-card" style={{ marginTop: "10px" }}>

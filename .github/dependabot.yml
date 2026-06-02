@@ -23,6 +23,16 @@ updates:
       semver-minor-days: 14
       semver-patch-days: 14
 
+    # Prisma 7 breaks the @shopify/shopify-app-session-storage-prisma peer
+    # dependency (it requires @prisma/client ^6). Block major Prisma bumps so
+    # Dependabot stops opening PRs that fail to install. Minor/patch within 6.x
+    # are still allowed.
+    ignore:
+      - dependency-name: "@prisma/client"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "prisma"
+        update-types: ["version-update:semver-major"]
+
     groups:
 
       # Group together PRs of dependant packages

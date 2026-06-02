@@ -70,7 +70,6 @@ export function run(input) {
     const showMatchers = [];
     const hideMatchers = [];
     let hasAllowlist = false;
-    let ruleMatched = false;
     for (const rule of hideRules) {
       if (
         !ruleMatchesContext(
@@ -83,7 +82,6 @@ export function run(input) {
         )
       )
         continue;
-      ruleMatched = true;
       const methods = Array.isArray(rule.selectedShippingMethods)
         ? rule.selectedShippingMethods
         : [];
@@ -95,19 +93,17 @@ export function run(input) {
       }
     }
 
-    // No rule covers this pincode: if an admin default shipping method is set,
-    // show only the option(s) matching it and hide the rest. Empty default =
-    // no change (every option shows).
+    // No SHOW (zone) rule covers this pincode: fall back to the admin default
+    // shipping method by treating it as the allowlist, so only it shows. Any
+    // hide rules (e.g. the time-of-day cutoff, which targets every pincode via
+    // an empty pincode list) still apply on top. Keying off hasAllowlist — not
+    // "did ANY rule match" — is essential: a global hide rule alone must NOT
+    // suppress this fallback, otherwise unmatched pincodes show every option.
+    // Empty default = no allowlist = every option shows.
     const defaultMethod = normalize(config?.settings?.defaultShippingMethod);
-    if (!ruleMatched && defaultMethod) {
-      for (const option of options) {
-        const handle = normalize(option?.handle);
-        if (!handle) continue;
-        if (!optionMatchesText(option, defaultMethod)) {
-          operations.push({ hide: { deliveryOptionHandle: handle } });
-        }
-      }
-      continue;
+    if (!hasAllowlist && defaultMethod) {
+      hasAllowlist = true;
+      showMatchers.push({ operator: "contains", value: defaultMethod });
     }
 
     for (const option of options) {
@@ -367,18 +363,6 @@ function entryMatchesOption(entry, option) {
     default:
       return candidates.some((c) => c === value);
   }
-}
-
-/** True when any of the option's identifiers contains the given text (ci). */
-function optionMatchesText(option, text) {
-  const needle = text.toLowerCase();
-  if (!needle) return false;
-  const candidates = [
-    normalize(option?.title),
-    normalize(option?.code),
-    normalize(option?.handle),
-  ];
-  return candidates.some((candidate) => candidate.toLowerCase().includes(needle));
 }
 
 function pincodeMatches(rule, pincode) {

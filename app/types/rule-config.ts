@@ -16,6 +16,11 @@ export type PublishedCutoffSetting = {
   timeValue: string;
   timezone: string;
   matchMode: string;
+  // Whether the shop-local clock currently satisfies this cutoff. Baked at
+  // publish time (and refreshed by the scheduled cron) so the delivery Function
+  // can apply the cutoff on every checkout path — including "Buy it now" and
+  // Shop Pay — without depending on a cart attribute that express checkouts skip.
+  activeNow?: boolean | null;
   notes: string;
 };
 

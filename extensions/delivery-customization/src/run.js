@@ -288,6 +288,15 @@ function cutoffAllows(rule, config, cartTime) {
   const setting = settings.find((entry) => normalize(entry?.id) === cutoffId);
   if (!setting) return false;
 
+  // Server-baked active state: the publish step (and the periodic cron) compute
+  // whether the shop-local clock currently satisfies this cutoff and store it as
+  // `activeNow`. Preferred because it works on EVERY checkout path — cart, "Buy
+  // it now", Shop Pay — whereas the cart-time embed below is skipped by express
+  // checkouts that bypass the cart.
+  if (typeof setting.activeNow === "boolean") {
+    return setting.activeNow;
+  }
+
   const cartMinutes = parseTimeToMinutes(cartTime);
   if (cartMinutes === null) return false;
 

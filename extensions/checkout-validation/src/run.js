@@ -222,6 +222,12 @@ function cutoffAllows(rule, config, cartTime) {
   const setting = settings.find((entry) => trim(entry?.id) === cutoffId);
   if (!setting) return false;
 
+  // Server-baked active state (see publish step). Works on every checkout path,
+  // unlike the cart-time embed which express checkouts skip.
+  if (typeof setting.activeNow === "boolean") {
+    return setting.activeNow;
+  }
+
   const cartMinutes = parseTimeToMinutes(cartTime);
   if (cartMinutes === null) return false;
 

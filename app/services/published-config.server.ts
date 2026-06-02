@@ -92,6 +92,62 @@ const compressPincodeList = (pincodes: string[]): string[] => {
   return out;
 };
 
+// Shop-local (IST) minutes since midnight. Used to bake each cutoff's current
+// active state into the published config so the delivery Function does not need
+// the cart's clock (which express checkouts like "Buy it now" never carry).
+const shopNowMinutesIST = (): number | null => {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date());
+    const hour = Number(parts.find((p) => p.type === "hour")?.value);
+    const minute = Number(parts.find((p) => p.type === "minute")?.value);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+    return hour * 60 + minute;
+  } catch {
+    return null;
+  }
+};
+
+// Parses a cutoff "timeValue" ("HH:MM" 24h or "hh:MM AM/PM") into minutes.
+const cutoffTimeToMinutes = (value: string): number | null => {
+  const text = String(value ?? "").trim();
+  const m12 = /^(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/.exec(text);
+  if (m12) {
+    let hour = Number(m12[1]);
+    const minute = Number(m12[2]);
+    if (hour < 1 || hour > 12 || minute > 59) return null;
+    if (hour === 12) hour = 0;
+    if (m12[3].toLowerCase() === "pm") hour += 12;
+    return hour * 60 + minute;
+  }
+  const m24 = /^(\d{1,2}):(\d{2})$/.exec(text);
+  if (m24) {
+    const hour = Number(m24[1]);
+    const minute = Number(m24[2]);
+    if (hour > 23 || minute > 59) return null;
+    return hour * 60 + minute;
+  }
+  return null;
+};
+
+// True/false when the shop-local clock satisfies the cutoff; null when it can't
+// be evaluated (the Function then falls back to the cart-time embed, if any).
+const cutoffActiveNow = (
+  timeValue: string,
+  matchMode: string,
+): boolean | null => {
+  const now = shopNowMinutesIST();
+  const cutoff = cutoffTimeToMinutes(timeValue);
+  if (now === null || cutoff === null) return null;
+  return String(matchMode).trim().toLowerCase() === "after"
+    ? now >= cutoff
+    : now < cutoff;
+};
+
 const byteSize = (value: string) => Buffer.byteLength(value, "utf8");
 
 export function getSingleMetafieldMaxBytes() {
@@ -244,6 +300,10 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         timeValue: setting.timeValue,
         timezone: setting.timezone,
         matchMode: setting.matchMode,
+        // Baked here from the shop-local clock; the cron re-publishes twice a
+        // day so this stays current. Lets the cutoff work on every checkout
+        // path without a cart attribute.
+        activeNow: cutoffActiveNow(setting.timeValue, setting.matchMode),
         notes: setting.notes,
       })),
     },

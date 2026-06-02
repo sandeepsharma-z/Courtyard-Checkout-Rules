@@ -37,6 +37,7 @@ type ShippingRule = {
   productTagsJson: string;
   pincodesJson: string;
   areaGroupsJson: string;
+  conditionsJson: string;
   deliveryAvailabilityText: string;
   notes: string;
 };
@@ -271,6 +272,7 @@ export default function ShippingRulesPage() {
           </div>
 
           <ConfiguredRules
+            groups={groups}
             hideRules={hideRules}
             renameRules={renameRules}
           />
@@ -972,9 +974,11 @@ function HideBlock({
 
 
 function ConfiguredRules({
+  groups,
   hideRules,
   renameRules,
 }: {
+  groups: { id: string; name: string }[];
   hideRules: ShippingRule[];
   renameRules: ShippingRenameRule[];
 }) {
@@ -992,6 +996,7 @@ function ConfiguredRules({
       <div className="bsure-rule-list">
         {hideRules.map((item) => (
           <RuleItem
+            groups={groups}
             item={item}
             key={item.id}
             kind="shippingHide"
@@ -1000,6 +1005,7 @@ function ConfiguredRules({
         ))}
         {renameRules.map((item) => (
           <RuleItem
+            groups={groups}
             item={item}
             key={item.id}
             kind="shippingRename"
@@ -1180,11 +1186,13 @@ function PincodeChips({
 }
 
 function RuleItem({
+  groups,
   item,
   kind,
   newLabel,
   type,
 }: {
+  groups: { id: string; name: string }[];
   item: ShippingRule;
   kind: string;
   newLabel?: string;
@@ -1194,6 +1202,20 @@ function RuleItem({
   const pincodes = parseJsonList(item.pincodesJson);
   const productTags = parseJsonList(item.productTagsJson);
   const areaGroups = parseJsonList(item.areaGroupsJson);
+  // Current pincode-group ids live in the generic conditionsJson bag. Pre-select
+  // them so saving an edit does not wipe the rule's group link.
+  const currentGroupIds = (() => {
+    try {
+      const parsed = JSON.parse(item.conditionsJson || "{}") as {
+        groupIds?: unknown;
+      };
+      return Array.isArray(parsed?.groupIds)
+        ? parsed.groupIds.map((g) => String(g))
+        : [];
+    } catch {
+      return [];
+    }
+  })();
 
   const selectedMethods = (() => {
     try {
@@ -1461,6 +1483,28 @@ function RuleItem({
               </tbody>
             </table>
           </div>
+          {groups.length > 0 && (
+            <F label="Pincode groups" style={{ marginTop: "10px" }}>
+              <select
+                className="bsure-select"
+                defaultValue={currentGroupIds}
+                multiple
+                name="groupIds"
+                size={Math.min(groups.length, 4)}
+                style={{ width: "100%" }}
+              >
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))}
+              </select>
+              <span className="bsure-help">
+                Ctrl/Cmd-click for multiple. Leave none selected to use the
+                pincodes box below instead.
+              </span>
+            </F>
+          )}
           <div className="bsure-form-row" style={{ marginTop: "10px" }}>
             <F label="Pincodes">
               <textarea

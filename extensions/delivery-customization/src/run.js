@@ -414,10 +414,30 @@ function pincodeMatchesPattern(pincode, pattern) {
   if (!pincode || !pattern) return false;
   const star = pattern.indexOf("*") !== -1 || pattern.indexOf("?") !== -1;
   if (!star) {
+    // Range "560001-560066": inclusive numeric match. The published config
+    // compresses consecutive pincode runs into ranges so the metafield stays
+    // small (keeps the Function well under the Wasm instruction limit) WITHOUT
+    // over-matching — only the exact listed pincodes are covered, unlike a
+    // "560*" prefix which would also match unlisted 560xxx codes. Two integer
+    // comparisons, no regex.
+    const dash = pattern.indexOf("-");
+    if (dash > 0) {
+      const lo = Number(pattern.slice(0, dash));
+      const hi = Number(pattern.slice(dash + 1));
+      const p = Number(pincode);
+      return lo > 0 && hi > 0 && p >= lo && p <= hi;
+    }
     // Exact when same length, prefix when shorter — plain string ops, no regex.
     if (pattern.length === pincode.length) return pattern === pincode;
     if (pattern.length < pincode.length) return pincode.startsWith(pattern);
     return false;
+  }
+  // Trailing "*" only (e.g. "400*") = prefix match — plain startsWith, no regex.
+  if (
+    pattern.indexOf("?") === -1 &&
+    pattern.indexOf("*") === pattern.length - 1
+  ) {
+    return pincode.startsWith(pattern.slice(0, -1));
   }
   const regex =
     "^" +

@@ -63,6 +63,35 @@ const parsePincodeList = (value: string) => {
   );
 };
 
+// Compress a resolved pincode list into numeric ranges to shrink the published
+// metafield. Consecutive runs (n, n+1, …) collapse to "start-end"; the delivery
+// Function expands these back to an inclusive numeric range. Lossless — only
+// pincodes actually present are covered, so there is NO over-matching (unlike a
+// "560*" prefix, which would also match unlisted 560xxx codes). Non-numeric
+// entries (e.g. a user-typed "400*" prefix) pass through unchanged. Keeps the
+// config small enough to stay under the Function's Wasm instruction limit even
+// with the full all-India zone lists.
+const compressPincodeList = (pincodes: string[]): string[] => {
+  const seen = new Set<number>();
+  const passthrough: string[] = [];
+  for (const value of pincodes) {
+    const text = String(value ?? "").trim();
+    if (!text) continue;
+    if (/^\d+$/.test(text)) seen.add(Number(text));
+    else passthrough.push(text);
+  }
+  const numeric = Array.from(seen).sort((a, b) => a - b);
+  const out = [...passthrough];
+  let i = 0;
+  while (i < numeric.length) {
+    let j = i;
+    while (j + 1 < numeric.length && numeric[j + 1] === numeric[j] + 1) j++;
+    out.push(j > i ? `${numeric[i]}-${numeric[j]}` : String(numeric[i]));
+    i = j + 1;
+  }
+  return out;
+};
+
 const byteSize = (value: string) => Buffer.byteLength(value, "utf8");
 
 export function getSingleMetafieldMaxBytes() {
@@ -126,12 +155,12 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
   const resolvePincodes = (pincodesJson: string, conditionsJson: string) => {
     const own = parsePincodeList(pincodesJson);
     const groupIds = parseGroupIds(conditionsJson);
-    if (groupIds.length === 0) return own;
+    if (groupIds.length === 0) return compressPincodeList(own);
     const merged = new Set(own);
     for (const gid of groupIds) {
       for (const pc of groupMap.get(gid) ?? []) merged.add(String(pc).trim());
     }
-    return Array.from(merged).filter(Boolean);
+    return compressPincodeList(Array.from(merged).filter(Boolean));
   };
 
   const payload: PublishedConfigSnapshotPayload = {

@@ -1,0 +1,14 @@
+api_version = "2025-07"
+
+[[extensions]]
+name = "Holiday delivery notice"
+handle = "holiday-banner"
+type = "ui_extension"
+
+  [[extensions.targeting]]
+  module = "./src/Checkout.jsx"
+  target = "purchase.checkout.delivery-address.render-after"
+
+  [[extensions.metafields]]
+  namespace = "courtyard_checkout_rules"
+  key = "published_config"

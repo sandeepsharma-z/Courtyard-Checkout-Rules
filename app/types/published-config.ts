@@ -43,6 +43,11 @@ export type PublishedConfigSnapshotPayload = {
   pincodeData: {
     records: PublishedPincodeRecord[];
   };
+  // Product-tag reach zones: tag -> serviceable pincodes (compressed ranges).
+  // Built from the pincode groups whose name maps to a reach tag (NT2, Mum,
+  // MT2, DNCR). A tagged product is orderable only within its tags' zones; the
+  // delivery Function blocks every other pincode.
+  tagZones?: Record<string, string[]>;
   settings?: {
     blockUnknownPincode: boolean;
     unknownPincodeMessage: string;

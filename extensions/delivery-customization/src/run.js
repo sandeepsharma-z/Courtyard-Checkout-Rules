@@ -9,7 +9,34 @@ const SUPPORTED_CONFIG_KIND = "courtyard_checkout_rules.pincode_config";
 // MUST stay in sync with the hasTags(...) list in run.graphql. A rule that uses
 // a tag outside this list keeps its legacy behavior, so existing rules never
 // change.
-const READABLE_TAGS = ["DNCR-cow-milk", "DNCR", "NT2", "Mum", "MT2", "Ind"];
+//
+// Shopify Functions can only test EXACT tag strings, so every spelling a product
+// might carry has to be listed. Merchants tag either with single zone tags
+// ("NT2") OR a combined "+"-joined tag ("NT2+Mum+MT2"); collectCartTags() splits
+// the combined form back into its parts. Combined entries are listed in the
+// canonical order DNCR, NT2, Mum, MT2 — products must use that order (or single
+// tags). "Ind" / "DNCR-cow-milk" are never combined.
+const READABLE_TAGS = [
+  "DNCR-cow-milk",
+  "Ind",
+  // singles
+  "DNCR",
+  "NT2",
+  "Mum",
+  "MT2",
+  // combined (canonical order: DNCR, NT2, Mum, MT2)
+  "DNCR+NT2",
+  "DNCR+Mum",
+  "DNCR+MT2",
+  "NT2+Mum",
+  "NT2+MT2",
+  "Mum+MT2",
+  "DNCR+NT2+Mum",
+  "DNCR+NT2+MT2",
+  "DNCR+Mum+MT2",
+  "NT2+Mum+MT2",
+  "DNCR+NT2+Mum+MT2",
+];
 
 // Tags that take OVER the cart: if any cart product carries one, only rules
 // scoped to that tag apply and plain (no-tag) zone rules are skipped. Used for
@@ -17,6 +44,15 @@ const READABLE_TAGS = ["DNCR-cow-milk", "DNCR", "NT2", "Mum", "MT2", "Ind"];
 // plain Near/Average rules would otherwise offer it. All other readable tags are
 // additive (they combine with the zone rules).
 const EXCLUSIVE_TAGS = ["DNCR-cow-milk"];
+
+// Reach tags: a product carrying one of these only ships to that tag's named
+// zones. When the cart is so tagged and the pincode falls outside every zone a
+// SHOW rule covers, NO shipping is offered (block) instead of the admin default
+// — the product physically cannot reach there. "Ind" means ships all over India
+// and therefore overrides the block (see cartIsZoneRestricted). Kept in sync
+// with READABLE_TAGS / run.graphql; same documented platform-tag exception.
+const ZONE_REACH_TAGS = ["DNCR", "NT2", "Mum", "MT2"];
+const SHIP_EVERYWHERE_TAGS = ["Ind"];
 
 /**
  * Applies published shipping hide / show (allowlist) / rename rules at checkout.
@@ -61,6 +97,25 @@ export function run(input) {
         if (handle) operations.push({ hide: { deliveryOptionHandle: handle } });
       }
       continue;
+    }
+
+    // Product-tag reach gate. A cart carrying a reach tag (NT2/Mum/MT2/DNCR)
+    // only ships within its tags' published zones (config.tagZones). If the
+    // pincode is outside EVERY one of the cart's tag zones, offer nothing
+    // (block) — done here, before the show/hide rules, so it holds even where a
+    // "show" rule would otherwise reveal a method. Inside a tag zone the cart
+    // falls through to the normal rules (which pick the in-zone method). "Ind"
+    // / untagged carts are unaffected (cartIsZoneRestricted is false).
+    if (pincode && cartIsZoneRestricted(cartTags)) {
+      const allowed = collectAllowedZonePincodes(config, cartTags);
+      if (!allowed.some((p) => pincodeMatchesPattern(pincode, p))) {
+        for (const option of options) {
+          const handle = normalize(option?.handle);
+          if (handle)
+            operations.push({ hide: { deliveryOptionHandle: handle } });
+        }
+        continue;
+      }
     }
 
     const hideRules = Array.isArray(config.rules?.shippingHideRules)
@@ -459,7 +514,12 @@ function deliveryAvailabilityMatches(rule, pincodeRecord) {
   return normalize(pincodeRecord.da) === text;
 }
 
-/** Collects the readable product tags present on any line in the cart. */
+/**
+ * Collects the readable product tags present on any line in the cart. A combined
+ * "+"-joined tag (e.g. "NT2+Mum+MT2") is split into its parts so the rest of the
+ * Function only ever deals with single tags — a product tagged "NT2+Mum+MT2" is
+ * treated exactly like one tagged with separate "NT2", "Mum", "MT2" tags.
+ */
 function collectCartTags(input) {
   const tags = new Set();
   const lines = Array.isArray(input?.cart?.lines) ? input.cart.lines : [];
@@ -467,7 +527,17 @@ function collectCartTags(input) {
     const hasTags = line?.merchandise?.product?.hasTags;
     if (!Array.isArray(hasTags)) continue;
     for (const entry of hasTags) {
-      if (entry?.hasTag === true) tags.add(normalize(entry.tag));
+      if (entry?.hasTag !== true) continue;
+      const tag = normalize(entry.tag);
+      if (!tag) continue;
+      if (tag.indexOf("+") === -1) {
+        tags.add(tag);
+      } else {
+        for (const part of tag.split("+")) {
+          const p = part.trim();
+          if (p) tags.add(p);
+        }
+      }
     }
   }
   return tags;
@@ -531,6 +601,43 @@ function tagConditionPasses(rule, cartTags, fallbackWhenUnreadable) {
   // "not_has": condition is satisfied when the cart is MISSING the tag (used to
   // block products in zones their reach tag does not cover).
   return normalize(rule.productTagMode) === "not_has" ? !has : has;
+}
+
+/**
+ * True when the cart should be restricted to its reach zones. A reach tag
+ * (NT2/Mum/MT2) means the product only ships to that tag's named zones, so when
+ * no SHOW rule covers the pincode it must be blocked rather than defaulted. An
+ * "Ind" tag (ships all over India) takes priority and cancels the restriction.
+ */
+function cartIsZoneRestricted(cartTags) {
+  const tags = cartTags instanceof Set ? cartTags : new Set();
+  if (SHIP_EVERYWHERE_TAGS.some((tag) => tags.has(tag))) return false;
+  return ZONE_REACH_TAGS.some((tag) => tags.has(tag));
+}
+
+/**
+ * Pincodes a zone-restricted cart may ship to: the union of the published reach
+ * zones (config.tagZones) for every reach tag the cart carries. Entries may be
+ * exact codes or compressed ranges ("560001-560066"); callers match them with
+ * pincodeMatchesPattern. Empty when no zone is published for the cart's tags —
+ * which fails safe to a block (the product has no known serviceable area).
+ */
+function collectAllowedZonePincodes(config, cartTags) {
+  const tags = cartTags instanceof Set ? cartTags : new Set();
+  const zones =
+    config && config.tagZones && typeof config.tagZones === "object"
+      ? config.tagZones
+      : {};
+  const out = [];
+  for (const tag of ZONE_REACH_TAGS) {
+    if (!tags.has(tag)) continue;
+    const list = Array.isArray(zones[tag]) ? zones[tag] : [];
+    for (const p of list) {
+      const t = normalize(p);
+      if (t) out.push(t);
+    }
+  }
+  return out;
 }
 
 function normalize(value) {

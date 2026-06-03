@@ -12,8 +12,10 @@ query RunInput {
         ... on ProductVariant {
           product {
             # Shopify Functions only expose tag presence for an explicit list.
-            # This list MUST stay in sync with READABLE_TAGS in run.js.
-            hasTags(tags: ["DNCR-cow-milk", "DNCR", "NT2", "Mum", "MT2", "Ind"]) {
+            # This list MUST stay in sync with READABLE_TAGS in run.js. Combined
+            # "+"-joined tags are listed in canonical order (DNCR, NT2, Mum, MT2)
+            # and split back into parts by collectCartTags().
+            hasTags(tags: ["DNCR-cow-milk", "Ind", "DNCR", "NT2", "Mum", "MT2", "DNCR+NT2", "DNCR+Mum", "DNCR+MT2", "NT2+Mum", "NT2+MT2", "Mum+MT2", "DNCR+NT2+Mum", "DNCR+NT2+MT2", "DNCR+Mum+MT2", "NT2+Mum+MT2", "DNCR+NT2+Mum+MT2"]) {
               tag
               hasTag
             }

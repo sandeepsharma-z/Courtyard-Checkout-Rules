@@ -99,33 +99,23 @@ export function run(input) {
       continue;
     }
 
-    // Product-tag reach gate. A cart carrying a reach tag (NT2/Mum/MT2/DNCR)
-    // only ships within its tags' published zones (config.tagZones). If the
-    // pincode is outside EVERY one of the cart's tag zones, offer nothing
-    // (block) — done here, before the show/hide rules, so it holds even where a
-    // "show" rule would otherwise reveal a method. Inside a tag zone the cart
-    // falls through to the normal rules (which pick the in-zone method). "Ind"
-    // / untagged carts are unaffected (cartIsZoneRestricted is false).
-    if (pincode && cartIsZoneRestricted(cartTags)) {
-      const allowed = collectAllowedZonePincodes(config, cartTags);
-      if (!allowed.some((p) => pincodeMatchesPattern(pincode, p))) {
-        for (const option of options) {
-          const handle = normalize(option?.handle);
-          if (handle)
-            operations.push({ hide: { deliveryOptionHandle: handle } });
-        }
-        continue;
-      }
-    }
-
     const hideRules = Array.isArray(config.rules?.shippingHideRules)
       ? config.rules.shippingHideRules
       : [];
-    // Build the allowlist (show) and blocklist (hide) matchers for this pincode.
+    // Build the allowlist (show) / blocklist (hide) matchers for this pincode,
+    // and note which reach zones (NT2/Mum/MT2/DNCR) cover it. A zone counts as
+    // "served" when a rule whose NAME maps to that reach tag lists this pincode.
+    // Reuses the rules already loaded here — no separate per-tag pincode data is
+    // published or scanned (that duplication blew the Wasm instruction limit).
     const showMatchers = [];
     const hideMatchers = [];
+    const servedReachTags = new Set();
     let hasAllowlist = false;
     for (const rule of hideRules) {
+      const reachTag = ruleReachTag(rule);
+      if (reachTag && ruleListsPincode(rule, pincode)) {
+        servedReachTags.add(reachTag);
+      }
       if (
         !ruleMatchesContext(
           rule,
@@ -145,6 +135,24 @@ export function run(input) {
         for (const m of methods) showMatchers.push(m);
       } else {
         for (const m of methods) hideMatchers.push(m);
+      }
+    }
+
+    // Product-tag reach gate. A cart carrying a reach tag (NT2/Mum/MT2/DNCR)
+    // only ships where a zone rule for one of THOSE tags lists the pincode. If
+    // none does, offer nothing (block) — holds even where a "show" rule would
+    // otherwise reveal a method. "Ind" / untagged carts are unaffected.
+    if (pincode && cartIsZoneRestricted(cartTags)) {
+      const served = ZONE_REACH_TAGS.some(
+        (tag) => cartTags.has(tag) && servedReachTags.has(tag),
+      );
+      if (!served) {
+        for (const option of options) {
+          const handle = normalize(option?.handle);
+          if (handle)
+            operations.push({ hide: { deliveryOptionHandle: handle } });
+        }
+        continue;
       }
     }
 
@@ -616,28 +624,39 @@ function cartIsZoneRestricted(cartTags) {
 }
 
 /**
- * Pincodes a zone-restricted cart may ship to: the union of the published reach
- * zones (config.tagZones) for every reach tag the cart carries. Entries may be
- * exact codes or compressed ranges ("560001-560066"); callers match them with
- * pincodeMatchesPattern. Empty when no zone is published for the cart's tags —
- * which fails safe to a block (the product has no known serviceable area).
+ * Maps a shipping rule to the reach tag whose zone it defines, by keyword in the
+ * rule NAME (NT2 / MT2 / Mumbai-or-Mum / and the Delhi-NCR set: DNCR / Delhi NCR
+ * / 90 Min / Far). Returns "" for rules that are not a reach zone (e.g. the
+ * cutoff rule). Lets the reach gate reuse the rules' own pincodes instead of a
+ * duplicated per-tag list, keeping the published config (and this Function)
+ * small enough to stay under the Wasm instruction limit.
  */
-function collectAllowedZonePincodes(config, cartTags) {
-  const tags = cartTags instanceof Set ? cartTags : new Set();
-  const zones =
-    config && config.tagZones && typeof config.tagZones === "object"
-      ? config.tagZones
-      : {};
-  const out = [];
-  for (const tag of ZONE_REACH_TAGS) {
-    if (!tags.has(tag)) continue;
-    const list = Array.isArray(zones[tag]) ? zones[tag] : [];
-    for (const p of list) {
-      const t = normalize(p);
-      if (t) out.push(t);
-    }
-  }
-  return out;
+function ruleReachTag(rule) {
+  const n = normalize(rule?.name).toLowerCase();
+  if (!n) return "";
+  if (n.indexOf("nt2") !== -1) return "NT2";
+  if (n.indexOf("mt2") !== -1) return "MT2";
+  if (n.indexOf("mumbai") !== -1 || n.indexOf("mum") !== -1) return "Mum";
+  if (
+    n.indexOf("dncr") !== -1 ||
+    n.indexOf("delhi ncr") !== -1 ||
+    n.indexOf("90 min") !== -1 ||
+    n.indexOf("far") !== -1
+  )
+    return "DNCR";
+  return "";
+}
+
+/**
+ * True when the rule has an explicit pincode list that covers this pincode.
+ * Unlike pincodeMatches, an EMPTY list returns false (no zone membership), so a
+ * pincode-less rule like the global cutoff never counts as serving a zone.
+ */
+function ruleListsPincode(rule, pincode) {
+  if (!pincode) return false;
+  const patterns = expandPincodeValues(rule?.pincodes);
+  if (patterns.length === 0) return false;
+  return patterns.some((p) => pincodeMatchesPattern(pincode, p));
 }
 
 function normalize(value) {

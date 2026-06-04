@@ -34,52 +34,6 @@ export const getPincodeGroupMap = async () => {
   return map;
 };
 
-// Maps a pincode group's NAME to the product reach tag it defines (case-
-// insensitive keyword match). NT2 / MT2 / Mumbai groups -> their tag. DNCR (the
-// whole Delhi NCR delivery area) = the explicit "DNCR" group PLUS the Delhi
-// delivery-speed groups "90 Min" / "Delhi NCR" / "Far", so a DNCR-tagged
-// product ships across all of Delhi NCR (each pincode still gets its own method
-// from the existing rules). "Blocked" maps to nothing. Order: zone keywords
-// before the broader Delhi-NCR set.
-export const reachTagForGroupName = (name: string): string | null => {
-  const n = String(name ?? "").toLowerCase();
-  if (n.includes("nt2")) return "NT2";
-  if (n.includes("mt2")) return "MT2";
-  if (n.includes("mumbai") || n.includes("mum")) return "Mum";
-  if (
-    n.includes("dncr") ||
-    n.includes("delhi ncr") ||
-    n.includes("90 min") ||
-    n.includes("far")
-  )
-    return "DNCR";
-  return null;
-};
-
-// Builds tag -> pincodes (one entry per reach tag) from the groups, merging the
-// pincodes of every group whose name maps to that tag. Used to publish the
-// per-tag reach zones the delivery Function enforces.
-export const getReachTagZones = async () => {
-  const groups = await prisma.pincodeGroup.findMany();
-  const zones: Record<string, string[]> = {};
-  for (const g of groups) {
-    const tag = reachTagForGroupName(g.name);
-    if (!tag) continue;
-    let pincodes: string[] = [];
-    try {
-      pincodes = JSON.parse(g.pincodesJson) as string[];
-    } catch {
-      pincodes = [];
-    }
-    if (!zones[tag]) zones[tag] = [];
-    for (const p of pincodes) {
-      const t = String(p ?? "").trim();
-      if (t) zones[tag].push(t);
-    }
-  }
-  return zones;
-};
-
 export const createPincodeGroup = (input: PincodeGroupInput) =>
   prisma.pincodeGroup.create({
     data: {

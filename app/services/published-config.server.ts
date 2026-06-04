@@ -9,10 +9,7 @@ import {
   getCheckoutRuleSettings,
   type CheckoutRuleSettings,
 } from "./checkout-settings.server";
-import {
-  getPincodeGroupMap,
-  getReachTagZones,
-} from "./pincode-group-storage.server";
+import { getPincodeGroupMap } from "./pincode-group-storage.server";
 
 const parseList = (value: string) => JSON.parse(value) as string[];
 
@@ -264,16 +261,6 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
   // the groups it references. Deduped. Group pincodes may include prefixes
   // (e.g. "400*") which the delivery Function already understands.
   const groupMap = await getPincodeGroupMap();
-
-  // Per-tag reach zones (tag -> serviceable pincodes), compressed to ranges so
-  // the metafield stays small. The delivery Function blocks a tagged product at
-  // any pincode outside its tags' zones.
-  const reachZones = await getReachTagZones();
-  const tagZones: Record<string, string[]> = {};
-  for (const [tag, pcs] of Object.entries(reachZones)) {
-    tagZones[tag] = compressPincodeList(pcs);
-  }
-
   const resolvePincodes = (pincodesJson: string, conditionsJson: string) => {
     const own = parsePincodeList(pincodesJson);
     const groupIds = parseGroupIds(conditionsJson);
@@ -309,7 +296,6 @@ export async function buildPublishedConfigSnapshot(): Promise<BuiltPublishedConf
         da: record.deliveryAvailability,
       })),
     },
-    tagZones,
     settings: {
       blockUnknownPincode: checkoutSettings.blockUnknownPincode,
       unknownPincodeMessage: checkoutSettings.unknownPincodeMessage,

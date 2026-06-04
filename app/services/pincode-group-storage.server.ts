@@ -34,18 +34,25 @@ export const getPincodeGroupMap = async () => {
   return map;
 };
 
-// Maps a pincode group's NAME to the product reach tag it defines. Convention:
-// name the group after the tag — "NT2", "Mumbai", "MT2", "DNCR" (case-
-// insensitive, keyword match). The Delhi delivery-SPEED groups (90 Min,
-// Delhi NCR, Far, Blocked) deliberately map to nothing, so they are never
-// treated as product-tag reach zones. Order matters: check the more specific
-// keywords before "mum"/"mumbai".
+// Maps a pincode group's NAME to the product reach tag it defines (case-
+// insensitive keyword match). NT2 / MT2 / Mumbai groups -> their tag. DNCR (the
+// whole Delhi NCR delivery area) = the explicit "DNCR" group PLUS the Delhi
+// delivery-speed groups "90 Min" / "Delhi NCR" / "Far", so a DNCR-tagged
+// product ships across all of Delhi NCR (each pincode still gets its own method
+// from the existing rules). "Blocked" maps to nothing. Order: zone keywords
+// before the broader Delhi-NCR set.
 export const reachTagForGroupName = (name: string): string | null => {
   const n = String(name ?? "").toLowerCase();
-  if (n.includes("dncr")) return "DNCR";
   if (n.includes("nt2")) return "NT2";
   if (n.includes("mt2")) return "MT2";
   if (n.includes("mumbai") || n.includes("mum")) return "Mum";
+  if (
+    n.includes("dncr") ||
+    n.includes("delhi ncr") ||
+    n.includes("90 min") ||
+    n.includes("far")
+  )
+    return "DNCR";
   return null;
 };
 

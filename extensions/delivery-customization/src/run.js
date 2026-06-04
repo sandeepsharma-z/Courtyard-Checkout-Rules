@@ -144,7 +144,9 @@ export function run(input) {
     // otherwise reveal a method. "Ind" / untagged carts are unaffected.
     if (pincode && cartIsZoneRestricted(cartTags)) {
       const served = ZONE_REACH_TAGS.some(
-        (tag) => cartTags.has(tag) && servedReachTags.has(tag),
+        (tag) =>
+          cartTags.has(tag) &&
+          (servedReachTags.has(tag) || pincodeInTagZone(config, tag, pincode)),
       );
       if (!served) {
         for (const option of options) {
@@ -657,6 +659,23 @@ function ruleListsPincode(rule, pincode) {
   const patterns = expandPincodeValues(rule?.pincodes);
   if (patterns.length === 0) return false;
   return patterns.some((p) => pincodeMatchesPattern(pincode, p));
+}
+
+/**
+ * True when the pincode is in the published reach zone for this tag
+ * (config.tagZones[tag]) — the tiny set from dedicated "(Product Tag)" groups,
+ * covering pincodes no shipping rule lists (e.g. the DNCR outer pincodes).
+ * ORed with the rule-derived served zones so those pincodes still serve.
+ */
+function pincodeInTagZone(config, tag, pincode) {
+  if (!pincode) return false;
+  const zones =
+    config && config.tagZones && typeof config.tagZones === "object"
+      ? config.tagZones
+      : null;
+  if (!zones) return false;
+  const list = Array.isArray(zones[tag]) ? zones[tag] : [];
+  return list.some((p) => pincodeMatchesPattern(pincode, normalize(p)));
 }
 
 function normalize(value) {

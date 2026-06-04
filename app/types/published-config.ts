@@ -43,6 +43,11 @@ export type PublishedConfigSnapshotPayload = {
   pincodeData: {
     records: PublishedPincodeRecord[];
   };
+  // Tiny per-tag reach zones from the dedicated "(Product Tag)" groups only —
+  // pincodes a reach-tagged product may ship to that NO shipping rule lists
+  // (e.g. the DNCR outer pincodes). The delivery Function ORs these with its
+  // rule-derived served zones. Kept small to avoid the Wasm instruction limit.
+  tagZones?: Record<string, string[]>;
   settings?: {
     blockUnknownPincode: boolean;
     unknownPincodeMessage: string;
